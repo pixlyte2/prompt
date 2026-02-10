@@ -5,6 +5,7 @@ const adminMenu = [
   { label: "Dashboard", path: "/admin" },
   { label: "Users", path: "/admin/users" },
   { label: "Channels", path: "/admin/channels" },
+    { label: "Prompt Types", path: "/admin/prompt-types" }, // ADD
   { label: "Prompts", path: "/admin/prompts" }
 ];
 

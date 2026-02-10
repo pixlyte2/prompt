@@ -6,10 +6,14 @@ const Prompt = require("../models/prompt");
 
 const createPrompt = async (req, res) => {
   const prompt = await Prompt.create({
-    ...req.body,
+    channelId: req.body.channelId,
+    promptTypeId: req.body.promptTypeId,
+    aiModel: req.body.aiModel,
+    promptText: req.body.promptText,
     companyId: req.user.companyId,
     createdBy: req.user.id
   });
+
   res.json(prompt);
 };
 

@@ -7,6 +7,7 @@ export default function PromptManager() {
 
   const [prompts, setPrompts] = useState([]);
   const [channels, setChannels] = useState([]);
+  const [types, setTypes] = useState([]);
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -32,6 +33,12 @@ export default function PromptManager() {
   const loadChannels = async () => {
     const res = await api.get("/channels");
     setChannels(res.data);
+  };
+
+  const loadTypes = async (channelName) => {
+    if (!channelName) return;
+    const res = await api.get(`/prompts/types/${channelName}`);
+    setTypes(res.data);
   };
 
   useEffect(() => {
@@ -66,10 +73,11 @@ export default function PromptManager() {
       aiModel: "",
       promptText: ""
     });
+    setTypes([]);
     setShowModal(true);
   };
 
-  const openEdit = (p) => {
+  const openEdit = async (p) => {
     setEditingId(p._id);
     setForm({
       channelName: p.channelName,
@@ -77,12 +85,15 @@ export default function PromptManager() {
       aiModel: p.aiModel || "",
       promptText: p.promptText
     });
+
+    await loadTypes(p.channelName);
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingId(null);
+    setTypes([]);
   };
 
   /* ================= DELETE ================= */
@@ -223,12 +234,15 @@ export default function PromptManager() {
               {editingId ? "Edit Prompt" : "Create Prompt"}
             </h3>
 
+            {/* Channel */}
             <select
               className="w-full mb-3 border px-3 py-2 rounded"
               value={form.channelName}
-              onChange={(e) =>
-                setForm({ ...form, channelName: e.target.value })
-              }
+              onChange={(e) => {
+                const name = e.target.value;
+                setForm({ ...form, channelName: name, promptType: "" });
+                loadTypes(name);
+              }}
             >
               <option value="">Select Channel</option>
               {channels.map((c) => (
@@ -238,15 +252,23 @@ export default function PromptManager() {
               ))}
             </select>
 
-            <input
+            {/* Prompt Type Dropdown */}
+            <select
               className="w-full mb-3 border px-3 py-2 rounded"
-              placeholder="Prompt Type"
               value={form.promptType}
               onChange={(e) =>
                 setForm({ ...form, promptType: e.target.value })
               }
-            />
+            >
+              <option value="">Select Prompt Type</option>
+              {types.map((t, i) => (
+                <option key={i} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
 
+            {/* AI MODEL */}
             <input
               className="w-full mb-3 border px-3 py-2 rounded"
               placeholder="AI Model"
@@ -256,6 +278,7 @@ export default function PromptManager() {
               }
             />
 
+            {/* PROMPT TEXT */}
             <textarea
               rows={4}
               className="w-full mb-4 border px-3 py-2 rounded"

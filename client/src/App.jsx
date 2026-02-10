@@ -10,7 +10,9 @@ import ContentPrompts from "./pages/content/Prompts";
 import ViewerPrompts from "./pages/viewer/Prompts";
 import Users from "./pages/admin/Users";
 import Channels from "./pages/admin/Channels";
-import Dashboard from "./pages/superadmin/Dashboard"
+import Dashboard from "./pages/superadmin/Dashboard";
+import PromptTypes from "./pages/admin/PromptTypes";
+
 
 export default function App() {
   return (
@@ -80,6 +82,15 @@ export default function App() {
           </PrivateRoute>
         }
       />
+      <Route
+  path="/admin/prompt-types"
+  element={
+    <PrivateRoute allowedRoles={["admin"]}>
+      <PromptTypes />
+    </PrivateRoute>
+  }
+/>
+
 
     </Routes>
   );
