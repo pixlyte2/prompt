@@ -1,327 +1,242 @@
-  import { useEffect, useState } from "react";
-  import api from "../utils/api";
-  import { getRole } from "../utils/api";
+import { useEffect, useState } from "react";
+import { Toaster, toast } from "react-hot-toast";
+import { Copy, Pencil, Trash2 } from "lucide-react";
+import api, { getRole } from "../utils/api";
+import ConfirmModal from "../components/ConfirmModal";
+import PromptFormModal from "../components/PromptFormModal";
 
-  export default function PromptManager() {
-    const role = getRole(); // admin | content_manager | viewer
+export default function PromptManager() {
+  const role = getRole();
 
-    const [prompts, setPrompts] = useState([]);
-    const [channels, setChannels] = useState([]);
-    const [types, setTypes] = useState([]);
+  const [prompts, setPrompts] = useState([]);
+  const [channels, setChannels] = useState([]);
 
-    const [search, setSearch] = useState("");
-    const [page, setPage] = useState(1);
-    const pageSize = 5;
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
 
-    const [showModal, setShowModal] = useState(false);
-    const [editingId, setEditingId] = useState(null);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [selectedPrompt, setSelectedPrompt] = useState(null);
 
-    const [form, setForm] = useState({
-      channelId: "", 
-      promptTypeId: "",
-      aiModel: "",
-      promptText: ""
-    });
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [promptToDelete, setPromptToDelete] = useState(null);
 
-    /* ================= LOAD DATA ================= */
+  const [loading, setLoading] = useState(false);
 
-    const loadPrompts = async () => {
-      const res = await api.get("/prompts");
-      setPrompts(res.data);
-    };
-
-    const loadChannels = async () => {
-      const res = await api.get("/channels");
-      setChannels(res.data);
-    };
-
-  const loadTypes = async (channelId) => {
-    if (!channelId) {
-      setTypes([]);
-      return;
-    }
-
-    const res = await api.get(`/prompt-types/channel/${channelId}`);
-    setTypes(res.data); // array of objects
+  /* LOAD */
+  const loadPrompts = async () => {
+    const res = await api.get("/prompts");
+    setPrompts(res.data);
   };
 
-    useEffect(() => {
-      loadPrompts();
-      loadChannels();
-    }, []);
+  const loadChannels = async () => {
+    const res = await api.get("/channels");
+    setChannels(res.data);
+  };
 
-    /* ================= CREATE / UPDATE ================= */
+  useEffect(() => {
+    loadPrompts();
+    loadChannels();
+  }, []);
 
-    const submit = async () => {
-    if (!form.channelId || !form.promptTypeId || !form.promptText) {
-    return alert("All fields are required");
-  }
+  /* CREATE / EDIT */
+  const openCreate = () => {
+    setSelectedPrompt(null);
+    setShowFormModal(true);
+  };
 
+  const openEdit = (prompt) => {
+    setSelectedPrompt(prompt);
+    setShowFormModal(true);
+  };
 
-      if (editingId) {
-        await api.put(`/prompts/${editingId}`, form);
-      } else {
-        await api.post("/prompts", form);
+  /* DELETE */
+  const openDeleteModal = (prompt) => {
+    setPromptToDelete(prompt);
+    setDeleteModalOpen(true);
+  };
 
-      }
+  const confirmDelete = async () => {
+    try {
+      setLoading(true);
 
-      closeModal();
-      loadPrompts();
-    };
+      await api.delete(`/prompts/${promptToDelete._id}`);
 
-    /* ================= MODAL HANDLERS ================= */
+      setPrompts((prev) =>
+        prev.filter((p) => p._id !== promptToDelete._id)
+      );
 
-    const openCreate = () => {
-      setEditingId(null);
-      setForm({
-        channelId: "",
-        promptTypeId: "",
-        aiModel: "",
-        promptText: ""
-      });
-      setTypes([]);
-      setShowModal(true);
-    };
+      toast.success("Prompt deleted successfully");
 
-    const openEdit = async (p) => {
-      setEditingId(p._id);
-      setForm({
-        channelId: p.channelId,
-        promptTypeId: p.promptTypeId,
-        aiModel: p.aiModel || "",
-        promptText: p.promptText
-      });
+      setDeleteModalOpen(false);
+      setPromptToDelete(null);
+    } catch (error) {
+      toast.error("Failed to delete prompt");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      await loadTypes(p.channelId);
-      setShowModal(true);
-    };
+  /* COPY */
+  const copyText = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Prompt copied");
+  };
 
-    const closeModal = () => {
-      setShowModal(false);
-      setEditingId(null);
-      setTypes([]);
-    };
+  /* SEARCH + PAGINATION */
+  const filtered = prompts.filter(
+    (p) =>
+      p.promptText?.toLowerCase().includes(search.toLowerCase()) ||
+      p.promptTypeId?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      p.channelId?.name?.toLowerCase().includes(search.toLowerCase())
+  );
 
-    /* ================= DELETE ================= */
+  const totalPages = Math.ceil(filtered.length / pageSize);
 
-    const deletePrompt = async (id) => {
-      if (!window.confirm("Delete this prompt?")) return;
-      await api.delete(`/prompts/${id}`);
-      loadPrompts();
-    };
+  const paginated = filtered.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
 
-    /* ================= COPY ================= */
+  return (
+    <div className="space-y-6">
+      <Toaster position="top-right" />
 
-    const copyText = (text) => {
-      navigator.clipboard.writeText(text);
-      alert("Prompt copied");
-    };
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">
+          Prompt Manager
+        </h2>
 
-    /* ================= SEARCH + PAGINATION ================= */
+        {(role === "admin" || role === "content_manager") && (
+          <button
+            onClick={openCreate}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            + Create Prompt
+          </button>
+        )}
+      </div>
 
-   const filtered = prompts.filter(
-  (p) =>
-    p.promptText?.toLowerCase().includes(search.toLowerCase()) ||
-    p.promptTypeId?.name?.toLowerCase().includes(search.toLowerCase()) ||
-    p.channelId?.name?.toLowerCase().includes(search.toLowerCase())
-);
+      {/* SEARCH */}
+      <input
+        placeholder="Search by channel / type / text"
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setPage(1);
+        }}
+        className="w-full border px-3 py-2 rounded-lg"
+      />
 
+      {/* TABLE */}
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-3">Channel</th>
+              <th className="p-3">Type</th>
+              <th className="p-3">Model</th>
+              <th className="p-3">Prompt</th>
+              <th className="p-3 text-center">Actions</th>
+            </tr>
+          </thead>
 
-    const totalPages = Math.ceil(filtered.length / pageSize);
-    const paginated = filtered.slice(
-      (page - 1) * pageSize,
-      page * pageSize
-    );
+          <tbody>
+            {paginated.map((p) => (
+              <tr key={p._id} className="border-t hover:bg-gray-50">
+                <td className="p-3">{p.channelId?.name || "-"}</td>
+                <td className="p-3 font-medium">{p.promptTypeId?.name || "-"}</td>
+                <td className="p-3">{p.aiModel || "-"}</td>
+                <td className="p-3 max-w-md truncate">{p.promptText}</td>
 
-    return (
-      <div className="space-y-6">
-        {/* HEADER */}
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Prompt Manager</h2>
-
-          {(role === "admin" || role === "content_manager") && (
-            <button
-              onClick={openCreate}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              + Create Prompt
-            </button>
-          )}
-        </div>
-
-        {/* SEARCH */}
-        <input
-          placeholder="Search by channel / type / text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full border px-3 py-2 rounded-lg"
-        />
-
-        {/* TABLE */}
-        <div className="bg-white rounded-xl shadow overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-3">Channel</th>
-                <th className="p-3">Type</th>
-                <th className="p-3">Model</th>
-                <th className="p-3">Prompt</th>
-                <th className="p-3 text-center">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {paginated.map((p) => (
-                <tr key={p._id} className="border-t hover:bg-gray-50">
-                  <td className="p-3">{p.channelId?.name || "-"}</td>
-                  <td className="p-3 font-medium">{p.promptTypeId?.name || "-"}</td>
-                  <td className="p-3">{p.aiModel || "-"}</td>
-                  <td className="p-3 max-w-md truncate">{p.promptText}</td>
-
-                  <td className="p-3 text-center space-x-2">
+                <td className="p-3 text-center">
+                  <div className="flex justify-center items-center gap-4 opacity-70 hover:opacity-100 transition">
+                    
+                    {/* COPY */}
                     <button
                       onClick={() => copyText(p.promptText)}
-                      className="text-gray-600"
+                      className="hover:text-gray-800"
+                      title="Copy"
                     >
-                      Copy
+                      <Copy size={16} />
                     </button>
 
+                    {/* EDIT */}
                     {(role === "admin" || role === "content_manager") && (
                       <button
                         onClick={() => openEdit(p)}
-                        className="text-blue-600"
+                        className="hover:text-blue-600"
+                        title="Edit"
                       >
-                        Edit
+                        <Pencil size={16} />
                       </button>
                     )}
 
+                    {/* DELETE */}
                     {role === "admin" && (
                       <button
-                        onClick={() => deletePrompt(p._id)}
-                        className="text-red-600"
+                        onClick={() => openDeleteModal(p)}
+                        className="hover:text-red-600"
+                        title="Delete"
                       >
-                        Delete
+                        <Trash2 size={16} />
                       </button>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
 
-          {filtered.length === 0 && (
-            <p className="p-4 text-gray-500">No prompts found</p>
-          )}
-        </div>
-
-        {/* PAGINATION */}
-        {totalPages > 1 && (
-          <div className="flex justify-center gap-2">
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setPage(i + 1)}
-                className={`px-3 py-1 rounded ${
-                  page === i + 1
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200"
-                }`}
-              >
-                {i + 1}
-              </button>
+                  </div>
+                </td>
+              </tr>
             ))}
-          </div>
-        )}
+          </tbody>
+        </table>
 
-        {/* MODAL */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-            <div className="bg-white p-6 rounded-xl w-full max-w-lg">
-              <h3 className="text-lg font-semibold mb-4">
-                {editingId ? "Edit Prompt" : "Create Prompt"}
-              </h3>
-
-              {/* Channel */}
-          <select
-                  className="w-full mb-3 border px-3 py-2 rounded"
-                  value={form.channelId}
-                  onChange={(e) => {
-                    const channelId = e.target.value;
-
-                    setForm({
-                      ...form,
-                      channelId,
-                      promptTypeId: ""
-                    });
-
-                    loadTypes(channelId); // 🔥 send ID
-                  }}
-                >
-                  <option value="">Select Channel</option>
-
-                  {channels.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-
-
-              {/* Prompt Type Dropdown */}
-              <select
-                className="w-full mb-3 border px-3 py-2 rounded"
-                value={form.promptTypeId}
-                onChange={(e) =>
-                  setForm({ ...form, promptTypeId: e.target.value })
-                }
-              >
-                <option value="">Select Prompt Type</option>
-              {types.map((t) => (
-              <option key={t._id} value={t._id}>
-                {t.name}
-              </option>
-            ))}
-
-              </select>
-
-              {/* AI MODEL */}
-              <input
-                className="w-full mb-3 border px-3 py-2 rounded"
-                placeholder="AI Model"
-                value={form.aiModel}
-                onChange={(e) =>
-                  setForm({ ...form, aiModel: e.target.value })
-                }
-              />
-
-              {/* PROMPT TEXT */}
-              <textarea
-                rows={4}
-                className="w-full mb-4 border px-3 py-2 rounded"
-                placeholder="Prompt Text"
-                value={form.promptText}
-                onChange={(e) =>
-                  setForm({ ...form, promptText: e.target.value })
-                }
-              />
-
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={closeModal}
-                  className="px-4 py-2 bg-gray-200 rounded"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submit}
-                  className="px-4 py-2 bg-blue-600 text-white rounded"
-                >
-                  {editingId ? "Update" : "Create"}
-                </button>
-              </div>
-            </div>
-          </div>
+        {filtered.length === 0 && (
+          <p className="p-4 text-gray-500">
+            No prompts found
+          </p>
         )}
       </div>
-    );
-  }
+
+      {/* PAGINATION */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2">
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setPage(i + 1)}
+              className={`px-3 py-1 rounded ${
+                page === i + 1
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200"
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* FORM MODAL */}
+      <PromptFormModal
+        isOpen={showFormModal}
+        onClose={() => setShowFormModal(false)}
+        onSuccess={loadPrompts}
+        editingPrompt={selectedPrompt}
+        channels={channels}
+      />
+
+      {/* DELETE CONFIRM MODAL */}
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        title="Delete Prompt"
+        message="Are you sure you want to delete this prompt? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteModalOpen(false)}
+        loading={loading}
+      />
+    </div>
+  );
+}

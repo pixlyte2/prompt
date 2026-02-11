@@ -4,7 +4,7 @@ import axios from "axios";
  * Axios instance
  */
 const api = axios.create({
-  baseURL: "http://localhost:5000/api"
+  baseURL: "http://localhost:5000/api" // ✅ FIXED
 });
 
 /**
@@ -12,9 +12,11 @@ const api = axios.create({
  */
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
@@ -34,7 +36,4 @@ export const logout = () => {
   localStorage.removeItem("role");
 };
 
-/**
- * DEFAULT EXPORT (IMPORTANT)
- */
 export default api;

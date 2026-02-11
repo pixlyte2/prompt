@@ -13,6 +13,7 @@ const promptRoutes = require("./routes/promptRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const superAdminRoutes = require("./routes/superAdminRoutes");
 const promptTypeRoutes = require("./routes/promptTypeRoutes");
+ 
 
 // Connect MongoDB
 connectDB();
@@ -41,6 +42,7 @@ app.use("/api/prompts", promptRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/superadmin", superAdminRoutes);
 app.use("/api/prompt-types", promptTypeRoutes);
+
 
 /**
  * 🧪 Health Check

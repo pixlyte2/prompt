@@ -7,16 +7,17 @@ import ConfirmModal from "../../components/ConfirmModal";
 
 export default function Channels() {
   const [channels, setChannels] = useState([]);
+  const [search, setSearch] = useState("");
+
   const [name, setName] = useState("");
+  const [editName, setEditName] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const [editingChannel, setEditingChannel] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState(null);
-
-  const [editingChannel, setEditingChannel] = useState(null);
-  const [editName, setEditName] = useState("");
 
   /* ================= LOAD ================= */
 
@@ -39,14 +40,16 @@ export default function Channels() {
   /* ================= CREATE ================= */
 
   const createChannel = async () => {
-    if (!name) return toast.error("Channel name required");
+    if (!name.trim()) return toast.error("Channel name required");
 
     try {
       setLoading(true);
-      await api.post("/channels", { name });
-      toast.success("Channel created successfully");
+      const res = await api.post("/channels", { name });
+
+      setChannels(prev => [res.data, ...prev]);
       setName("");
-      loadChannels();
+
+      toast.success("Channel created successfully");
     } catch (err) {
       toast.error("Failed to create channel");
     } finally {
@@ -62,17 +65,23 @@ export default function Channels() {
   };
 
   const saveEdit = async () => {
-    if (!editName) return toast.error("Channel name required");
+    if (!editName.trim()) return toast.error("Channel name required");
 
     try {
       setLoading(true);
-      await api.put(`/channels/${editingChannel._id}`, {
+
+      const res = await api.put(`/channels/${editingChannel._id}`, {
         name: editName
       });
 
+      setChannels(prev =>
+        prev.map(c =>
+          c._id === editingChannel._id ? res.data : c
+        )
+      );
+
       toast.success("Channel updated successfully");
       setEditingChannel(null);
-      loadChannels();
     } catch (err) {
       toast.error("Failed to update channel");
     } finally {
@@ -90,10 +99,16 @@ export default function Channels() {
   const confirmDelete = async () => {
     try {
       setDeleteLoading(true);
+
       await api.delete(`/channels/${channelToDelete._id}`);
+
+      // Soft remove from UI (no reload)
+      setChannels(prev =>
+        prev.filter(c => c._id !== channelToDelete._id)
+      );
+
       toast.success("Channel deleted successfully");
       setDeleteModalOpen(false);
-      loadChannels();
     } catch (err) {
       toast.error("Failed to delete channel");
     } finally {
@@ -101,75 +116,108 @@ export default function Channels() {
     }
   };
 
+  /* ================= FILTER ================= */
+
+  const filteredChannels = channels.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <AdminLayout title="Channel Management">
       <Toaster position="top-right" />
 
-      {/* CREATE */}
-      <div className="bg-white p-6 rounded-2xl shadow mb-6">
-        <h3 className="text-xl font-semibold mb-4">Create Channel</h3>
+      {/* HEADER */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-semibold">
+          Channel Management
+        </h2>
+        <p className="text-gray-500 text-sm">
+          Organize and manage your company channels
+        </p>
+      </div>
 
-        <div className="flex gap-3">
+      {/* CREATE + SEARCH */}
+      <div className="bg-white rounded-2xl border p-6 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
+
+          {/* Create */}
+          <div className="flex gap-3 w-full md:w-auto">
+            <input
+              placeholder="New channel name..."
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="border px-4 py-2 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-72"
+            />
+
+            <button
+              onClick={createChannel}
+              disabled={loading || !name.trim()}
+              className="bg-blue-600 text-white px-5 rounded-xl hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50"
+            >
+              <Plus size={18} />
+              Add
+            </button>
+          </div>
+
+          {/* Search */}
           <input
-            className="border px-4 py-2 rounded-xl w-full focus:ring-2 focus:ring-blue-500 outline-none"
-            placeholder="Channel name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            placeholder="Search channels..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="border px-4 py-2 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-72"
           />
-
-          <button
-            onClick={createChannel}
-            disabled={loading}
-            className="bg-blue-600 text-white px-6 rounded-xl hover:bg-blue-700 transition flex items-center gap-2"
-          >
-            <Plus size={18} />
-            Add
-          </button>
         </div>
       </div>
 
       {/* LIST */}
-      <div className="bg-white p-6 rounded-2xl shadow">
-        <h3 className="text-xl font-semibold mb-4">Channels</h3>
+      <div className="bg-white rounded-2xl border overflow-hidden">
 
         {loading ? (
-          <div className="text-center py-10">
+          <div className="text-center py-16">
             <span className="h-6 w-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin inline-block"></span>
           </div>
-        ) : channels.length === 0 ? (
-          <p className="text-gray-500">No channels found</p>
+        ) : filteredChannels.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="text-4xl mb-3">📡</div>
+            <h4 className="font-semibold text-lg">
+              No Channels Found
+            </h4>
+            <p className="text-gray-500 text-sm">
+              Try adjusting your search or create a new channel
+            </p>
+          </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-3 text-left">Channel Name</th>
-                <th className="p-3 text-center">Actions</th>
-              </tr>
-            </thead>
+          filteredChannels.map((c) => (
+            <div
+              key={c._id}
+              className="flex items-center justify-between px-6 py-4 border-b last:border-none hover:bg-gray-50 transition"
+            >
+              <div className="flex flex-col">
+                <span className="font-medium text-gray-800">
+                  {c.name}
+                </span>
+                <span className="text-xs text-gray-400">
+                  Created {new Date(c.createdAt).toLocaleDateString()}
+                </span>
+              </div>
 
-            <tbody>
-              {channels.map((c) => (
-                <tr key={c._id} className="border-t hover:bg-gray-50">
-                  <td className="p-3">{c.name}</td>
-                  <td className="p-3 text-center space-x-4">
-                    <button
-                      onClick={() => openEditModal(c)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <Pencil size={18} />
-                    </button>
+              <div className="flex items-center gap-5 opacity-70 hover:opacity-100 transition">
+                <button
+                  onClick={() => openEditModal(c)}
+                  className="hover:text-blue-600"
+                >
+                  <Pencil size={16} />
+                </button>
 
-                    <button
-                      onClick={() => openDeleteModal(c)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                <button
+                  onClick={() => openDeleteModal(c)}
+                  className="hover:text-red-600"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))
         )}
       </div>
 
