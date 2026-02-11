@@ -119,12 +119,13 @@
 
     /* ================= SEARCH + PAGINATION ================= */
 
-    const filtered = prompts.filter(
-      (p) =>
-        p.promptText.toLowerCase().includes(search.toLowerCase()) ||
-        p.promptType.toLowerCase().includes(search.toLowerCase()) ||
-        p.channelName.toLowerCase().includes(search.toLowerCase())
-    );
+   const filtered = prompts.filter(
+  (p) =>
+    p.promptText?.toLowerCase().includes(search.toLowerCase()) ||
+    p.promptTypeId?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    p.channelId?.name?.toLowerCase().includes(search.toLowerCase())
+);
+
 
     const totalPages = Math.ceil(filtered.length / pageSize);
     const paginated = filtered.slice(
@@ -172,8 +173,8 @@
             <tbody>
               {paginated.map((p) => (
                 <tr key={p._id} className="border-t hover:bg-gray-50">
-                  <td className="p-3">{p.channelId.name}</td>
-                  <td className="p-3 font-medium">{p.promptTypeId.name}</td>
+                  <td className="p-3">{p.channelId?.name || "-"}</td>
+                  <td className="p-3 font-medium">{p.promptTypeId?.name || "-"}</td>
                   <td className="p-3">{p.aiModel || "-"}</td>
                   <td className="p-3 max-w-md truncate">{p.promptText}</td>
 

@@ -34,17 +34,30 @@ const updateChannel = async (req, res) => {
 };
 
 const deleteChannel = async (req, res) => {
-  await Channel.findOneAndDelete({
-    _id: req.params.id,
-    companyId: req.user.companyId
-  });
+  try {
+    const channel = await Channel.findOne({
+      _id: req.params.id,
+      companyId: req.user.companyId
+    });
 
-  await Prompt.deleteMany({
-    channelName: req.body.name,
-    companyId: req.user.companyId
-  });
+    if (!channel) {
+      return res.status(404).json({ message: "Channel not found" });
+    }
 
-  res.json({ message: "Channel deleted" });
+    // Delete related prompts using actual channel name
+    await Prompt.deleteMany({
+      channelName: channel.name,
+      companyId: req.user.companyId
+    });
+
+    await channel.deleteOne();
+
+    res.status(200).json({ message: "Channel deleted successfully" });
+
+  } catch (error) {
+    console.error("Delete error:", error);
+    res.status(500).json({ message: "Server error while deleting channel" });
+  }
 };
 
 module.exports = {

@@ -1,20 +1,35 @@
 import { useEffect, useState } from "react";
+import { Pencil, Trash2, Plus } from "lucide-react";
+import { Toaster, toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../utils/api";
+import ConfirmModal from "../../components/ConfirmModal";
 
 export default function Channels() {
   const [channels, setChannels] = useState([]);
   const [name, setName] = useState("");
 
-  const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [channelToDelete, setChannelToDelete] = useState(null);
+
   const [editingChannel, setEditingChannel] = useState(null);
   const [editName, setEditName] = useState("");
 
   /* ================= LOAD ================= */
 
   const loadChannels = async () => {
-    const res = await api.get("/channels");
-    setChannels(res.data);
+    try {
+      setLoading(true);
+      const res = await api.get("/channels");
+      setChannels(res.data);
+    } catch (err) {
+      toast.error("Failed to load channels");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -24,54 +39,79 @@ export default function Channels() {
   /* ================= CREATE ================= */
 
   const createChannel = async () => {
-    if (!name) return alert("Channel name required");
-    await api.post("/channels", { name });
-    setName("");
-    loadChannels();
+    if (!name) return toast.error("Channel name required");
+
+    try {
+      setLoading(true);
+      await api.post("/channels", { name });
+      toast.success("Channel created successfully");
+      setName("");
+      loadChannels();
+    } catch (err) {
+      toast.error("Failed to create channel");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  /* ================= EDIT (MODAL) ================= */
+  /* ================= EDIT ================= */
 
   const openEditModal = (channel) => {
     setEditingChannel(channel);
     setEditName(channel.name);
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setEditingChannel(null);
-    setEditName("");
   };
 
   const saveEdit = async () => {
-    if (!editName) return alert("Channel name required");
+    if (!editName) return toast.error("Channel name required");
 
-    await api.put(`/channels/${editingChannel._id}`, {
-      name: editName
-    });
+    try {
+      setLoading(true);
+      await api.put(`/channels/${editingChannel._id}`, {
+        name: editName
+      });
 
-    closeModal();
-    loadChannels();
+      toast.success("Channel updated successfully");
+      setEditingChannel(null);
+      loadChannels();
+    } catch (err) {
+      toast.error("Failed to update channel");
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* ================= DELETE ================= */
 
-  const deleteChannel = async (id) => {
-    if (!window.confirm("Delete this channel?")) return;
-    await api.delete(`/channels/${id}`);
-    loadChannels();
+  const openDeleteModal = (channel) => {
+    setChannelToDelete(channel);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      setDeleteLoading(true);
+      await api.delete(`/channels/${channelToDelete._id}`);
+      toast.success("Channel deleted successfully");
+      setDeleteModalOpen(false);
+      loadChannels();
+    } catch (err) {
+      toast.error("Failed to delete channel");
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   return (
     <AdminLayout title="Channel Management">
-      {/* CREATE CHANNEL */}
-      <div className="bg-white p-6 rounded-xl shadow mb-6">
-        <h3 className="text-lg font-semibold mb-4">Create Channel</h3>
+      <Toaster position="top-right" />
+
+      {/* CREATE */}
+      <div className="bg-white p-6 rounded-2xl shadow mb-6">
+        <h3 className="text-xl font-semibold mb-4">Create Channel</h3>
 
         <div className="flex gap-3">
           <input
-            className="border px-3 py-2 rounded-lg w-full"
+            className="border px-4 py-2 rounded-xl w-full focus:ring-2 focus:ring-blue-500 outline-none"
             placeholder="Channel name"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -79,85 +119,89 @@ export default function Channels() {
 
           <button
             onClick={createChannel}
-            className="bg-blue-600 text-white px-6 rounded-lg hover:bg-blue-700"
+            disabled={loading}
+            className="bg-blue-600 text-white px-6 rounded-xl hover:bg-blue-700 transition flex items-center gap-2"
           >
+            <Plus size={18} />
             Add
           </button>
         </div>
       </div>
 
-      {/* CHANNEL LIST */}
-      <div className="bg-white p-6 rounded-xl shadow">
-        <h3 className="text-lg font-semibold mb-4">Channels</h3>
+      {/* LIST */}
+      <div className="bg-white p-6 rounded-2xl shadow">
+        <h3 className="text-xl font-semibold mb-4">Channels</h3>
 
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-3">Channel Name</th>
-              <th className="p-3 text-center">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {channels.map((c) => (
-              <tr key={c._id} className="border-t hover:bg-gray-50">
-                <td className="p-3">{c.name}</td>
-                <td className="p-3 text-center space-x-3">
-                  <button
-                    onClick={() => openEditModal(c)}
-                    className="text-blue-600"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => deleteChannel(c._id)}
-                    className="text-red-600"
-                  >
-                    Delete
-                  </button>
-                </td>
+        {loading ? (
+          <div className="text-center py-10">
+            <span className="h-6 w-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin inline-block"></span>
+          </div>
+        ) : channels.length === 0 ? (
+          <p className="text-gray-500">No channels found</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-3 text-left">Channel Name</th>
+                <th className="p-3 text-center">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
 
-        {channels.length === 0 && (
-          <p className="text-gray-500 mt-4">No channels found</p>
+            <tbody>
+              {channels.map((c) => (
+                <tr key={c._id} className="border-t hover:bg-gray-50">
+                  <td className="p-3">{c.name}</td>
+                  <td className="p-3 text-center space-x-4">
+                    <button
+                      onClick={() => openEditModal(c)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <Pencil size={18} />
+                    </button>
+
+                    <button
+                      onClick={() => openDeleteModal(c)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
-      {/* ================= EDIT MODAL ================= */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-semibold mb-4">
-              Edit Channel
-            </h3>
-
+      {/* EDIT MODAL */}
+      {editingChannel && (
+        <ConfirmModal
+          isOpen={true}
+          title="Edit Channel"
+          message={
             <input
-              className="w-full border px-3 py-2 rounded-lg mb-4"
-              placeholder="Channel name"
+              className="w-full border px-3 py-2 rounded-lg mt-3"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
             />
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 bg-gray-200 rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveEdit}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+          }
+          confirmText="Save"
+          onConfirm={saveEdit}
+          onCancel={() => setEditingChannel(null)}
+          loading={loading}
+        />
       )}
+
+      {/* DELETE MODAL */}
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        title="Delete Channel"
+        message={`Are you sure you want to delete "${channelToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteModalOpen(false)}
+        loading={deleteLoading}
+      />
     </AdminLayout>
   );
 }
