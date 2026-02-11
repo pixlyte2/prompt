@@ -19,8 +19,11 @@ const createPrompt = async (req, res) => {
 
 const getPrompts = async (req, res) => {
   const prompts = await Prompt.find({
-    companyId: req.user.companyId
-  });
+  companyId: req.user.companyId
+})
+.populate("channelId", "name")
+.populate("promptTypeId", "name");
+
   res.json(prompts);
 };
 
@@ -41,18 +44,18 @@ const deletePrompt = async (req, res) => {
   res.json({ message: "Prompt deleted" });
 };
 
-const getPromptTypesByChannel = async (req, res) => {
-  const types = await Prompt.distinct("promptType", {
-    channelName: req.params.channelName,
-    companyId: req.user.companyId
-  });
-  res.json(types);
-};
+// const getPromptTypesByChannel = async (req, res) => {
+//   const types = await Prompt.distinct("promptType", {
+//     channelName: req.params.channelName,
+//     companyId: req.user.companyId
+//   });
+//   res.json(types);
+// };
 
 module.exports = {
   createPrompt,
   getPrompts,
   updatePrompt,
-  deletePrompt,
-  getPromptTypesByChannel
+  deletePrompt
+  // getPromptTypesByChannel
 };
