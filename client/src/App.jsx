@@ -14,6 +14,7 @@ import Dashboard from "./pages/superadmin/Dashboard";
 import PromptTypes from "./pages/admin/PromptTypes";
 
 
+
 export default function App() {
   return (
     <Routes>
@@ -50,7 +51,7 @@ export default function App() {
       />
 
       <Route
-        path="/viewer/prompts"
+        path="/viewer"
         element={
           <PrivateRoute allowedRoles={["viewer"]}>
             <ViewerPrompts />

@@ -2,7 +2,7 @@ import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 
 const viewerMenu = [
-  { label: "View Prompts", path: "/viewer/prompts" }
+  { label: "View Prompts", path: "/viewer" }
 ];
 
 export default function ViewerLayout({ title, children }) {

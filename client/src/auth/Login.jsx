@@ -16,7 +16,7 @@ export default function Login() {
       localStorage.setItem("role", res.data.role);
 
       if (res.data.role === "admin") navigate("/admin");
-      if (res.data.role === "content_manager") navigate("/content");
+      if (res.data.role === "content_manager") navigate("/content/prompts");
       if (res.data.role === "viewer") navigate("/viewer");
     } catch (err) {
       alert(err.response?.data?.message || "Login failed");
