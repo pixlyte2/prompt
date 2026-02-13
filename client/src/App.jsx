@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import PrivateRoute from "./components/PrivateRoute";
 
 import Login from "./auth/Login";
@@ -17,6 +18,20 @@ import PromptTypes from "./pages/admin/PromptTypes";
 
 export default function App() {
   return (
+
+
+    <>   <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            borderRadius: "10px",
+            background: "#333",
+            color: "#fff",
+            zIndex: 9999
+          }
+        }}
+      />
     <Routes>
       <Route path="/" element={<Navigate to="/login" />} />
 
@@ -94,5 +109,6 @@ export default function App() {
 
 
     </Routes>
+    </>
   );
 }
