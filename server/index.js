@@ -92,7 +92,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://prompt-mjda.vercel.app", // 👉 உங்கள் client domain
+       "https://prompt-ruddy-sigma.vercel.app", // 👉 உங்கள் client domain
     ],
     credentials: true,
   })
