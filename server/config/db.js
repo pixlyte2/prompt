@@ -1,12 +1,17 @@
 const mongoose = require("mongoose");
 
+let isConnected = false;
+
 const connectDB = async () => {
+  if (isConnected) return;
+
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log("MongoDB is Connected");
+    const conn = await mongoose.connect(process.env.MONGO_URI);
+
+    isConnected = conn.connections[0].readyState === 1;
+    console.log("✅ MongoDB Connected");
   } catch (error) {
-    console.error("MongoDB connection failed:", error.message);
-    process.exit(1);
+    console.error("❌ MongoDB Error:", error.message);
   }
 };
 

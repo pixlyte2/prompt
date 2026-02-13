@@ -81,7 +81,7 @@ const superAdminRoutes = require("./routes/superAdminRoutes");
 const promptTypeRoutes = require("./routes/promptTypeRoutes");
 
 // Connect MongoDB
-connectDB();
+connectDB().catch(console.error);
 
 const app = express();
 
