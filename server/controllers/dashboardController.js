@@ -1,4 +1,4 @@
-const User = require("../models/User");
+const User = require("../models/user");
 const Prompt = require("../models/prompt");
 const Channel = require("../models/channel");
 

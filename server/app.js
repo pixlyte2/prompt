@@ -1,5 +1,4 @@
 const express = require("express");
-const path = require("path");
 const cors = require("cors");
 require("dotenv").config();
 
@@ -13,7 +12,6 @@ const promptRoutes = require("./routes/promptRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const superAdminRoutes = require("./routes/superAdminRoutes");
 const promptTypeRoutes = require("./routes/promptTypeRoutes");
- 
 
 // Connect MongoDB
 connectDB();
@@ -25,7 +23,7 @@ const app = express();
  */
 app.use(
   cors({
-    origin: "http://localhost:5173", // Vite frontend
+    origin: true, // ✅ allow localhost + vercel frontend
     credentials: true,
   })
 );
@@ -43,7 +41,6 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/superadmin", superAdminRoutes);
 app.use("/api/prompt-types", promptTypeRoutes);
 
-
 /**
  * 🧪 Health Check
  */
@@ -52,11 +49,14 @@ app.get("/", (req, res) => {
 });
 
 /**
- * 🚀 Start Server
+ * 🚀 Start Server ONLY in Local
+ * (Vercel serverless-ல் listen வேண்டாம்)
  */
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`✅ Server running on port ${PORT}`);
+  });
+}
 
 module.exports = app;
