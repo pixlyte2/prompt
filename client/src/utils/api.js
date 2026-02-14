@@ -3,8 +3,13 @@ import axios from "axios";
 /**
  * Axios instance
  */
+// const api = axios.create({
+//   baseURL: "http://localhost:5000/api" // ✅ FIXED
+// });
+
+
 const api = axios.create({
-  baseURL: "http://localhost:5000/api" // ✅ FIXED
+  baseURL: import.meta.env.VITE_API_URL   // ✅ from .env
 });
 
 /**
