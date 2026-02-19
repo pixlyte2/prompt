@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CreatorAI Client - README</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+        h1 { color: #2563eb; border-bottom: 3px solid #2563eb; padding-bottom: 10px; }
+        h2 { color: #1e40af; margin-top: 30px; }
+        code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; }
+        pre { background: #1f2937; color: #f9fafb; padding: 15px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: #f9fafb; }
+        ul { margin: 10px 0; }
+        li { margin: 5px 0; }
+        .tech-stack { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        .tech-item { background: #eff6ff; padding: 10px; border-radius: 6px; border-left: 4px solid #2563eb; }
+    </style>
+</head>
+<body>
+    <h1>CreatorAI Client</h1>
+    
+    <h2>About</h2>
+    <p>A React-based web application for managing AI prompts with role-based access control. Features separate dashboards for Super Admins, Admins, Content Managers, and Viewers with prompt management, user management, and channel organization capabilities.</p>
+    
+    <h2>Tech Stack</h2>
+    <div class="tech-stack">
+        <div class="tech-item"><strong>React 19</strong> - UI framework</div>
+        <div class="tech-item"><strong>Vite</strong> - Build tool and dev server</div>
+        <div class="tech-item"><strong>React Router DOM</strong> - Client-side routing</div>
+        <div class="tech-item"><strong>Tailwind CSS</strong> - Styling</div>
+        <div class="tech-item"><strong>Axios</strong> - HTTP client</div>
+        <div class="tech-item"><strong>Zustand</strong> - State management</div>
+        <div class="tech-item"><strong>React Hot Toast</strong> - Notifications</div>
+        <div class="tech-item"><strong>Three.js & React Three Fiber</strong> - 3D graphics</div>
+        <div class="tech-item"><strong>Framer Motion</strong> - Animations</div>
+        <div class="tech-item"><strong>Recharts</strong> - Data visualization</div>
+        <div class="tech-item"><strong>Lucide React</strong> - Icons</div>
+    </div>
+    
+    <h2>How to Run Locally</h2>
+    
+    <h3>1. Install dependencies</h3>
+    <pre><code>npm install</code></pre>
+    
+    <h3>2. Configure environment</h3>
+    <p>Create a <code>.env</code> file in the client directory:</p>
+    <pre><code>VITE_API_URL=http://localhost:5000/api</code></pre>
+    
+    <h3>3. Start development server</h3>
+    <pre><code>npm run dev</code></pre>
+    <p>The app will run on <code>http://localhost:5173</code></p>
+    
+    <h3>4. Build for production</h3>
+    <pre><code>npm run build</code></pre>
+    
+    <h2>Available Scripts</h2>
+    <ul>
+        <li><code>npm run dev</code> - Start development server</li>
+        <li><code>npm run build</code> - Build for production</li>
+        <li><code>npm run preview</code> - Preview production build</li>
+        <li><code>npm run lint</code> - Run ESLint</li>
+    </ul>
+</body>
+</html>
