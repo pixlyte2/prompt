@@ -1,16 +1,47 @@
-# React + Vite
+# CreatorAI Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## About
+A React-based web application for managing AI prompts with role-based access control. Features separate dashboards for Super Admins, Admins, Content Managers, and Viewers with prompt management, user management, and channel organization capabilities.
 
-Currently, two official plugins are available:
+## Tech Stack
+- **React 19** - UI framework
+- **Vite** - Build tool and dev server
+- **React Router DOM** - Client-side routing
+- **Tailwind CSS** - Styling
+- **Axios** - HTTP client
+- **Zustand** - State management
+- **React Hot Toast** - Notifications
+- **Three.js & React Three Fiber** - 3D graphics
+- **Framer Motion** - Animations
+- **Recharts** - Data visualization
+- **Lucide React** - Icons
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## How to Run Locally
 
-## React Compiler
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2. **Configure environment**
+   Create a `.env` file in the client directory:
+   ```
+   VITE_API_URL=http://localhost:5000/api
+   ```
 
-## Expanding the ESLint configuration
+3. **Start development server**
+   ```bash
+   npm run dev
+   ```
+   The app will run on `http://localhost:5173`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+4. **Build for production**
+   ```bash
+   npm run build
+   ```
+
+## Available Scripts
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
