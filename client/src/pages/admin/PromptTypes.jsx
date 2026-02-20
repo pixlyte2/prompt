@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, Download } from "lucide-react";
 import { Toaster, toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../utils/api";
 import ConfirmModal from "../../components/ConfirmModal";
+import { exportToCSV } from "../../utils/csvExport";
 
 export default function PromptTypes() {
   const [channels, setChannels] = useState([]);
@@ -57,7 +58,6 @@ export default function PromptTypes() {
 
       const res = await api.post("/prompt-types", form);
 
-      // Soft add
       setTypes(prev => [res.data, ...prev]);
       setForm({ name: "", channelId: "" });
 
@@ -88,7 +88,6 @@ export default function PromptTypes() {
         name: editName
       });
 
-      // Soft update
       setTypes(prev =>
         prev.map(t =>
           t._id === editing._id ? res.data : t
@@ -119,7 +118,6 @@ export default function PromptTypes() {
 
       await api.delete(`/prompt-types/${typeToDelete._id}`);
 
-      // Soft delete
       setTypes(prev =>
         prev.filter(t => t._id !== typeToDelete._id)
       );
@@ -135,18 +133,42 @@ export default function PromptTypes() {
     }
   };
 
+  /* ===== EXPORT CSV ===== */
+  const handleExport = () => {
+    if (!types.length) {
+      return toast.error("No data to export");
+    }
+
+    const formattedData = types.map(t => ({
+      Name: t.name,
+      Channel: t.channelId?.name || "-"
+    }));
+
+    exportToCSV(formattedData, "prompt-types.csv");
+  };
+
   return (
     <AdminLayout title="Prompt Types">
       <Toaster position="top-right" />
 
       {/* ===== HEADER ===== */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold">
-          Prompt Types
-        </h2>
-        <p className="text-gray-500 text-sm">
-          Organize prompt types under channels
-        </p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-semibold">
+            Prompt Types
+          </h2>
+          <p className="text-gray-500 text-sm">
+            Organize prompt types under channels
+          </p>
+        </div>
+
+        <button
+          onClick={handleExport}
+          className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition flex items-center gap-2"
+        >
+          <Download size={16} />
+          Export CSV
+        </button>
       </div>
 
       {/* ===== CREATE SECTION ===== */}
@@ -194,13 +216,8 @@ export default function PromptTypes() {
 
       {/* ===== TABLE LIST ===== */}
       <div className="bg-white rounded-2xl border overflow-hidden">
-        {loading && types.length === 0 ? (
+        {types.length === 0 ? (
           <div className="text-center py-16">
-            <span className="h-6 w-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin inline-block"></span>
-          </div>
-        ) : types.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-4xl mb-3">📝</div>
             <h4 className="font-semibold text-lg">
               No Prompt Types Found
             </h4>
@@ -228,7 +245,7 @@ export default function PromptTypes() {
               {types.map((t) => (
                 <tr
                   key={t._id}
-                  className="border-b last:border-none hover:bg-gray-50 transition"
+                  className="border-b hover:bg-gray-50 transition"
                 >
                   <td className="p-4 font-medium text-gray-800">
                     {t.name}
@@ -239,7 +256,7 @@ export default function PromptTypes() {
                   </td>
 
                   <td className="p-4 text-center">
-                    <div className="flex justify-center gap-4 opacity-70 hover:opacity-100 transition">
+                    <div className="flex justify-center gap-4">
                       <button
                         onClick={() => openEdit(t)}
                         className="hover:text-blue-600"
