@@ -17,7 +17,11 @@ export default function PromptManager() {
   const [prompts, setPrompts] = useState([]);
   const [channels, setChannels] = useState([]);
   const [search, setSearch] = useState("");
+  const [selectedChannel, setSelectedChannel] = useState(null);
+  const [selectedType, setSelectedType] = useState(null);
   const [page, setPage] = useState(1);
+  const [sortField, setSortField] = useState(null);
+  const [sortDirection, setSortDirection] = useState('asc');
   const pageSize = 10;
   const [selectedRows, setSelectedRows] = useState([]);
 
@@ -30,6 +34,56 @@ export default function PromptManager() {
   const [loading, setLoading] = useState(false); // for delete modal
 
   const { startLoading, stopLoading, isLoading } = useLoading();
+
+  // Generate consistent colors for channels
+  const getChannelColor = (channelId) => {
+    if (!channelId) return "bg-gray-50";
+    
+    const colors = [
+      "bg-blue-50",
+      "bg-emerald-50", 
+      "bg-purple-50",
+      "bg-amber-50",
+      "bg-indigo-50",
+      "bg-teal-50",
+      "bg-orange-50",
+      "bg-cyan-50",
+      "bg-pink-50",
+      "bg-lime-50"
+    ];
+    
+    // Create a simple hash from channelId to get consistent color
+    let hash = 0;
+    for (let i = 0; i < channelId.length; i++) {
+      hash = channelId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Get matching dot color for channel
+  const getChannelDotColor = (channelId) => {
+    if (!channelId) return "bg-gray-500";
+    
+    const dotColors = [
+      "bg-blue-500",
+      "bg-emerald-500", 
+      "bg-purple-500",
+      "bg-amber-500",
+      "bg-indigo-500",
+      "bg-teal-500",
+      "bg-orange-500",
+      "bg-cyan-500",
+      "bg-pink-500",
+      "bg-lime-500"
+    ];
+    
+    // Use same hash logic as background colors
+    let hash = 0;
+    for (let i = 0; i < channelId.length; i++) {
+      hash = channelId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return dotColors[Math.abs(hash) % dotColors.length];
+  };
 
   /* ================= LOAD ================= */
 const loadPrompts = async () => {
@@ -70,14 +124,28 @@ const loadPrompts = async () => {
     const selectedData = prompts
       .filter(p => selectedRows.includes(p._id))
       .map(p => ({
-        Channel: p.channelId?.name || "-",
-        Type: p.promptTypeId?.name || "-",
-        Model: p.aiModel || "-",
-        Prompt: p.promptText || "-"
+        id: p._id,
+        channel: p.channelId?.name || null,
+        type: p.promptTypeId?.name || null,
+        model: p.aiModel || null,
+        prompt: p.promptText || null,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt
       }));
 
-    exportToCSV(selectedData, "selected-prompts.csv");
-    toast.success("Selected prompts exported");
+    const jsonString = JSON.stringify(selectedData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'selected-prompts.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success("Selected prompts exported as JSON");
   };
 
   /* ================= ROW SELECT ================= */
@@ -94,14 +162,14 @@ const loadPrompts = async () => {
 
     startLoading("selectAll");
 
-    const allIds = prompts.map(p => p._id);
+    const filteredIds = filtered.map(p => p._id);
 
     setTimeout(() => {
 
-      if (selectedRows.length === allIds.length) {
+      if (selectedRows.length === filteredIds.length && filteredIds.every(id => selectedRows.includes(id))) {
         setSelectedRows([]);
       } else {
-        setSelectedRows(allIds);
+        setSelectedRows(filteredIds);
       }
 
       stopLoading("selectAll");
@@ -110,13 +178,69 @@ const loadPrompts = async () => {
 
   };
 
+  /* ================= SORTING ================= */
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setPage(1);
+  };
+
   /* ================= SEARCH ================= */
   const filtered = prompts.filter(
-    (p) =>
-      p.promptText?.toLowerCase().includes(search.toLowerCase()) ||
-      p.promptTypeId?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.channelId?.name?.toLowerCase().includes(search.toLowerCase())
-  );
+    (p) => {
+      const matchesSearch = p.promptText?.toLowerCase().includes(search.toLowerCase()) ||
+        p.promptTypeId?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        p.channelId?.name?.toLowerCase().includes(search.toLowerCase());
+      
+      const matchesChannel = !selectedChannel || p.channelId?._id === selectedChannel;
+      const matchesType = !selectedType || p.promptTypeId?._id === selectedType;
+      
+      return matchesSearch && matchesChannel && matchesType;
+    }
+  ).sort((a, b) => {
+    if (sortField) {
+      let aVal, bVal;
+      
+      switch (sortField) {
+        case 'channel':
+          aVal = a.channelId?.name || "";
+          bVal = b.channelId?.name || "";
+          break;
+        case 'type':
+          aVal = a.promptTypeId?.name || "";
+          bVal = b.promptTypeId?.name || "";
+          break;
+        case 'model':
+          aVal = a.aiModel || "";
+          bVal = b.aiModel || "";
+          break;
+        case 'prompt':
+          aVal = a.promptText || "";
+          bVal = b.promptText || "";
+          break;
+        default:
+          return 0;
+      }
+      
+      const result = aVal.localeCompare(bVal);
+      return sortDirection === 'asc' ? result : -result;
+    }
+    
+    // Default sort by channel, then type
+    const channelA = a.channelId?.name || "";
+    const channelB = b.channelId?.name || "";
+    const channelCompare = channelA.localeCompare(channelB);
+    
+    if (channelCompare !== 0) return channelCompare;
+    
+    const typeA = a.promptTypeId?.name || "";
+    const typeB = b.promptTypeId?.name || "";
+    return typeA.localeCompare(typeB);
+  });
 
   const totalPages = Math.ceil(filtered.length / pageSize);
 
@@ -172,72 +296,277 @@ const loadPrompts = async () => {
   };
 
   return (
-    <div className="space-y-6 relative">
-<PageSectionLoader show={isLoading("page")} />
+    <div className="min-h-screen bg-gray-50 p-6">
+      <PageSectionLoader show={isLoading("page")} />
       <Toaster position="top-right" />
 
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Prompt Manager</h2>
+      {/* HEADER SECTION */}
+      <div className="mb-6">
+        {/* CONTROL PANEL */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          {/* Channel Filters */}
+          <div className="mb-4">
+            <div className="flex gap-3 flex-wrap">
+              <button
+                onClick={() => {
+                  setSelectedChannel(null);
+                  setSelectedType(null);
+                  setPage(1);
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  !selectedChannel
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                All Channels ({prompts.length})
+              </button>
+              {channels.map((channel) => {
+                const count = prompts.filter(p => p.channelId?._id === channel._id).length;
+                return (
+                  <button
+                    key={channel._id}
+                    onClick={() => {
+                      setSelectedChannel(channel._id);
+                      setSelectedType(null);
+                      setPage(1);
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      selectedChannel === channel._id
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    {channel.name} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={handleExport}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
-          >
-            <Download size={16} />
-            Export Selected
-          </button>
-
-          {(role === "admin" || role === "content_manager") && (
-            <button
-              onClick={openCreate}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              + Create Prompt
-            </button>
+          {/* Type Filters - Only show when channel is selected */}
+          {selectedChannel && (
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-xs font-medium text-gray-600">Filter by Type:</span>
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                <button
+                  onClick={() => {
+                    setSelectedType(null);
+                    setPage(1);
+                  }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    !selectedType
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  All Types ({prompts.filter(p => p.channelId?._id === selectedChannel).length})
+                </button>
+                {[...new Set(prompts
+                  .filter(p => p.channelId?._id === selectedChannel)
+                  .map(p => p.promptTypeId)
+                  .filter(Boolean)
+                  .map(type => type._id)
+                )].map(typeId => {
+                  const type = prompts.find(p => p.promptTypeId?._id === typeId)?.promptTypeId;
+                  const count = prompts.filter(p => p.channelId?._id === selectedChannel && p.promptTypeId?._id === typeId).length;
+                  return (
+                    <button
+                      key={typeId}
+                      onClick={() => {
+                        setSelectedType(typeId);
+                        setPage(1);
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        selectedType === typeId
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {type?.name} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
+
+          {/* Search & Actions */}
+          <div className="flex items-center gap-4">
+            {/* Search */}
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <input
+                  placeholder="Search prompts..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full border border-gray-300 px-4 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 pl-10"
+                />
+                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="text-sm text-gray-600">
+              <div className="font-medium">{filtered.length} {filtered.length === 1 ? 'result' : 'results'}</div>
+              {selectedRows.length > 0 && (
+                <div className="mt-1">
+                  <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                    {selectedRows.length} selected
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              {/* Bulk Actions */}
+              {prompts.length > 0 && (
+                <button
+                  onClick={handleGlobalSelectAll}
+                  disabled={isLoading("selectAll")}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-medium border transition-all duration-200 ${
+                    isLoading("selectAll") 
+                      ? "opacity-50 cursor-not-allowed bg-gray-100 border-gray-200" 
+                      : "bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:border-gray-400"
+                  }`}
+                >
+                  {isLoading("selectAll")
+                    ? "Processing..."
+                    : selectedRows.length === filtered.length && filtered.every(p => selectedRows.includes(p._id))
+                    ? `Deselect All`
+                    : `Select All`}
+                </button>
+              )}
+
+              {/* Primary Actions */}
+              <button
+                onClick={handleExport}
+                disabled={!selectedRows.length}
+                className={`px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-sm ${
+                  selectedRows.length
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                <Download size={16} />
+                Export JSON ({selectedRows.length})
+              </button>
+
+              {(role === "admin" || role === "content_manager") && (
+                <button
+                  onClick={openCreate}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-sm shadow-sm"
+                >
+                  <span className="text-lg leading-none">+</span>
+                  New Prompt
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* SEARCH */}
-      <input
-        placeholder="Search by channel / type / text"
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value);
-          setPage(1);
-        }}
-        className="w-full border px-3 py-2 rounded-lg"
-      />
+      {/* RESULTS SECTION */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Results Header */}
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Results ({filtered.length} {filtered.length === 1 ? 'prompt' : 'prompts'})
+            </h3>
+            {selectedRows.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-blue-600">
+                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                {selectedRows.length} selected
+              </div>
+            )}
+          </div>
+        </div>
 
-      {/* TABLE */}
-      <div className="bg-white rounded-2xl shadow border overflow-hidden">
+        {/* TABLE */}
         <div className="overflow-x-auto relative">
-
           <TableLoader show={isLoading("table")} />
 
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr className="text-gray-600">
-                <th className="px-4 py-3 text-center w-16"></th>
-                <th className="px-4 py-3 text-left">Channel</th>
-                <th className="px-4 py-3 text-left">Type</th>
-                <th className="px-4 py-3 text-left">Model</th>
-                <th className="px-4 py-3 text-left">Prompt</th>
-                <th className="px-4 py-3 text-center w-32">Actions</th>
+          <table className="w-full text-sm table-auto">
+            <thead className="bg-gray-50 border-b-2 border-gray-200">
+              <tr className="text-gray-700">
+                <th className="px-6 py-4 text-center w-12">
+                  <input
+                    type="checkbox"
+                    checked={filtered.length > 0 && selectedRows.length === filtered.length && filtered.every(p => selectedRows.includes(p._id))}
+                    onChange={handleGlobalSelectAll}
+                    className="h-4 w-4 accent-blue-600 cursor-pointer"
+                  />
+                </th>
+                <th 
+                  className="px-6 py-4 text-left w-32 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  onClick={() => handleSort('channel')}
+                >
+                  <div className="flex items-center gap-2 font-semibold">
+                    Channel
+                    {sortField === 'channel' && (
+                      <span className="text-blue-600 font-bold">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 text-left w-28 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  onClick={() => handleSort('type')}
+                >
+                  <div className="flex items-center gap-2 font-semibold">
+                    Type
+                    {sortField === 'type' && (
+                      <span className="text-blue-600 font-bold">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 text-left w-24 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  onClick={() => handleSort('model')}
+                >
+                  <div className="flex items-center gap-2 font-semibold">
+                    Model
+                    {sortField === 'model' && (
+                      <span className="text-blue-600 font-bold">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 text-left cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  onClick={() => handleSort('prompt')}
+                >
+                  <div className="flex items-center gap-2 font-semibold">
+                    Prompt Content
+                    {sortField === 'prompt' && (
+                      <span className="text-blue-600 font-bold">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-center w-32 font-semibold">Actions</th>
               </tr>
             </thead>
 
-            <tbody>
-              {paginated.map((p, index) => (
-                <tr
-                  key={p._id}
-                  className={`border-b ${
-                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                  } hover:bg-blue-50`}
-                >
-                  <td className="px-4 py-3 text-center">
+            <tbody className="divide-y divide-gray-100">
+              {paginated.map((p, index) => {
+                const channelColor = getChannelColor(p.channelId?._id);
+                return (
+                  <tr
+                    key={p._id}
+                    className={`transition-colors duration-200 ${
+                      selectedRows.includes(p._id)
+                        ? "bg-blue-100 border-l-4 border-blue-500"
+                        : `${channelColor} hover:brightness-95`
+                    }`}
+                  >
+                  <td className="px-6 py-4 text-center">
                     <input
                       type="checkbox"
                       checked={selectedRows.includes(p._id)}
@@ -246,93 +575,142 @@ const loadPrompts = async () => {
                     />
                   </td>
 
-                  <td className="px-4 py-3 font-medium">
-                    {p.channelId?.name || "-"}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className={`w-3 h-3 ${getChannelDotColor(p.channelId?._id)} rounded-full mr-3`}></div>
+                      <span className="font-medium text-gray-900 truncate max-w-32">
+                        {p.channelId?.name || "-"}
+                      </span>
+                    </div>
                   </td>
 
-                  <td className="px-4 py-3">
-                    {p.promptTypeId?.name || "-"}
+                  <td className="px-6 py-4">
+                    <span className="inline-flex px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full truncate max-w-28">
+                      {p.promptTypeId?.name || "-"}
+                    </span>
                   </td>
 
-                  <td className="px-4 py-3">
-                    {p.aiModel || "-"}
+                  <td className="px-6 py-4">
+                    <span className="text-gray-600 font-mono text-xs truncate max-w-24 block">
+                      {p.aiModel || "-"}
+                    </span>
                   </td>
 
-                  <td className="px-4 py-3 max-w-sm truncate">
-                    {p.promptText}
+                  <td className="px-6 py-4">
+                    <div className="max-w-2xl">
+                      <p className="text-gray-900 truncate leading-relaxed">
+                        {p.promptText}
+                      </p>
+                    </div>
                   </td>
 
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex justify-center gap-4">
-
-                      <button onClick={() => copyText(p.promptText)}>
-                        <Copy size={16} />
+                  <td className="px-6 py-4">
+                    <div className="flex justify-center items-center gap-2">
+                      <button 
+                        onClick={() => copyText(p.promptText)} 
+                        className="group relative p-2 bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                        title="Copy prompt"
+                      >
+                        <Copy size={14} className="group-hover:scale-110 transition-transform duration-200" />
+                        <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                          Copy
+                        </span>
                       </button>
 
                       {(role === "admin" || role === "content_manager") && (
-                        <button onClick={() => openEdit(p)}>
-                          <Pencil size={16} />
+                        <button 
+                          onClick={() => openEdit(p)} 
+                          className="group relative p-2 bg-amber-100 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                          title="Edit prompt"
+                        >
+                          <Pencil size={14} className="group-hover:scale-110 transition-transform duration-200" />
+                          <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                            Edit
+                          </span>
                         </button>
                       )}
 
                       {role === "admin" && (
-                        <button onClick={() => openDeleteModal(p)}>
-                          <Trash2 size={16} />
+                        <button 
+                          onClick={() => openDeleteModal(p)} 
+                          className="group relative p-2 bg-red-100 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                          title="Delete prompt"
+                        >
+                          <Trash2 size={14} className="group-hover:scale-110 transition-transform duration-200" />
+                          <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                            Delete
+                          </span>
                         </button>
                       )}
-
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
 
+          {filtered.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No prompts found</h3>
+              <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+            </div>
+          )}
         </div>
+
+        {/* PAGINATION */}
+        {totalPages > 1 && (
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, filtered.length)} of {filtered.length} results
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                  disabled={page === 1}
+                  className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors duration-200 font-medium"
+                >
+                  Previous
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const pageNum = i + 1;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={`px-3 py-2 rounded-lg font-medium transition-colors duration-200 ${
+                          page === pageNum
+                            ? "bg-blue-600 text-white"
+                            : "text-gray-600 hover:bg-gray-100"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors duration-200 font-medium"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* PAGINATION */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 mt-4">
-          <button
-            onClick={() => setPage(prev => Math.max(1, prev - 1))}
-            disabled={page === 1}
-            className="px-3 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-          >
-            Previous
-          </button>
-          
-          <span className="text-sm text-gray-600">
-            Page {page} of {totalPages} ({filtered.length} total)
-          </span>
-          
-          <button
-            onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
-            disabled={page === totalPages}
-            className="px-3 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-          >
-            Next
-          </button>
-        </div>
-      )}
-
-      {/* SELECT ALL */}
-      {prompts.length > 0 && (
-        <div className="flex justify-end mt-4">
-          <button
-            onClick={handleGlobalSelectAll}
-            disabled={isLoading("selectAll")}
-            className={`border px-5 py-2 rounded-lg text-sm bg-white shadow-sm 
-            ${isLoading("selectAll") ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-100"}`}
-          >
-            {isLoading("selectAll")
-              ? "Selecting..."
-              : selectedRows.length === prompts.length
-              ? "Unselect All"
-              : "Select All"}
-          </button>
-        </div>
-      )}
 
       <PromptFormModal
         isOpen={showFormModal}
