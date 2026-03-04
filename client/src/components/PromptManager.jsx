@@ -18,7 +18,7 @@ export default function PromptManager() {
   const [channels, setChannels] = useState([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const pageSize = 5;
+  const pageSize = 10;
   const [selectedRows, setSelectedRows] = useState([]);
 
   const [showFormModal, setShowFormModal] = useState(false);
@@ -290,6 +290,31 @@ const loadPrompts = async () => {
 
         </div>
       </div>
+
+      {/* PAGINATION */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-4">
+          <button
+            onClick={() => setPage(prev => Math.max(1, prev - 1))}
+            disabled={page === 1}
+            className="px-3 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+          >
+            Previous
+          </button>
+          
+          <span className="text-sm text-gray-600">
+            Page {page} of {totalPages} ({filtered.length} total)
+          </span>
+          
+          <button
+            onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={page === totalPages}
+            className="px-3 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {/* SELECT ALL */}
       {prompts.length > 0 && (

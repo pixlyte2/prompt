@@ -7,13 +7,16 @@ const connectDB = async () => {
 
   try {
     await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 30000,
     });
 
     console.log("✅ MongoDB Connected");
   } catch (error) {
-    console.error("❌ MongoDB Connection Error:", error);
-    throw error;
+    console.error("❌ MongoDB Connection Error:", error.message);
+    console.log("\n⚠️  Please check:");
+    console.log("   1. MongoDB Atlas IP whitelist (add 0.0.0.0/0 for testing)");
+    console.log("   2. Correct username/password in .env");
+    console.log("   3. Internet connection\n");
   }
 };
 
