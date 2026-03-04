@@ -14,13 +14,10 @@ import Channels from "./pages/admin/Channels";
 import Dashboard from "./pages/superadmin/Dashboard";
 import PromptTypes from "./pages/admin/PromptTypes";
 
-
-
 export default function App() {
   return (
-
-
-    <>   <Toaster
+    <>
+      <Toaster
         position="top-right"
         toastOptions={{
           duration: 3000,
@@ -32,83 +29,83 @@ export default function App() {
           }
         }}
       />
-    <Routes>
-      <Route path="/" element={<Navigate to="/login" />} />
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/superadmin-login" element={<SuperAdminLogin />} />
 
-      <Route path="/login" element={<Login />} />
-      <Route path="/superadmin-login" element={<SuperAdminLogin />} />
+        <Route
+          path="/admin"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <AdminDashboard />
+            </PrivateRoute>
+          }
+        />
 
-      <Route
-        path="/admin"
-        element={
-          <PrivateRoute allowedRoles={["admin"]}>
-            <AdminDashboard />
-          </PrivateRoute>
-        }
-      />
+        <Route
+          path="/admin/prompts"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <AdminPrompts />
+            </PrivateRoute>
+          }
+        />
 
-      <Route
-        path="/admin/prompts"
-        element={
-          <PrivateRoute allowedRoles={["admin"]}>
-            <AdminPrompts />
-          </PrivateRoute>
-        }
-      />
+        <Route
+          path="/content/prompts"
+          element={
+            <PrivateRoute allowedRoles={["content_manager"]}>
+              <ContentPrompts />
+            </PrivateRoute>
+          }
+        />
 
-      <Route
-        path="/content/prompts"
-        element={
-          <PrivateRoute allowedRoles={["content_manager"]}>
-            <ContentPrompts />
-          </PrivateRoute>
-        }
-      />
+        <Route
+          path="/viewer"
+          element={
+            <PrivateRoute allowedRoles={["viewer"]}>
+              <ViewerPrompts />
+            </PrivateRoute>
+          }
+        />
 
-      <Route
-        path="/viewer"
-        element={
-          <PrivateRoute allowedRoles={["viewer"]}>
-            <ViewerPrompts />
-          </PrivateRoute>
-        }
-      />
+        <Route
+          path="/admin/users"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <Users />
+            </PrivateRoute>
+          }
+        />
 
-    <Route
-        path="/admin/users"
-        element={
-          <PrivateRoute allowedRoles={["admin"]}>
-            <Users />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/admin/channels"
-        element={
-          <PrivateRoute allowedRoles={["admin"]}>
-            <Channels />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/superadmin"
-        element={
-          <PrivateRoute allowedRoles={["superadmin"]}>
-            <Dashboard />
-          </PrivateRoute>
-        }
-      />
-      <Route
-  path="/admin/prompt-types"
-  element={
-    <PrivateRoute allowedRoles={["admin"]}>
-      <PromptTypes />
-    </PrivateRoute>
-  }
-/>
+        <Route
+          path="/admin/channels"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <Channels />
+            </PrivateRoute>
+          }
+        />
 
+        <Route
+          path="/superadmin"
+          element={
+            <PrivateRoute allowedRoles={["superadmin"]}>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        />
 
-    </Routes>
+        <Route
+          path="/admin/prompt-types"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <PromptTypes />
+            </PrivateRoute>
+          }
+        />
+      </Routes>
     </>
   );
 }

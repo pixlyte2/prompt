@@ -1,323 +1,256 @@
-import { useEffect, useState } from "react";
-import { Pencil, Trash2, Plus, Download } from "lucide-react";
-import { Toaster, toast } from "react-hot-toast";
+import React, { useState, useEffect } from "react";
+import { toast, Toaster } from "react-hot-toast";
+import { Plus, Pencil, Trash2, Tag, Download } from "lucide-react";
+import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
-import api from "../../utils/api";
-import ConfirmModal from "../../components/ConfirmModal";
 import { exportToCSV } from "../../utils/csvExport";
 import useLoading from "../../hooks/useLoading";
 import PageSectionLoader from "../../components/PageSectionLoader";
 
 export default function PromptTypes() {
-
   const [channels, setChannels] = useState([]);
   const [types, setTypes] = useState([]);
-
-  const [form, setForm] = useState({
-    name: "",
-    channelId: ""
-  });
-
+  const [form, setForm] = useState({ name: "", channelId: "" });
   const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [deleting, setDeleting] = useState(null);
 
   const { startLoading, stopLoading, isLoading } = useLoading();
 
-  /* ===== EDIT STATE ===== */
-  const [showEdit, setShowEdit] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [editName, setEditName] = useState("");
-
-  /* ===== DELETE STATE ===== */
-  const [showDelete, setShowDelete] = useState(false);
-  const [typeToDelete, setTypeToDelete] = useState(null);
-
-  /* ===== LOAD DATA ===== */
-  const load = async () => {
-
-    try {
-
-      startLoading("page");   // 🔥 ONLY PROMPTTYPES LOAD
-
-      setLoading(true);
-
-      const ch = await api.get("/channels");
-      const pt = await api.get("/prompt-types");
-
-      setChannels(ch.data);
-      setTypes(pt.data);
-
-    } catch {
-      toast.error("Failed to load data");
-    } finally {
-
-      setLoading(false);
-      stopLoading("page");
-
-    }
-
-  };
-
   useEffect(() => {
+    const load = async () => {
+      try {
+        startLoading("page");
+        const [ch, pt] = await Promise.all([
+          api.get("/channels"),
+          api.get("/prompt-types")
+        ]);
+        setChannels(ch.data);
+        setTypes(pt.data);
+      } catch {
+        toast.error("Failed to load data");
+      } finally {
+        stopLoading("page");
+      }
+    };
     load();
   }, []);
 
-  /* ===== CREATE ===== */
   const create = async () => {
     if (!form.name.trim() || !form.channelId) {
       return toast.error("All fields required");
     }
-
     try {
-
       setLoading(true);
-
       const res = await api.post("/prompt-types", form);
-
       setTypes(prev => [res.data, ...prev]);
       setForm({ name: "", channelId: "" });
-
-      toast.success("Prompt type created successfully");
-
+      toast.success("Created successfully");
     } catch {
-      toast.error("Failed to create prompt type");
+      toast.error("Failed to create");
     } finally {
       setLoading(false);
     }
-  };
-
-  /* ===== EDIT ===== */
-  const openEdit = (type) => {
-    setEditing(type);
-    setEditName(type.name);
-    setShowEdit(true);
   };
 
   const saveEdit = async () => {
-
-    if (!editName.trim()) {
-      return toast.error("Name required");
-    }
-
+    if (!editName.trim()) return toast.error("Name required");
     try {
-
       setLoading(true);
-
-      const res = await api.put(`/prompt-types/${editing._id}`, {
-        name: editName
-      });
-
-      setTypes(prev =>
-        prev.map(t =>
-          t._id === editing._id ? res.data : t
-        )
-      );
-
-      toast.success("Prompt type updated successfully");
-
-      setShowEdit(false);
+      const res = await api.put(`/prompt-types/${editing._id}`, { name: editName });
+      setTypes(prev => prev.map(t => t._id === editing._id ? res.data : t));
+      toast.success("Updated successfully");
       setEditing(null);
-      setEditName("");
-
     } catch {
-      toast.error("Failed to update prompt type");
+      toast.error("Failed to update");
     } finally {
       setLoading(false);
     }
-  };
-
-  /* ===== DELETE ===== */
-  const openDelete = (type) => {
-    setTypeToDelete(type);
-    setShowDelete(true);
   };
 
   const confirmDelete = async () => {
-
     try {
-
       setLoading(true);
-
-      await api.delete(`/prompt-types/${typeToDelete._id}`);
-
-      setTypes(prev =>
-        prev.filter(t => t._id !== typeToDelete._id)
-      );
-
-      toast.success("Prompt type deleted successfully");
-
-      setShowDelete(false);
-      setTypeToDelete(null);
-
+      await api.delete(`/prompt-types/${deleting._id}`);
+      setTypes(prev => prev.filter(t => t._id !== deleting._id));
+      toast.success("Deleted successfully");
+      setDeleting(null);
     } catch {
-      toast.error("Failed to delete prompt type");
+      toast.error("Failed to delete");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ===== EXPORT CSV ===== */
   const handleExport = () => {
-
-    if (!types.length) {
-      return toast.error("No data to export");
-    }
-
-    const formattedData = types.map(t => ({
-      Name: t.name,
-      Channel: t.channelId?.name || "-"
-    }));
-
-    exportToCSV(formattedData, "prompt-types.csv");
+    if (!types.length) return toast.error("No data to export");
+    const data = types.map(t => ({ Name: t.name, Channel: t.channelId?.name || "-" }));
+    exportToCSV(data, "prompt-types.csv");
+    toast.success("Exported successfully");
   };
 
   return (
     <AdminLayout title="Prompt Types">
-
-      <div className="relative">
-
-        {/* 🔥 PAGE SECTION LOADER */}
-        <PageSectionLoader show={isLoading("page")} />
-
-        <Toaster position="top-right" />
-
-        {/* HEADER */}
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-semibold">
-              Prompt Types
-            </h2>
-            <p className="text-gray-500 text-sm">
-              Organize prompt types under channels
-            </p>
-          </div>
-
-          <button
-            onClick={handleExport}
-            className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 flex items-center gap-2"
-          >
-            <Download size={16} />
-            Export CSV
-          </button>
-        </div>
-
-        {/* CREATE */}
-        <div className="bg-white rounded-2xl border p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center">
-
-            <input
-              placeholder="Prompt type name"
-              value={form.name}
-              onChange={(e) =>
-                setForm({ ...form, name: e.target.value })
-              }
-              className="border px-4 py-2 rounded-xl w-full md:w-64 outline-none"
-            />
-
-            <select
-              value={form.channelId}
-              onChange={(e) =>
-                setForm({ ...form, channelId: e.target.value })
-              }
-              className="border px-4 py-2 rounded-xl w-full md:w-64 outline-none"
-            >
-              <option value="">Select Channel</option>
-              {channels.map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={create}
-              disabled={loading}
-              className="bg-blue-600 text-white px-5 py-2 rounded-xl flex items-center gap-2 disabled:opacity-50"
-            >
-              {loading ? (
-                <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              ) : (
-                <Plus size={16} />
-              )}
-              Add
-            </button>
-
-          </div>
-        </div>
-
-        {/* TABLE */}
-        <div className="bg-white rounded-2xl border overflow-hidden">
-          {types.length === 0 ? (
-            <div className="text-center py-16">
-              <h4 className="font-semibold text-lg">
-                No Prompt Types Found
-              </h4>
-              <p className="text-gray-500 text-sm">
-                Create your first prompt type
-              </p>
+      <PageSectionLoader show={isLoading("page")} />
+      <Toaster />
+      
+      <div className="p-4 space-y-3">
+        {/* Control Panel */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="p-4">
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Tag className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Create Prompt Type</h3>
+                  <p className="text-sm text-gray-500">Add new prompt types to organize your content</p>
+                </div>
+              </div>
             </div>
-          ) : (
-            <table className="w-full text-sm">
+
+            <div className="grid grid-cols-1 md:grid-cols-8 gap-3">
+              <div className="md:col-span-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Channel</label>
+                <select
+                  value={form.channelId}
+                  onChange={(e) => setForm({ ...form, channelId: e.target.value })}
+                  className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+                >
+                  <option value="" disabled>Choose a channel...</option>
+                  {channels.map(c => (
+                    <option key={c._id} value={c._id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Type Name</label>
+                <input
+                  placeholder="Enter prompt type name..."
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+              </div>
+              <div className="md:col-span-2 flex items-end">
+                <button
+                  onClick={create}
+                  disabled={loading || !form.name.trim() || !form.channelId}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-6 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
+                >
+                  {loading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <>
+                      <Plus size={18} />
+                      Create
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border overflow-hidden">
+          <div className="px-6 py-4 border-b bg-gray-50">
+            <h3 className="font-semibold">Types ({types.length})</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="p-4 text-left">Name</th>
-                  <th className="p-4 text-left">Channel</th>
-                  <th className="p-4 text-center">Actions</th>
+                  <th className="px-6 py-3 text-left font-medium">Channel</th>
+                  <th className="px-6 py-3 text-left font-medium">Name</th>
+                  <th className="px-6 py-3 text-center font-medium">Actions</th>
                 </tr>
               </thead>
-
-              <tbody>
-                {types.map((t) => (
-                  <tr key={t._id} className="border-b hover:bg-gray-50">
-                    <td className="p-4">{t.name}</td>
-                    <td className="p-4">{t.channelId?.name || "-"}</td>
-
-                    <td className="p-4 text-center">
-                      <div className="flex justify-center gap-4">
-                        <button onClick={() => openEdit(t)}>
-                          <Pencil size={16} />
+              <tbody className="divide-y">
+                {types.map(t => (
+                  <tr key={t._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm">
+                        {t.channelId?.name || "-"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-medium">{t.name}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-center gap-2">
+                        <button
+                          onClick={() => { setEditing(t); setEditName(t.name); }}
+                          className="p-2 text-amber-600 hover:bg-amber-100 rounded"
+                        >
+                          <Pencil size={14} />
                         </button>
-                        <button onClick={() => openDelete(t)}>
-                          <Trash2 size={16} />
+                        <button
+                          onClick={() => setDeleting(t)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded"
+                        >
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
-
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
+          </div>
         </div>
+      </div>
 
-        {/* EDIT MODAL */}
-        <ConfirmModal
-          isOpen={showEdit}
-          title="Edit Prompt Type"
-          message={
+      {editing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-lg font-semibold mb-4">Edit Type</h3>
             <input
-              className="w-full border px-3 py-2 rounded-lg mt-3"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
+              className="w-full border px-3 py-2 rounded-lg mb-4"
             />
-          }
-          confirmText="Save"
-          onConfirm={saveEdit}
-          onCancel={() => setShowEdit(false)}
-          loading={loading}
-        />
+            <div className="flex gap-2">
+              <button
+                onClick={saveEdit}
+                disabled={loading}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setEditing(null)}
+                className="bg-gray-300 px-4 py-2 rounded-lg"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-        {/* DELETE MODAL */}
-        <ConfirmModal
-          isOpen={showDelete}
-          title="Delete Prompt Type"
-          message={`Are you sure you want to delete "${typeToDelete?.name}"?`}
-          confirmText="Delete"
-          onConfirm={confirmDelete}
-          onCancel={() => setShowDelete(false)}
-          loading={loading}
-        />
-
-      </div>
+      {deleting && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-lg font-semibold mb-4">Delete Type</h3>
+            <p className="mb-4">Delete "{deleting.name}"?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={confirmDelete}
+                disabled={loading}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setDeleting(null)}
+                className="bg-gray-300 px-4 py-2 rounded-lg"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

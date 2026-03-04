@@ -296,14 +296,14 @@ const loadPrompts = async () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="bg-gray-50 p-4">
       <PageSectionLoader show={isLoading("page")} />
       <Toaster position="top-right" />
 
       {/* HEADER SECTION */}
-      <div className="mb-6">
+      <div className="mb-4">
         {/* CONTROL PANEL */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
           {/* Channel Filters */}
           <div className="mb-4">
             <div className="flex gap-3 flex-wrap">
@@ -566,7 +566,7 @@ const loadPrompts = async () => {
                         : `${channelColor} hover:brightness-95`
                     }`}
                   >
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-4 py-2 text-center">
                     <input
                       type="checkbox"
                       checked={selectedRows.includes(p._id)}
@@ -575,7 +575,7 @@ const loadPrompts = async () => {
                     />
                   </td>
 
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-2">
                     <div className="flex items-center">
                       <div className={`w-3 h-3 ${getChannelDotColor(p.channelId?._id)} rounded-full mr-3`}></div>
                       <span className="font-medium text-gray-900 truncate max-w-32">
@@ -584,19 +584,19 @@ const loadPrompts = async () => {
                     </div>
                   </td>
 
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-2">
                     <span className="inline-flex px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full truncate max-w-28">
                       {p.promptTypeId?.name || "-"}
                     </span>
                   </td>
 
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-2">
                     <span className="text-gray-600 font-mono text-xs truncate max-w-24 block">
                       {p.aiModel || "-"}
                     </span>
                   </td>
 
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-2">
                     <div className="max-w-2xl">
                       <p className="text-gray-900 truncate leading-relaxed">
                         {p.promptText}
@@ -604,42 +604,33 @@ const loadPrompts = async () => {
                     </div>
                   </td>
 
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-2">
                     <div className="flex justify-center items-center gap-2">
                       <button 
                         onClick={() => copyText(p.promptText)} 
-                        className="group relative p-2 bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                         title="Copy prompt"
                       >
-                        <Copy size={14} className="group-hover:scale-110 transition-transform duration-200" />
-                        <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
-                          Copy
-                        </span>
+                        <Copy size={14} />
                       </button>
 
                       {(role === "admin" || role === "content_manager") && (
                         <button 
                           onClick={() => openEdit(p)} 
-                          className="group relative p-2 bg-amber-100 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                          className="p-2 bg-amber-100 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                           title="Edit prompt"
                         >
-                          <Pencil size={14} className="group-hover:scale-110 transition-transform duration-200" />
-                          <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
-                            Edit
-                          </span>
+                          <Pencil size={14} />
                         </button>
                       )}
 
                       {role === "admin" && (
                         <button 
                           onClick={() => openDeleteModal(p)} 
-                          className="group relative p-2 bg-red-100 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                          className="p-2 bg-red-100 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                           title="Delete prompt"
                         >
-                          <Trash2 size={14} className="group-hover:scale-110 transition-transform duration-200" />
-                          <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
-                            Delete
-                          </span>
+                          <Trash2 size={14} />
                         </button>
                       )}
                     </div>
@@ -664,49 +655,51 @@ const loadPrompts = async () => {
         </div>
 
         {/* PAGINATION */}
-        {totalPages > 1 && (
+        {filtered.length > 0 && (
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
             <div className="flex justify-between items-center">
               <div className="text-sm text-gray-600">
                 Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, filtered.length)} of {filtered.length} results
               </div>
               
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                  disabled={page === 1}
-                  className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors duration-200 font-medium"
-                >
-                  Previous
-                </button>
-                
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNum = i + 1;
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        className={`px-3 py-2 rounded-lg font-medium transition-colors duration-200 ${
-                          page === pageNum
-                            ? "bg-blue-600 text-white"
-                            : "text-gray-600 hover:bg-gray-100"
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                    disabled={page === 1}
+                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors duration-200 font-medium"
+                  >
+                    Previous
+                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const pageNum = i + 1;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`px-3 py-2 rounded-lg font-medium transition-colors duration-200 ${
+                            page === pageNum
+                              ? "bg-blue-600 text-white"
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={page === totalPages}
+                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors duration-200 font-medium"
+                  >
+                    Next
+                  </button>
                 </div>
-                
-                <button
-                  onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={page === totalPages}
-                  className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors duration-200 font-medium"
-                >
-                  Next
-                </button>
-              </div>
+              )}
             </div>
           </div>
         )}

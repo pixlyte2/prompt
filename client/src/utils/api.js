@@ -28,17 +28,23 @@ api.interceptors.request.use((config) => {
 /**
  * Auth helpers
  */
-export const saveAuth = (token, role) => {
+export const saveAuth = (token, role, user) => {
   localStorage.setItem("token", token);
   localStorage.setItem("role", role);
+  if (user) localStorage.setItem("user", JSON.stringify(user));
 };
 
 export const getToken = () => localStorage.getItem("token");
 export const getRole = () => localStorage.getItem("role");
+export const getUser = () => {
+  const user = localStorage.getItem("user");
+  return user ? JSON.parse(user) : null;
+};
 
 export const logout = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("role");
+  localStorage.removeItem("user");
 };
 
 export default api;
