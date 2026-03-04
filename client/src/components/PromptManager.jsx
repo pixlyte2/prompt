@@ -18,7 +18,7 @@ export default function PromptManager() {
   const [channels, setChannels] = useState([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const pageSize = 5;
+
   const [selectedRows, setSelectedRows] = useState([]);
 
   const [showFormModal, setShowFormModal] = useState(false);
@@ -118,13 +118,7 @@ const loadPrompts = async () => {
       p.channelId?.name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filtered.length / pageSize);
-
-  const paginated = filtered.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
-
+ 
   /* ================= COPY ================= */
   const copyText = (text) => {
     navigator.clipboard.writeText(text);
@@ -206,7 +200,7 @@ const loadPrompts = async () => {
         value={search}
         onChange={(e) => {
           setSearch(e.target.value);
-          setPage(1);
+          
         }}
         className="w-full border px-3 py-2 rounded-lg"
       />
@@ -230,7 +224,7 @@ const loadPrompts = async () => {
             </thead>
 
             <tbody>
-              {paginated.map((p, index) => (
+              {filtered.map((p, index) => (
                 <tr
                   key={p._id}
                   className={`border-b ${
