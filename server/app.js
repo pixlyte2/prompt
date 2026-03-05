@@ -13,9 +13,6 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const superAdminRoutes = require("./routes/superAdminRoutes");
 const promptTypeRoutes = require("./routes/promptTypeRoutes");
 
-// Connect MongoDB
-connectDB();
-
 const app = express();
 
 /**
@@ -29,7 +26,7 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: true, // automatically allows requesting origin
+    origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
@@ -37,7 +34,6 @@ app.use(
 );
 
 app.use(express.json({ limit: "50mb" }));
-
 
 /**
  * 📌 API Routes
@@ -58,13 +54,19 @@ app.get("/", (req, res) => {
 });
 
 /**
- * 🚀 Start Server ONLY in Local
+ * 🚀 Start Server
  */
-if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`✅ Server running on port ${PORT}`);
-  });
-}
+const startServer = async () => {
+  await connectDB();
+  
+  if (process.env.NODE_ENV !== "production") {
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+      console.log(`✅ Server running on port ${PORT}`);
+    });
+  }
+};
+
+startServer();
 
 module.exports = app;
