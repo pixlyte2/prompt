@@ -2,7 +2,8 @@ import axios from "axios";
 import { getCache, setCache, clearCacheByPrefix } from "../utils/cache";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL
+  baseURL: import.meta.env.VITE_API_URL,
+  timeout: 20000
 });
 
 api.interceptors.request.use((config) => {
