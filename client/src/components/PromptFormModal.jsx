@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { X, Save, Plus } from "lucide-react";
-import api from "../utils/api";
+import api from "../services/api";
 import toast from "react-hot-toast";
 
 export default function PromptFormModal({

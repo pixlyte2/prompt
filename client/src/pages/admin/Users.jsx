@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { Plus, Trash2, Users as UsersIcon } from "lucide-react";
-import api from "../../utils/api";
+import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
 import useLoading from "../../hooks/useLoading";
 import PageSectionLoader from "../../components/PageSectionLoader";

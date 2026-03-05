@@ -27,17 +27,20 @@ const cachedApi = {
   get: cachedGet,
   post: async (url, data) => {
     const response = await api.post(url, data);
-    clearCacheByPrefix(url.split('/')[1]);
+    const prefix = url.split('?')[0].split('/')[1];
+    clearCacheByPrefix(`/${prefix}`);
     return response;
   },
   put: async (url, data) => {
     const response = await api.put(url, data);
-    clearCacheByPrefix(url.split('/')[1]);
+    const prefix = url.split('?')[0].split('/')[1];
+    clearCacheByPrefix(`/${prefix}`);
     return response;
   },
   delete: async (url) => {
     const response = await api.delete(url);
-    clearCacheByPrefix(url.split('/')[1]);
+    const prefix = url.split('?')[0].split('/')[1];
+    clearCacheByPrefix(`/${prefix}`);
     return response;
   }
 };

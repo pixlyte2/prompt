@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Pencil, Trash2, Plus, Hash } from "lucide-react";
 import { Toaster, toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
-import api from "../../utils/api";
+import api from "../../services/api";
 import ConfirmModal from "../../components/ConfirmModal";
 import useLoading from "../../hooks/useLoading";
 import PageSectionLoader from "../../components/PageSectionLoader";

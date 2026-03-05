@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import { Copy, Pencil, Trash2, Download, Eye } from "lucide-react";
-import api, { getRole } from "../utils/api";
+import api from "../services/api";
+import { getRole } from "../utils/api";
 import ConfirmModal from "../components/ConfirmModal";
 import PromptFormModal from "../components/PromptFormModal";
 import { exportToCSV } from "../utils/csvExport";

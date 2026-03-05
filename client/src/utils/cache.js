@@ -13,7 +13,7 @@ export const getCache = (key) => {
   return item.data;
 };
 
-export const setCache = (key, data, ttl = 300000) => {
+export const setCache = (key, data, ttl = 900000) => {
   cache.set(key, {
     data,
     expiry: Date.now() + ttl
