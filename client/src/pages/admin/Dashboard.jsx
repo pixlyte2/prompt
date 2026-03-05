@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { 
   Users, 
   Layers, 
   FileText, 
-  Tag, 
-  TrendingUp, 
-  Activity,
+  Tag,
   Calendar,
-  BarChart3
+  BarChart3,
+  Copy,
+  Clock,
+  Eye
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../utils/api";
+import { getRecentPrompts, clearRecentPrompts } from "../../utils/cache";
 
 function Counter({ value }) {
   const [count, setCount] = useState(0);
@@ -44,11 +46,16 @@ export default function Dashboard() {
     totalUsers: 0,
     totalChannels: 0,
     totalPrompts: 0,
-    totalPromptTypes: 0,
-    activeUsers: 0,
-    recentActivity: 0
+    totalPromptTypes: 0
   });
   const [loading, setLoading] = useState(true);
+  const [recentPrompts, setRecentPrompts] = useState([]);
+  const [previewModal, setPreviewModal] = useState(false);
+  const [previewPrompt, setPreviewPrompt] = useState(null);
+
+  useEffect(() => {
+    setRecentPrompts(getRecentPrompts());
+  }, []);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -65,9 +72,7 @@ export default function Dashboard() {
           totalUsers: users.data.length || 0,
           totalChannels: channels.data.length || 0,
           totalPrompts: prompts.data.length || 0,
-          totalPromptTypes: promptTypes.data.length || 0,
-          activeUsers: Math.floor((users.data.length || 0) * 0.7),
-          recentActivity: Math.floor(Math.random() * 50) + 10
+          totalPromptTypes: promptTypes.data.length || 0
         });
       } catch {
         toast.error("Failed to load dashboard stats");
@@ -87,14 +92,6 @@ export default function Dashboard() {
       color: "blue",
       bgColor: "bg-blue-50",
       iconColor: "text-blue-600"
-    },
-    {
-      title: "Active Users",
-      value: stats.activeUsers,
-      icon: Activity,
-      color: "green",
-      bgColor: "bg-green-50",
-      iconColor: "text-green-600"
     },
     {
       title: "Channels",
@@ -119,14 +116,6 @@ export default function Dashboard() {
       color: "indigo",
       bgColor: "bg-indigo-50",
       iconColor: "text-indigo-600"
-    },
-    {
-      title: "Recent Activity",
-      value: stats.recentActivity,
-      icon: TrendingUp,
-      color: "pink",
-      bgColor: "bg-pink-50",
-      iconColor: "text-pink-600"
     }
   ];
 
@@ -141,8 +130,7 @@ export default function Dashboard() {
   }
 
   return (
-    <AdminLayout title="Dashboard">
-      <Toaster />
+    <AdminLayout title="Dashboard" onCacheClear={() => setRecentPrompts([])}>
       
       <div className="p-4 space-y-4">
         {/* Welcome Section */}
@@ -160,7 +148,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {cards.map((card, index) => {
             const Icon = card.icon;
             return (
@@ -226,57 +214,125 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* System Status */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Recent Prompts */}
+        {recentPrompts.length > 0 && (
           <div className="bg-white rounded-lg border p-4">
-            <h3 className="text-lg font-semibold mb-3">System Health</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Database</span>
-                <span className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-green-600">Online</span>
-                </span>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-gray-600" />
+                <h3 className="text-lg font-semibold">Recent Prompts</h3>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">API Services</span>
-                <span className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-green-600">Running</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Storage</span>
-                <span className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  <span className="text-sm text-yellow-600">75% Used</span>
-                </span>
-              </div>
+              <button
+                onClick={() => {
+                  clearRecentPrompts();
+                  setRecentPrompts([]);
+                  toast.success("Recent prompts cleared");
+                }}
+                className="text-sm text-red-600 hover:text-red-700"
+              >
+                Clear All
+              </button>
+            </div>
+            <div className="space-y-2">
+              {recentPrompts.slice(0, 5).map((prompt, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-blue-600">{prompt.channelId?.name}</span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-600">{prompt.promptTypeId?.name}</span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500 font-mono">{prompt.aiModel}</span>
+                    </div>
+                    <p className="text-sm text-gray-900">
+                      {prompt.promptText.length > 200 ? `${prompt.promptText.substring(0, 200)}...` : prompt.promptText}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 ml-3">
+                    <button
+                      onClick={() => {
+                        setPreviewPrompt(prompt);
+                        setPreviewModal(true);
+                      }}
+                      className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                      title="Preview"
+                    >
+                      <Eye size={16} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(prompt.promptText);
+                        toast.success("Copied to clipboard");
+                      }}
+                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                      title="Copy"
+                    >
+                      <Copy size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
+        )}
 
-          <div className="bg-white rounded-lg border p-4">
-            <h3 className="text-lg font-semibold mb-3">Recent Activity</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">New user registered</span>
+        {/* Preview Modal */}
+        {previewModal && previewPrompt && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg w-full max-w-3xl max-h-[80vh] flex flex-col">
+              <div className="p-4 border-b flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Prompt Preview</h3>
+                <button onClick={() => setPreviewModal(false)} className="text-gray-500 hover:text-gray-700">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">Prompt type created</span>
+              <div className="p-4 space-y-3 border-b">
+                <div className="flex gap-4">
+                  <div>
+                    <span className="text-xs text-gray-500">Channel:</span>
+                    <div className="font-medium">{previewPrompt.channelId?.name || "-"}</div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500">Type:</span>
+                    <div className="font-medium">{previewPrompt.promptTypeId?.name || "-"}</div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500">Model:</span>
+                    <div className="font-medium font-mono text-sm">{previewPrompt.aiModel || "-"}</div>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">Channel updated</span>
+              <div className="p-4 overflow-y-auto flex-1">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <pre className="whitespace-pre-wrap text-sm text-gray-900 font-sans leading-relaxed">{previewPrompt.promptText}</pre>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">System backup completed</span>
+              <div className="p-4 border-t flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(previewPrompt.promptText);
+                    toast.success("Copied to clipboard");
+                    setPreviewModal(false);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                >
+                  <Copy size={16} />
+                  Copy
+                </button>
+                <button
+                  onClick={() => setPreviewModal(false)}
+                  className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-lg"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
-        </div>
+        )}
+
+
       </div>
     </AdminLayout>
   );

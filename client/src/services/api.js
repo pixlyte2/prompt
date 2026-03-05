@@ -1,15 +1,10 @@
 import axios from "axios";
+import { getCache, setCache, clearCacheByPrefix } from "../utils/cache";
 
-/**
- * Axios instance
- */
 const api = axios.create({
   baseURL: "http://localhost:5000/api"
 });
 
-/**
- * Automatically attach token to every request
- */
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -18,9 +13,34 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-/**
- * Auth helpers
- */
+const cachedGet = async (url) => {
+  const cached = getCache(url);
+  if (cached) return { data: cached };
+  
+  const response = await api.get(url);
+  setCache(url, response.data);
+  return response;
+};
+
+const cachedApi = {
+  get: cachedGet,
+  post: async (url, data) => {
+    const response = await api.post(url, data);
+    clearCacheByPrefix(url.split('/')[1]);
+    return response;
+  },
+  put: async (url, data) => {
+    const response = await api.put(url, data);
+    clearCacheByPrefix(url.split('/')[1]);
+    return response;
+  },
+  delete: async (url) => {
+    const response = await api.delete(url);
+    clearCacheByPrefix(url.split('/')[1]);
+    return response;
+  }
+};
+
 export const saveAuth = (token, role) => {
   localStorage.setItem("token", token);
   localStorage.setItem("role", role);
@@ -34,7 +54,4 @@ export const logout = () => {
   localStorage.removeItem("role");
 };
 
-/**
- * DEFAULT EXPORT (IMPORTANT)
- */
-export default api;
+export default cachedApi;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Toaster, toast } from "react-hot-toast";
-import { Copy, Pencil, Trash2, Download } from "lucide-react";
+import { Copy, Pencil, Trash2, Download, Eye } from "lucide-react";
 import api, { getRole } from "../utils/api";
 import ConfirmModal from "../components/ConfirmModal";
 import PromptFormModal from "../components/PromptFormModal";
@@ -9,6 +9,7 @@ import useLoading from "../hooks/useLoading";
 import TableLoader from "../components/TableLoader";
 import PageLoader from "../components/PageLoader";
 import PageSectionLoader from "../components/PageSectionLoader";
+import { addRecentPrompt } from "../utils/cache";
 
 export default function PromptManager() {
 
@@ -30,6 +31,8 @@ export default function PromptManager() {
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [promptToDelete, setPromptToDelete] = useState(null);
+  const [previewModal, setPreviewModal] = useState(false);
+  const [previewPrompt, setPreviewPrompt] = useState(null);
 
   const [loading, setLoading] = useState(false); // for delete modal
 
@@ -250,9 +253,17 @@ const loadPrompts = async () => {
   );
 
   /* ================= COPY ================= */
-  const copyText = (text) => {
+  const copyText = (text, prompt) => {
     navigator.clipboard.writeText(text);
+    addRecentPrompt(prompt);
     toast.success("Prompt copied");
+  };
+
+  /* ================= PREVIEW ================= */
+  const openPreview = (prompt) => {
+    addRecentPrompt(prompt);
+    setPreviewPrompt(prompt);
+    setPreviewModal(true);
   };
 
   /* ================= CREATE / EDIT ================= */
@@ -298,7 +309,6 @@ const loadPrompts = async () => {
   return (
     <div className="bg-gray-50 p-4">
       <PageSectionLoader show={isLoading("page")} />
-      <Toaster position="top-right" />
 
       {/* HEADER SECTION */}
       <div className="mb-4">
@@ -607,7 +617,15 @@ const loadPrompts = async () => {
                   <td className="px-4 py-2">
                     <div className="flex justify-center items-center gap-2">
                       <button 
-                        onClick={() => copyText(p.promptText)} 
+                        onClick={() => openPreview(p)} 
+                        className="p-2 bg-purple-100 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                        title="Preview prompt"
+                      >
+                        <Eye size={14} />
+                      </button>
+
+                      <button 
+                        onClick={() => copyText(p.promptText, p)} 
                         className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                         title="Copy prompt"
                       >
@@ -723,6 +741,60 @@ const loadPrompts = async () => {
         onCancel={() => setDeleteModalOpen(false)}
         loading={loading}
       />
+
+      {previewModal && previewPrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Prompt Preview</h3>
+              <button onClick={() => setPreviewModal(false)} className="text-gray-500 hover:text-gray-700">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 space-y-3 border-b">
+              <div className="flex gap-4">
+                <div>
+                  <span className="text-xs text-gray-500">Channel:</span>
+                  <div className="font-medium">{previewPrompt.channelId?.name || "-"}</div>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500">Type:</span>
+                  <div className="font-medium">{previewPrompt.promptTypeId?.name || "-"}</div>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500">Model:</span>
+                  <div className="font-medium font-mono text-sm">{previewPrompt.aiModel || "-"}</div>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <pre className="whitespace-pre-wrap text-sm text-gray-900 font-sans leading-relaxed">{previewPrompt.promptText}</pre>
+              </div>
+            </div>
+            <div className="p-4 border-t flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  copyText(previewPrompt.promptText, previewPrompt);
+                  setPreviewModal(false);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+              >
+                <Copy size={16} />
+                Copy
+              </button>
+              <button
+                onClick={() => setPreviewModal(false)}
+                className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

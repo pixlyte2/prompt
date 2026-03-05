@@ -22,6 +22,7 @@ const createPromptType = async (req, res) => {
       createdBy: req.user.id
     });
 
+    await type.populate("channelId", "name");
     res.json(type);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -50,7 +51,7 @@ const updatePromptType = async (req, res) => {
     { _id: req.params.id, companyId: req.user.companyId },
     { name: req.body.name },
     { new: true }
-  );
+  ).populate("channelId", "name");
 
   res.json(type);
 };

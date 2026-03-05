@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { Plus, Trash2, Users as UsersIcon } from "lucide-react";
 import api from "../../utils/api";
 import AdminLayout from "../../layout/AdminLayout";
@@ -72,7 +72,6 @@ export default function Users() {
   return (
     <AdminLayout title="User Management">
       <PageSectionLoader show={isLoading("page")} />
-      <Toaster />
       
       <div className="p-4 space-y-4">
         <div className="bg-white rounded-lg border p-4">

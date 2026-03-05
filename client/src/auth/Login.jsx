@@ -21,13 +21,16 @@ export default function Login() {
 
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.role);
+      localStorage.setItem("user", JSON.stringify({ name: res.data.name || email.split('@')[0], email }));
 
-      toast.dismiss(); // Clear any existing toasts
+      toast.dismiss();
       toast.success("Login successful");
 
-      if (res.data.role === "admin") navigate("/admin");
-      if (res.data.role === "content_manager") navigate("/content/prompts");
-      if (res.data.role === "viewer") navigate("/viewer");
+      setTimeout(() => {
+        if (res.data.role === "admin") navigate("/admin");
+        if (res.data.role === "content_manager") navigate("/content/prompts");
+        if (res.data.role === "viewer") navigate("/viewer");
+      }, 500);
     } catch (err) {
       toast.error(err.response?.data?.message || "Login failed");
     } finally {

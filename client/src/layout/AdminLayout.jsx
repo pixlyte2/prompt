@@ -10,13 +10,13 @@ const adminMenu = [
   { label: "Prompts", path: "/admin/prompts", icon: FileText, color: "text-indigo-600" }
 ];
 
-export default function AdminLayout({ title, children }) {
+export default function AdminLayout({ title, children, onCacheClear }) {
   return (
     <div className="flex">
       <Sidebar menu={adminMenu} />
 
       <div className="flex-1 bg-gray-100 min-h-screen">
-        <Topbar title={title} />
+        <Topbar title={title} onCacheClear={onCacheClear} />
         <div className="p-6">{children}</div>
       </div>
     </div>

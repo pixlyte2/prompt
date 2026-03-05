@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { Plus, Pencil, Trash2, Tag, Download } from "lucide-react";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
@@ -93,7 +93,6 @@ export default function PromptTypes() {
   return (
     <AdminLayout title="Prompt Types">
       <PageSectionLoader show={isLoading("page")} />
-      <Toaster />
       
       <div className="p-4 space-y-3">
         {/* Control Panel */}

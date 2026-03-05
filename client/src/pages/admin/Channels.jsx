@@ -100,7 +100,6 @@ export default function Channels() {
     <AdminLayout title="Channel Management">
       <div className="min-h-screen bg-gray-50 p-6">
         <PageSectionLoader show={isLoading("page")} />
-        <Toaster position="top-right" />
 
         {/* HEADER SECTION */}
         <div className="mb-4">
