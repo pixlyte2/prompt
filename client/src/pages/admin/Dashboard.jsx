@@ -235,20 +235,8 @@ export default function Dashboard() {
             </div>
             <div className="space-y-2">
               {recentPrompts.slice(0, 5).map((prompt, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium text-blue-600">{prompt.channelId?.name}</span>
-                      <span className="text-xs text-gray-400">•</span>
-                      <span className="text-xs text-gray-600">{prompt.promptTypeId?.name}</span>
-                      <span className="text-xs text-gray-400">•</span>
-                      <span className="text-xs text-gray-500 font-mono">{prompt.aiModel}</span>
-                    </div>
-                    <p className="text-sm text-gray-900">
-                      {prompt.promptText.length > 200 ? `${prompt.promptText.substring(0, 200)}...` : prompt.promptText}
-                    </p>
-                  </div>
-                  <div className="flex gap-2 ml-3">
+                <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex gap-2">
                     <button
                       onClick={() => {
                         setPreviewPrompt(prompt);
@@ -269,6 +257,18 @@ export default function Dashboard() {
                     >
                       <Copy size={16} />
                     </button>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-blue-600">{prompt.channelId?.name}</span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs font-bold text-gray-700">{prompt.promptTypeId?.name}</span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs font-bold text-gray-600 font-mono">{prompt.aiModel}</span>
+                    </div>
+                    <p className="text-sm text-gray-900">
+                      {prompt.promptText.length > 200 ? `${prompt.promptText.substring(0, 200)}...` : prompt.promptText}
+                    </p>
                   </div>
                 </div>
               ))}
