@@ -252,11 +252,12 @@ export default function Channels() {
         <ConfirmModal
           isOpen={deleteModalOpen}
           title="Delete Channel"
-          message={`Are you sure you want to delete "${channelToDelete?.name}"? This action cannot be undone.`}
-          confirmText="Delete"
+          message={`Are you sure you want to delete "${channelToDelete?.name}"? This will also remove all associated prompt types and prompts. This action cannot be undone.`}
+          confirmText="Delete Channel"
           onConfirm={confirmDelete}
           onCancel={() => setDeleteModalOpen(false)}
           loading={deleteLoading}
+          danger={true}
         />
       </div>
     </AdminLayout>

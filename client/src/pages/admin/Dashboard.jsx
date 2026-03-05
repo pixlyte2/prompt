@@ -148,7 +148,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {cards.map((card, index) => {
             const Icon = card.icon;
             return (
@@ -178,7 +178,7 @@ export default function Dashboard() {
             <BarChart3 className="w-5 h-5 text-gray-600" />
             <h3 className="text-lg font-semibold">Quick Actions</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <button 
               onClick={() => navigate('/admin/users')}
               className="p-4 border border-blue-200 rounded-lg hover:bg-blue-50 text-left transition-colors"

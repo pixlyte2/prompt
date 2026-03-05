@@ -9,7 +9,7 @@ export default function Sidebar({ menu }) {
   const role = getRole();
 
   return (
-    <div className="w-64 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700 h-screen flex flex-col shadow-2xl fixed left-0 top-0">
+    <div className="w-64 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700 h-screen flex flex-col shadow-2xl fixed left-0 top-0 hidden md:flex">
       <div className="p-6 border-b border-slate-700">
         <div className="flex items-center gap-2 mb-6">
           <div className="text-3xl">🤖</div>

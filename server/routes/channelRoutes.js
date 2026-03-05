@@ -1,6 +1,6 @@
 const express = require("express");
 const { createChannel, getChannels, updateChannel, deleteChannel } = require("../controllers/channelController");
-const protect = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/authMiddleware");
 const allowRoles = require("../middleware/roleMiddleware");
 
 const router = express.Router();

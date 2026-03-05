@@ -9,7 +9,7 @@ const {
   deletePromptType
 } = require("../controllers/promptTypeController");
 
-const protect = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/authMiddleware");
 const allowRoles = require("../middleware/roleMiddleware");
 
 // get all

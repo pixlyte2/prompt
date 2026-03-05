@@ -80,7 +80,7 @@ export default function Help() {
           <p className="text-cyan-100">Complete guide to manage prompts and AI interactions</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {sections.map((section, idx) => {
             const Icon = section.icon;
             return (
@@ -109,7 +109,7 @@ export default function Help() {
             <Copy className="w-5 h-5 text-cyan-600" />
             Quick Tips
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-700">
             <div className="flex items-start gap-2">
               <span className="text-cyan-600">✓</span>
               <span>Use <Eye className="inline w-4 h-4" /> icon to preview prompts before copying</span>

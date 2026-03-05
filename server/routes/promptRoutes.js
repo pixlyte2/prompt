@@ -7,7 +7,7 @@ const {
   // getPromptTypesByChannel
 } = require("../controllers/promptController");
 
-const protect = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/authMiddleware");
 const allowRoles = require("../middleware/roleMiddleware");
 
 const router = express.Router();

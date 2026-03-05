@@ -17,9 +17,9 @@ export default function AdminLayout({ title, children, onCacheClear, noPadding }
     <div className="flex h-screen overflow-hidden">
       <Sidebar menu={adminMenu} />
 
-      <div className="flex-1 flex flex-col ml-64 overflow-hidden">
+      <div className="flex-1 flex flex-col ml-0 md:ml-64 overflow-hidden">
         <Topbar title={title} onCacheClear={onCacheClear} />
-        <div className={`flex-1 overflow-y-auto bg-gray-100 ${noPadding ? "" : "p-6"}`}>{children}</div>
+        <div className={`flex-1 overflow-y-auto bg-gray-100 ${noPadding ? "" : "p-4 md:p-6"}`}>{children}</div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-const Prompt = require("../models/Prompt");
+const Prompt = require("../models/prompt");
 
 exports.chat = async (req, res) => {
   try {

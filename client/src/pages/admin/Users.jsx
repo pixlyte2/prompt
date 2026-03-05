@@ -3,6 +3,7 @@ import { toast } from "react-hot-toast";
 import { Plus, Trash2, Users as UsersIcon } from "lucide-react";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
+import ConfirmModal from "../../components/ConfirmModal";
 import useLoading from "../../hooks/useLoading";
 import PageSectionLoader from "../../components/PageSectionLoader";
 
@@ -79,7 +80,7 @@ export default function Users() {
             <p className="text-gray-600">Add new users to the system</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
             <input
               placeholder="Full Name"
               value={form.name}
@@ -166,29 +167,16 @@ export default function Users() {
         </div>
       </div>
 
-      {deleting && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <h3 className="text-lg font-semibold mb-4">Delete User</h3>
-            <p className="mb-4">Delete "{deleting.name}"?</p>
-            <div className="flex gap-2">
-              <button
-                onClick={confirmDelete}
-                disabled={loading}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
-              >
-                Delete
-              </button>
-              <button
-                onClick={() => setDeleting(null)}
-                className="bg-gray-300 px-4 py-2 rounded-lg"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!deleting}
+        title="Delete User"
+        message={`Are you sure you want to delete "${deleting?.name}"? This action cannot be undone and will remove all associated data.`}
+        confirmText="Delete User"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+        loading={loading}
+        danger={true}
+      />
     </AdminLayout>
   );
 }

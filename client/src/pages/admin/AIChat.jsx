@@ -75,7 +75,7 @@ export default function AIChat() {
       <div className="bg-gray-50 p-4">
         <div className="h-[calc(100vh-10rem)] flex flex-col bg-white rounded-lg shadow border">
         {/* Header */}
-        <div className="border-b p-4 space-y-3">
+        <div className="border-b p-3 md:p-4 space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Select Prompt
@@ -94,7 +94,7 @@ export default function AIChat() {
             </select>
             {selectedPrompt && (
               <div className="mt-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
                     onClick={() => setShowPromptDetails(!showPromptDetails)}
                     className="flex items-center gap-2 text-sm text-cyan-600 hover:text-cyan-700 font-medium"

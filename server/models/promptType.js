@@ -24,4 +24,4 @@ const promptTypeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("PromptType", promptTypeSchema);
+module.exports = mongoose.models.PromptType || mongoose.model("PromptType", promptTypeSchema);

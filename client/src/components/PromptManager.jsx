@@ -405,7 +405,7 @@ const loadPrompts = async () => {
           )}
 
           {/* Search & Actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
             {/* Search */}
             <div className="flex-1 max-w-md">
               <div className="relative">
@@ -425,7 +425,7 @@ const loadPrompts = async () => {
             </div>
 
             {/* Stats */}
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 hidden md:block">
               <div className="font-medium">{filtered.length} {filtered.length === 1 ? 'result' : 'results'}</div>
               {selectedRows.length > 0 && (
                 <div className="mt-1">
@@ -437,13 +437,13 @@ const loadPrompts = async () => {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto">
               {/* Bulk Actions */}
               {prompts.length > 0 && (
                 <button
                   onClick={handleGlobalSelectAll}
                   disabled={isLoading("selectAll")}
-                  className={`px-4 py-2.5 rounded-lg text-sm font-medium border transition-all duration-200 ${
+                  className={`px-3 md:px-4 py-2.5 rounded-lg text-xs md:text-sm font-medium border transition-all duration-200 ${
                     isLoading("selectAll") 
                       ? "opacity-50 cursor-not-allowed bg-gray-100 border-gray-200" 
                       : "bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:border-gray-400"
@@ -461,7 +461,7 @@ const loadPrompts = async () => {
               <button
                 onClick={handleExport}
                 disabled={!selectedRows.length}
-                className={`px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-sm ${
+                className={`px-3 md:px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-xs md:text-sm ${
                   selectedRows.length
                     ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
                     : "bg-gray-200 text-gray-400 cursor-not-allowed"
@@ -474,7 +474,7 @@ const loadPrompts = async () => {
               {(role === "admin" || role === "content_manager") && (
                 <button
                   onClick={openCreate}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-sm shadow-sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-xs md:text-sm shadow-sm"
                 >
                   <span className="text-lg leading-none">+</span>
                   New Prompt
@@ -506,7 +506,7 @@ const loadPrompts = async () => {
         <div className="overflow-x-auto relative">
           <TableLoader show={isLoading("table")} />
 
-          <table className="w-full text-sm table-auto">
+          <table className="w-full text-sm table-auto min-w-[800px]">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr className="text-gray-700">
                 <th className="px-6 py-4 text-center w-12">
@@ -675,14 +675,14 @@ const loadPrompts = async () => {
 
         {/* PAGINATION */}
         {filtered.length > 0 && (
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-            <div className="flex justify-between items-center">
+          <div className="bg-gray-50 px-4 md:px-6 py-4 border-t border-gray-200">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-3">
               <div className="text-sm text-gray-600">
                 Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, filtered.length)} of {filtered.length} results
               </div>
               
               {totalPages > 1 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-center">
                   <button
                     onClick={() => setPage(prev => Math.max(1, prev - 1))}
                     disabled={page === 1}
@@ -735,12 +735,13 @@ const loadPrompts = async () => {
       <ConfirmModal
         isOpen={deleteModalOpen}
         title="Delete Prompt"
-        message="Are you sure?"
-        confirmText="Delete"
+        message={`Are you sure you want to delete this prompt? This action cannot be undone.`}
+        confirmText="Delete Prompt"
         cancelText="Cancel"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteModalOpen(false)}
         loading={loading}
+        danger={true}
       />
 
       {previewModal && previewPrompt && (
