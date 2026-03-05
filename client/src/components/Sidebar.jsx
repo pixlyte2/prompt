@@ -9,21 +9,24 @@ export default function Sidebar({ menu }) {
   const role = getRole();
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col">
-      <div className="p-6 border-b border-gray-200">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">CreatorAI</h2>
-        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-          <div className="p-2 bg-blue-100 rounded-full">
-            <User size={16} className="text-blue-600" />
+    <div className="w-64 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700 h-screen flex flex-col shadow-2xl fixed left-0 top-0">
+      <div className="p-6 border-b border-slate-700">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="text-3xl">🤖</div>
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent">CreatorAI</h2>
+        </div>
+        <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700 backdrop-blur-sm">
+          <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full shadow-lg">
+            <User size={16} className="text-white" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900">Welcome, {user?.name || 'User'}</p>
-            <p className="text-xs text-gray-500 capitalize">{role || 'viewer'}</p>
+            <p className="text-sm font-semibold text-white">{user?.name || 'User'}</p>
+            <p className="text-xs text-slate-400 capitalize">{role || 'viewer'}</p>
           </div>
         </div>
       </div>
 
-      <nav className="p-4 space-y-2">
+      <nav className="p-4 space-y-1 flex-1">
         {menu.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
@@ -31,20 +34,20 @@ export default function Sidebar({ menu }) {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
                 isActive 
-                  ? "bg-blue-600 text-white" 
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/30" 
+                  : "text-slate-300 hover:bg-slate-800/50 hover:text-white"
               }`}
             >
-              {Icon && <Icon size={20} className={isActive ? "text-white" : item.color} />}
+              {Icon && <Icon size={20} className={isActive ? "text-white" : `${item.color} group-hover:scale-110 transition-transform`} />}
               <span className="font-medium">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 mt-auto">
+      <div className="p-4 border-t border-slate-700">
         <LogoutButton />
       </div>
     </div>

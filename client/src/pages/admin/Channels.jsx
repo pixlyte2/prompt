@@ -98,7 +98,7 @@ export default function Channels() {
 
   return (
     <AdminLayout title="Channel Management">
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="bg-gray-50 p-4">
         <PageSectionLoader show={isLoading("page")} />
 
         {/* HEADER SECTION */}

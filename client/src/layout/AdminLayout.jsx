@@ -1,23 +1,25 @@
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
-import { BarChart3, Users, Layers, Tag, FileText } from "lucide-react";
+import { BarChart3, Users, Layers, Tag, FileText, MessageSquare, HelpCircle } from "lucide-react";
 
 const adminMenu = [
   { label: "Dashboard", path: "/admin", icon: BarChart3, color: "text-gray-600" },
   { label: "Users", path: "/admin/users", icon: Users, color: "text-blue-600" },
   { label: "Channels", path: "/admin/channels", icon: Layers, color: "text-purple-600" },
   { label: "Prompt Types", path: "/admin/prompt-types", icon: Tag, color: "text-orange-600" },
-  { label: "Prompts", path: "/admin/prompts", icon: FileText, color: "text-indigo-600" }
+  { label: "Prompts", path: "/admin/prompts", icon: FileText, color: "text-indigo-600" },
+  { label: "AI Chat", path: "/admin/ai-chat", icon: MessageSquare, color: "text-emerald-600" },
+  { label: "Help", path: "/admin/help", icon: HelpCircle, color: "text-cyan-600" }
 ];
 
-export default function AdminLayout({ title, children, onCacheClear }) {
+export default function AdminLayout({ title, children, onCacheClear, noPadding }) {
   return (
-    <div className="flex">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar menu={adminMenu} />
 
-      <div className="flex-1 bg-gray-100 min-h-screen">
+      <div className="flex-1 flex flex-col ml-64 overflow-hidden">
         <Topbar title={title} onCacheClear={onCacheClear} />
-        <div className="p-6">{children}</div>
+        <div className={`flex-1 overflow-y-auto bg-gray-100 ${noPadding ? "" : "p-6"}`}>{children}</div>
       </div>
     </div>
   );

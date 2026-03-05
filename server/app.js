@@ -12,6 +12,7 @@ const promptRoutes = require("./routes/promptRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const superAdminRoutes = require("./routes/superAdminRoutes");
 const promptTypeRoutes = require("./routes/promptTypeRoutes");
+const aiRoutes = require("./routes/aiRoutes");
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use("/api/prompts", promptRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/superadmin", superAdminRoutes);
 app.use("/api/prompt-types", promptTypeRoutes);
+app.use("/api/ai", aiRoutes);
 
 /**
  * 🧪 Health Check

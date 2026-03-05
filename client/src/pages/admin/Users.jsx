@@ -73,8 +73,8 @@ export default function Users() {
     <AdminLayout title="User Management">
       <PageSectionLoader show={isLoading("page")} />
       
-      <div className="p-4 space-y-4">
-        <div className="bg-white rounded-lg border p-4">
+      <div className="bg-gray-50 p-4">
+        <div className="bg-white rounded-lg border p-4 mb-4">
           <div className="flex items-center gap-3 mb-6">
             <p className="text-gray-600">Add new users to the system</p>
           </div>

@@ -7,6 +7,8 @@ import SuperAdminLogin from "./auth/SuperAdminLogin";
 
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminPrompts from "./pages/admin/Prompts";
+import AIChat from "./pages/admin/AIChat";
+import Help from "./pages/admin/Help";
 import ContentPrompts from "./pages/content/Prompts";
 import ViewerPrompts from "./pages/viewer/Prompts";
 import Users from "./pages/admin/Users";
@@ -102,6 +104,24 @@ export default function App() {
           element={
             <PrivateRoute allowedRoles={["admin"]}>
               <PromptTypes />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/ai-chat"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <AIChat />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/help"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <Help />
             </PrivateRoute>
           }
         />

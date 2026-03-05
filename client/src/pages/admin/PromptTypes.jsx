@@ -94,9 +94,9 @@ export default function PromptTypes() {
     <AdminLayout title="Prompt Types">
       <PageSectionLoader show={isLoading("page")} />
       
-      <div className="p-4 space-y-3">
+      <div className="bg-gray-50 p-4">
         {/* Control Panel */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-4">
           <div className="p-4">
             <div className="mb-4">
               <div className="flex items-center gap-3 mb-2">

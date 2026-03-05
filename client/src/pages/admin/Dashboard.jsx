@@ -134,13 +134,13 @@ export default function Dashboard() {
       
       <div className="p-4 space-y-4">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-4 text-white">
+        <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg p-4 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold mb-2">Welcome to Admin Dashboard</h1>
-              <p className="text-blue-100">Monitor and manage your prompt system</p>
+              <p className="text-cyan-100">Monitor and manage your prompt system</p>
             </div>
-            <div className="flex items-center gap-2 text-blue-100">
+            <div className="flex items-center gap-2 text-cyan-100">
               <Calendar size={20} />
               <span>{new Date().toLocaleDateString()}</span>
             </div>
