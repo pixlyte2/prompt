@@ -8,6 +8,10 @@ const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI, {
       serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      bufferCommands: false,
+      maxPoolSize: 10,
+      minPoolSize: 5
     });
 
     console.log("✅ MongoDB Connected");
@@ -17,6 +21,7 @@ const connectDB = async () => {
     console.log("   1. MongoDB Atlas IP whitelist (add 0.0.0.0/0 for testing)");
     console.log("   2. Correct username/password in .env");
     console.log("   3. Internet connection\n");
+    process.exit(1);
   }
 };
 
