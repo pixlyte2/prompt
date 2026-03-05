@@ -92,9 +92,9 @@ export default function PromptFormModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6 text-white flex-shrink-0">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 text-white flex-shrink-0">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               {editingPrompt ? (
@@ -103,12 +103,9 @@ export default function PromptFormModal({
                 <Plus className="w-6 h-6" />
               )}
               <div>
-                <h2 className="text-2xl font-bold">
+                <h2 className="text-xl font-bold">
                   {editingPrompt ? "Edit Prompt" : "Create New Prompt"}
                 </h2>
-                <p className="text-blue-100 text-sm mt-1">
-                  {editingPrompt ? "Update your existing prompt" : "Add a new prompt to your collection"}
-                </p>
               </div>
             </div>
             <button
@@ -122,11 +119,11 @@ export default function PromptFormModal({
         </div>
 
         {/* Form Content */}
-        <div className="p-8 overflow-y-auto flex-1">
-          <div className="space-y-6">
+        <div className="p-6 overflow-y-auto flex-1">
+          <div className="space-y-4">
             {/* Channel Selection */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
+              <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">
                 Channel *
               </label>
               <select
@@ -154,7 +151,7 @@ export default function PromptFormModal({
 
             {/* Prompt Type Selection */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
+              <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">
                 Prompt Type *
               </label>
               <select
@@ -181,7 +178,7 @@ export default function PromptFormModal({
 
             {/* AI Model */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
+              <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">
                 AI Model
               </label>
               <input
@@ -196,11 +193,11 @@ export default function PromptFormModal({
 
             {/* Prompt Text */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
+              <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">
                 Prompt Content *
               </label>
               <textarea
-                rows={6}
+                rows={5}
                 className="w-full border-2 border-gray-200 px-4 py-3 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200 resize-none"
                 placeholder="Enter your prompt text here..."
                 value={form.promptText}
@@ -208,8 +205,8 @@ export default function PromptFormModal({
                 disabled={loading}
               />
               <div className="flex justify-between items-center mt-2">
-                <p className="text-sm text-gray-500">
-                  Write a clear, detailed prompt for best results
+                <p className="text-sm text-cyan-600 font-medium">
+                  💡 Use [SOURCE] placeholder to insert dynamic content
                 </p>
                 <span className="text-sm text-gray-400">
                   {form.promptText.length} characters
@@ -220,7 +217,7 @@ export default function PromptFormModal({
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 px-8 py-4 border-t border-gray-200 flex-shrink-0">
+        <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex-shrink-0">
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-500">
               * Required fields

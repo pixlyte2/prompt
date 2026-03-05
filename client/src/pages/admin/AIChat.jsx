@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Loader2, ChevronDown, ChevronUp, Copy, Eye } from "lucide-react";
+import { Send, Loader2, Copy, Eye } from "lucide-react";
 import { toast } from "react-hot-toast";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
@@ -11,7 +11,6 @@ export default function AIChat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPromptDetails, setShowPromptDetails] = useState(false);
   const [previewModal, setPreviewModal] = useState(false);
   const messagesEndRef = useRef(null);
 
@@ -80,34 +79,27 @@ export default function AIChat() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Select Prompt
             </label>
-            <select
-              value={selectedPrompt}
-              onChange={(e) => setSelectedPrompt(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-            >
-              <option value="">Choose a prompt...</option>
-              {prompts.map(p => (
-                <option key={p._id} value={p._id}>
-                  {p.channelId?.name} - {p.promptTypeId?.name} ({p.aiModel})
-                </option>
-              ))}
-            </select>
-            {selectedPrompt && (
-              <div className="mt-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    onClick={() => setShowPromptDetails(!showPromptDetails)}
-                    className="flex items-center gap-2 text-sm text-cyan-600 hover:text-cyan-700 font-medium"
-                  >
-                    {showPromptDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    {showPromptDetails ? "Hide" : "Show"} Prompt Details
-                  </button>
+            <div className="flex gap-2">
+              <select
+                value={selectedPrompt}
+                onChange={(e) => setSelectedPrompt(e.target.value)}
+                className="w-auto max-w-md px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              >
+                <option value="">Choose a prompt...</option>
+                {prompts.map(p => (
+                  <option key={p._id} value={p._id}>
+                    {p.channelId?.name} - {p.promptTypeId?.name} ({p.aiModel})
+                  </option>
+                ))}
+              </select>
+              {selectedPrompt && (
+                <>
                   <button
                     onClick={() => setPreviewModal(true)}
-                    className="p-2 bg-purple-100 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg transition-all flex items-center gap-1 text-sm font-medium"
+                    className="px-4 py-2 bg-purple-100 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg transition-all flex items-center gap-2 font-medium"
                     title="Preview prompt"
                   >
-                    <Eye size={14} />
+                    <Eye size={16} />
                     Preview
                   </button>
                   <button
@@ -115,36 +107,15 @@ export default function AIChat() {
                       navigator.clipboard.writeText(prompts.find(p => p._id === selectedPrompt)?.promptText);
                       toast.success("Prompt copied");
                     }}
-                    className="p-2 bg-cyan-100 text-cyan-600 hover:bg-cyan-600 hover:text-white rounded-lg transition-all flex items-center gap-1 text-sm font-medium"
+                    className="px-4 py-2 bg-cyan-100 text-cyan-600 hover:bg-cyan-600 hover:text-white rounded-lg transition-all flex items-center gap-2 font-medium"
                     title="Copy prompt"
                   >
-                    <Copy size={14} />
+                    <Copy size={16} />
                     Copy
                   </button>
-                </div>
-                {showPromptDetails && (
-                  <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
-                    <div className="flex gap-4 text-sm mb-2">
-                      <div>
-                        <span className="text-gray-500">Channel:</span>
-                        <span className="ml-1 font-medium">{prompts.find(p => p._id === selectedPrompt)?.channelId?.name}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Type:</span>
-                        <span className="ml-1 font-medium">{prompts.find(p => p._id === selectedPrompt)?.promptTypeId?.name}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Model:</span>
-                        <span className="ml-1 font-medium font-mono">{prompts.find(p => p._id === selectedPrompt)?.aiModel}</span>
-                      </div>
-                    </div>
-                    <div className="mt-2 p-2 bg-white rounded text-sm text-gray-700 max-h-40 overflow-y-auto">
-                      <pre className="whitespace-pre-wrap font-sans">{prompts.find(p => p._id === selectedPrompt)?.promptText}</pre>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
 
           <div>
@@ -158,6 +129,9 @@ export default function AIChat() {
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
               rows={4}
             />
+            <p className="text-xs text-cyan-600 mt-1">
+              💡 This content will replace [SOURCE] placeholder in your prompt
+            </p>
           </div>
         </div>
 
@@ -252,7 +226,9 @@ export default function AIChat() {
             </div>
             <div className="p-4 overflow-y-auto flex-1">
               <div className="bg-gray-50 p-4 rounded-lg">
-                <pre className="whitespace-pre-wrap text-sm text-gray-900 font-sans leading-relaxed">{prompts.find(p => p._id === selectedPrompt)?.promptText}</pre>
+                <pre className="whitespace-pre-wrap text-sm text-gray-900 font-sans leading-relaxed">
+                  {prompts.find(p => p._id === selectedPrompt)?.promptText?.replace(/\[SOURCE\]/g, sourceText || '[SOURCE]')}
+                </pre>
               </div>
             </div>
             <div className="p-4 border-t flex justify-end gap-2">
