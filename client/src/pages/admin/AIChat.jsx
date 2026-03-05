@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, ChevronDown, ChevronUp, Copy, Eye } from "lucide-react";
 import { toast } from "react-hot-toast";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
@@ -11,6 +11,8 @@ export default function AIChat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPromptDetails, setShowPromptDetails] = useState(false);
+  const [previewModal, setPreviewModal] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -91,9 +93,56 @@ export default function AIChat() {
               ))}
             </select>
             {selectedPrompt && (
-              <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-600 border">
-                {prompts.find(p => p._id === selectedPrompt)?.promptText?.slice(0, 150)}
-                {prompts.find(p => p._id === selectedPrompt)?.promptText?.length > 150 && "..."}
+              <div className="mt-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowPromptDetails(!showPromptDetails)}
+                    className="flex items-center gap-2 text-sm text-cyan-600 hover:text-cyan-700 font-medium"
+                  >
+                    {showPromptDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    {showPromptDetails ? "Hide" : "Show"} Prompt Details
+                  </button>
+                  <button
+                    onClick={() => setPreviewModal(true)}
+                    className="p-2 bg-purple-100 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg transition-all flex items-center gap-1 text-sm font-medium"
+                    title="Preview prompt"
+                  >
+                    <Eye size={14} />
+                    Preview
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(prompts.find(p => p._id === selectedPrompt)?.promptText);
+                      toast.success("Prompt copied");
+                    }}
+                    className="p-2 bg-cyan-100 text-cyan-600 hover:bg-cyan-600 hover:text-white rounded-lg transition-all flex items-center gap-1 text-sm font-medium"
+                    title="Copy prompt"
+                  >
+                    <Copy size={14} />
+                    Copy
+                  </button>
+                </div>
+                {showPromptDetails && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
+                    <div className="flex gap-4 text-sm mb-2">
+                      <div>
+                        <span className="text-gray-500">Channel:</span>
+                        <span className="ml-1 font-medium">{prompts.find(p => p._id === selectedPrompt)?.channelId?.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Type:</span>
+                        <span className="ml-1 font-medium">{prompts.find(p => p._id === selectedPrompt)?.promptTypeId?.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Model:</span>
+                        <span className="ml-1 font-medium font-mono">{prompts.find(p => p._id === selectedPrompt)?.aiModel}</span>
+                      </div>
+                    </div>
+                    <div className="mt-2 p-2 bg-white rounded text-sm text-gray-700 max-h-40 overflow-y-auto">
+                      <pre className="whitespace-pre-wrap font-sans">{prompts.find(p => p._id === selectedPrompt)?.promptText}</pre>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -172,6 +221,62 @@ export default function AIChat() {
         </div>
       </div>
       </div>
+
+      {/* Preview Modal */}
+      {previewModal && selectedPrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Prompt Preview</h3>
+              <button onClick={() => setPreviewModal(false)} className="text-gray-500 hover:text-gray-700">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 space-y-3 border-b">
+              <div className="flex gap-4">
+                <div>
+                  <span className="text-xs text-gray-500">Channel:</span>
+                  <div className="font-medium">{prompts.find(p => p._id === selectedPrompt)?.channelId?.name || "-"}</div>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500">Type:</span>
+                  <div className="font-medium">{prompts.find(p => p._id === selectedPrompt)?.promptTypeId?.name || "-"}</div>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500">Model:</span>
+                  <div className="font-medium font-mono text-sm">{prompts.find(p => p._id === selectedPrompt)?.aiModel || "-"}</div>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <pre className="whitespace-pre-wrap text-sm text-gray-900 font-sans leading-relaxed">{prompts.find(p => p._id === selectedPrompt)?.promptText}</pre>
+              </div>
+            </div>
+            <div className="p-4 border-t flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(prompts.find(p => p._id === selectedPrompt)?.promptText);
+                  toast.success("Copied to clipboard");
+                  setPreviewModal(false);
+                }}
+                className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+              >
+                <Copy size={16} />
+                Copy
+              </button>
+              <button
+                onClick={() => setPreviewModal(false)}
+                className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
