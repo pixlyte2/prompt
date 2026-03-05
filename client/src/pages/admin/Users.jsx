@@ -74,37 +74,49 @@ export default function Users() {
     <AdminLayout title="User Management">
       <PageSectionLoader show={isLoading("page")} />
       
-      <div className="bg-gray-50 p-4">
-        <div className="bg-white rounded-lg border p-4 mb-4">
-          <div className="flex items-center gap-3 mb-6">
-            <p className="text-gray-600">Add new users to the system</p>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-4 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-white bg-opacity-20 rounded-xl">
+            <UsersIcon className="w-8 h-8 text-white" />
           </div>
+          <div>
+            <h2 className="text-2xl font-bold text-white">
+              User Management
+            </h2>
+            <p className="text-blue-100">Manage users and their access permissions</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
+          <h3 className="text-lg font-bold text-gray-800 mb-6">Add New User</h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
             <input
               placeholder="Full Name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="border px-3 py-2 rounded-lg"
+              className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
             />
             <input
               type="email"
               placeholder="Email Address"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="border px-3 py-2 rounded-lg"
+              className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
             />
             <input
               type="password"
               placeholder="Password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="border px-3 py-2 rounded-lg"
+              className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
             />
             <select
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
-              className="border px-3 py-2 rounded-lg"
+              className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all bg-white"
             >
               <option value="viewer">Viewer</option>
               <option value="content_manager">Content Manager</option>
@@ -112,15 +124,15 @@ export default function Users() {
             <button
               onClick={createUser}
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center gap-2"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl disabled:opacity-50 flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
             >
-              <Plus size={16} />
+              <Plus size={18} />
               Create User
             </button>
           </div>
-        </div>
+      </div>
 
-        <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b bg-gray-50">
             <h3 className="font-semibold">Users ({users.length})</h3>
           </div>
@@ -165,7 +177,6 @@ export default function Users() {
             )}
           </div>
         </div>
-      </div>
 
       <ConfirmModal
         isOpen={!!deleting}

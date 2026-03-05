@@ -94,108 +94,101 @@ export default function PromptTypes() {
     <AdminLayout title="Prompt Types">
       <PageSectionLoader show={isLoading("page")} />
       
-      <div className="bg-gray-50 p-4">
-        {/* Control Panel */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-4">
-          <div className="p-4">
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Tag className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Create Prompt Type</h3>
-                  <p className="text-sm text-gray-500">Add new prompt types to organize your content</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3">
-              <div className="md:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Channel</label>
-                <select
-                  value={form.channelId}
-                  onChange={(e) => setForm({ ...form, channelId: e.target.value })}
-                  className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
-                >
-                  <option value="" disabled>Choose a channel...</option>
-                  {channels.map(c => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="md:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Type Name</label>
-                <input
-                  placeholder="Enter prompt type name..."
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
-              <div className="md:col-span-2 flex items-end">
-                <button
-                  onClick={create}
-                  disabled={loading || !form.name.trim() || !form.channelId}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-6 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
-                >
-                  {loading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <>
-                      <Plus size={18} />
-                      Create
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-4 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-white bg-opacity-20 rounded-xl">
+            <Tag className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-white">
+              Prompt Types
+            </h2>
+            <p className="text-blue-100">Categorize your prompts with types</p>
           </div>
         </div>
+      </div>
 
-        <div className="bg-white rounded-lg border overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50">
-            <h3 className="font-semibold">Types ({types.length})</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-6 py-3 text-left font-medium">Channel</th>
-                  <th className="px-6 py-3 text-left font-medium">Name</th>
-                  <th className="px-6 py-3 text-center font-medium">Actions</th>
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
+        <h3 className="text-lg font-bold text-gray-800 mb-6">Create New Prompt Type</h3>
+
+        <div className="flex gap-3">
+          <select
+            value={form.channelId}
+            onChange={(e) => setForm({ ...form, channelId: e.target.value })}
+            className="w-64 border-2 border-gray-200 px-4 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white transition-all"
+          >
+            <option value="" disabled>Choose a channel...</option>
+            {channels.map(c => (
+              <option key={c._id} value={c._id}>{c.name}</option>
+            ))}
+          </select>
+          <input
+            placeholder="Enter prompt type name..."
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            maxLength={30}
+            className="w-80 border-2 border-gray-200 px-4 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+          />
+          <button
+            onClick={create}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-semibold shadow-sm hover:shadow-md transition-all whitespace-nowrap"
+          >
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <>
+                <Plus size={16} />
+                Create
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b bg-gray-50">
+          <h3 className="font-semibold">Types ({types.length})</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-6 py-3 text-left font-medium">Channel</th>
+                <th className="px-6 py-3 text-left font-medium">Name</th>
+                <th className="px-6 py-3 text-center font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {types.map(t => (
+                <tr key={t._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm">
+                      {t.channelId?.name || "-"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-medium">{t.name}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex justify-center gap-2">
+                      <button
+                        onClick={() => { setEditing(t); setEditName(t.name); }}
+                        className="p-2 text-amber-600 hover:bg-amber-100 rounded"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => setDeleting(t)}
+                        className="p-2 text-red-600 hover:bg-red-100 rounded"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y">
-                {types.map(t => (
-                  <tr key={t._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm">
-                        {t.channelId?.name || "-"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-medium">{t.name}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-center gap-2">
-                        <button
-                          onClick={() => { setEditing(t); setEditName(t.name); }}
-                          className="p-2 text-amber-600 hover:bg-amber-100 rounded"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => setDeleting(t)}
-                          className="p-2 text-red-600 hover:bg-red-100 rounded"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, Plus, Hash } from "lucide-react";
+import { Pencil, Trash2, Plus, Layers } from "lucide-react";
 import { Toaster, toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
@@ -9,7 +9,6 @@ import PageSectionLoader from "../../components/PageSectionLoader";
 
 export default function Channels() {
   const [channels, setChannels] = useState([]);
-  const [search, setSearch] = useState("");
   const [name, setName] = useState("");
   const [editName, setEditName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,6 +37,9 @@ export default function Channels() {
 
   const createChannel = async () => {
     if (!name.trim()) return toast.error("Channel name required");
+
+    const exists = channels.some(c => c.name.toLowerCase() === name.trim().toLowerCase());
+    if (exists) return toast.error("Channel name already exists");
 
     try {
       setLoading(true);
@@ -92,70 +94,56 @@ export default function Channels() {
     }
   };
 
-  const filteredChannels = channels.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredChannels = channels;
 
   return (
     <AdminLayout title="Channel Management">
-      <div className="bg-gray-50 p-4">
-        <PageSectionLoader show={isLoading("page")} />
+      <PageSectionLoader show={isLoading("page")} />
 
-        {/* HEADER SECTION */}
-        <div className="mb-4">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Hash className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Create Channel</h3>
-                  <p className="text-sm text-gray-500">Add new channels to organize your content</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Channel Name</label>
-                <input
-                  placeholder="Enter channel name..."
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
-              <div className="flex items-end">
-                <button
-                  onClick={createChannel}
-                  disabled={loading || !name.trim()}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-6 py-3 rounded-lg transition-colors flex items-center gap-2 font-medium"
-                >
-                  {loading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <>
-                      <Plus size={16} />
-                      Create Channel
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className="flex items-end">
-                <input
-                  placeholder="Search channels..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
-            </div>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-4 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-white bg-opacity-20 rounded-xl">
+            <Layers className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-white">
+              Channel Management
+            </h2>
+            <p className="text-blue-100">Organize your content with channels</p>
           </div>
         </div>
+      </div>
 
-        {/* RESULTS SECTION */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
+        <h3 className="text-lg font-bold text-gray-800 mb-6">Create New Channel</h3>
+
+        <div className="flex gap-3">
+          <input
+            placeholder="Enter channel name..."
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={30}
+            className="w-80 border-2 border-gray-200 px-4 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+          />
+          <button
+            onClick={createChannel}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-semibold shadow-sm hover:shadow-md transition-all whitespace-nowrap"
+          >
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <>
+                <Plus size={16} />
+                Create
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800">
               Channels ({filteredChannels.length} {filteredChannels.length === 1 ? 'channel' : 'channels'})
@@ -189,23 +177,17 @@ export default function Channels() {
                       <div className="flex justify-center items-center gap-2">
                         <button
                           onClick={() => openEditModal(c)}
-                          className="group relative p-2 bg-amber-100 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                          className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                           title="Edit channel"
                         >
-                          <Pencil size={14} className="group-hover:scale-110 transition-transform duration-200" />
-                          <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
-                            Edit
-                          </span>
+                          <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => openDeleteModal(c)}
-                          className="group relative p-2 bg-red-100 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                          className="p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                           title="Delete channel"
                         >
-                          <Trash2 size={14} className="group-hover:scale-110 transition-transform duration-200" />
-                          <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
-                            Delete
-                          </span>
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
@@ -217,12 +199,10 @@ export default function Channels() {
             {filteredChannels.length === 0 && (
               <div className="text-center py-12">
                 <div className="text-gray-400 mb-4">
-                  <Hash className="mx-auto h-12 w-12" />
+                  <Layers className="mx-auto h-12 w-12" />
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No channels found</h3>
-                <p className="text-gray-500">
-                  {search ? "Try adjusting your search criteria" : "Create your first channel to get started"}
-                </p>
+                <p className="text-gray-500">Create your first channel to get started</p>
               </div>
             )}
           </div>
@@ -259,7 +239,6 @@ export default function Channels() {
           loading={deleteLoading}
           danger={true}
         />
-      </div>
     </AdminLayout>
   );
 }

@@ -206,7 +206,7 @@ export default function PromptFormModal({
               />
               <div className="flex justify-between items-center mt-2">
                 <p className="text-sm text-cyan-600 font-medium">
-                  💡 Use [SOURCE] placeholder to insert dynamic content
+                  💡 Use [SOURCE] for content, [LENGTH] for video duration
                 </p>
                 <span className="text-sm text-gray-400">
                   {form.promptText.length} characters
