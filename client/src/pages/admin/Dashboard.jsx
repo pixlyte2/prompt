@@ -13,7 +13,7 @@ import {
   Eye
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
-import api from "../../utils/api";
+import api from "../../services/api";
 import { getRecentPrompts, clearRecentPrompts } from "../../utils/cache";
 
 function Counter({ value }) {
