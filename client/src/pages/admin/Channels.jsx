@@ -97,118 +97,110 @@ export default function Channels() {
   const filteredChannels = channels;
 
   return (
-    <AdminLayout title="Channel Management">
+    <AdminLayout 
+      title="Channel Management" 
+      titleInfo="Organize your content with channels"
+      icon={Layers}
+    >
       <PageSectionLoader show={isLoading("page")} />
 
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-4 mb-6">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-white bg-opacity-20 rounded-xl">
-            <Layers className="w-8 h-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-white">
-              Channel Management
-            </h2>
-            <p className="text-blue-100">Organize your content with channels</p>
-          </div>
-        </div>
-      </div>
+      <div className="max-w-3xl">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
+          <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <Plus className="w-5 h-5 text-purple-600" />
+            Create New Channel
+          </h3>
 
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
-        <h3 className="text-lg font-bold text-gray-800 mb-6">Create New Channel</h3>
-
-        <div className="flex gap-3">
-          <input
-            placeholder="Enter channel name..."
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={30}
-            className="w-80 border-2 border-gray-200 px-4 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
-          />
-          <button
-            onClick={createChannel}
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-semibold shadow-sm hover:shadow-md transition-all whitespace-nowrap"
-          >
-            {loading ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <>
+          <div className="flex gap-3">
+            <input
+              placeholder="Enter channel name..."
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={30}
+              className="flex-1 max-w-md border-2 border-gray-200 px-4 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+            />
+            <button
+              onClick={createChannel}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-semibold shadow-md hover:shadow-lg transition-all whitespace-nowrap"
+            >
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
                 <Plus size={16} />
-                Create
-              </>
-            )}
-          </button>
+              )}
+              Create Channel
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-w-2xl">
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Channels ({filteredChannels.length} {filteredChannels.length === 1 ? 'channel' : 'channels'})
-            </h3>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm table-fixed">
-              <thead className="bg-gray-50 border-b-2 border-gray-200">
-                <tr className="text-gray-700">
-                  <th className="px-6 py-4 text-left font-semibold w-48">Channel Name</th>
-                  <th className="px-6 py-4 text-left font-semibold w-32">Created Date</th>
-                  <th className="px-6 py-4 text-center font-semibold w-24">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredChannels.map((c) => (
-                  <tr key={c._id} className="hover:bg-gray-50 transition-colors duration-200">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <Layers className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <span className="font-medium text-gray-900">{c.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-gray-600">
-                        {new Date(c.createdAt).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-center items-center gap-2">
-                        <button
-                          onClick={() => openEditModal(c)}
-                          className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md"
-                          title="Edit channel"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(c)}
-                          className="p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
-                          title="Delete channel"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {filteredChannels.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-400 mb-4">
-                  <Layers className="mx-auto h-12 w-12" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No channels found</h3>
-                <p className="text-gray-500">Create your first channel to get started</p>
-              </div>
-            )}
-          </div>
+      <div className="max-w-3xl">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Channels ({filteredChannels.length})
+          </h3>
         </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b-2 border-gray-200">
+              <tr className="text-gray-700">
+                <th className="px-6 py-4 text-left font-semibold">Channel Name</th>
+                <th className="px-6 py-4 text-left font-semibold">Created Date</th>
+                <th className="px-6 py-4 text-center font-semibold w-32">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredChannels.map((c) => (
+                <tr key={c._id} className="hover:bg-gray-50 transition-colors duration-200">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
+                        <Layers className="w-5 h-5 text-white" />
+                      </div>
+                      <span className="font-medium text-gray-900">{c.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-gray-600">
+                    {new Date(c.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex justify-center gap-2">
+                      <button
+                        onClick={() => openEditModal(c)}
+                        className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                        title="Edit channel"
+                      >
+                        <Pencil size={24} />
+                      </button>
+                      <button
+                        onClick={() => openDeleteModal(c)}
+                        className="p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                        title="Delete channel"
+                      >
+                        <Trash2 size={24} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {filteredChannels.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Layers className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No channels found</h3>
+              <p className="text-gray-500">Create your first channel to get started</p>
+            </div>
+          )}
+        </div>
+        </div>
+      </div>
 
         {/* EDIT MODAL */}
         {editingChannel && (

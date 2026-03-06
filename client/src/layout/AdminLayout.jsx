@@ -13,13 +13,13 @@ const adminMenu = [
   { label: "Help", path: "/admin/help", icon: HelpCircle, color: "text-cyan-600" }
 ];
 
-export default function AdminLayout({ title, children, onCacheClear, noPadding }) {
+export default function AdminLayout({ title, titleInfo, icon: Icon, children, onCacheClear, noPadding, onHistoryClick, historyCount }) {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar menu={adminMenu} />
 
       <div className="flex-1 flex flex-col ml-0 md:ml-64 overflow-hidden">
-        <Topbar title={title} onCacheClear={onCacheClear} />
+        <Topbar title={title} titleInfo={titleInfo} icon={Icon} onCacheClear={onCacheClear} onHistoryClick={onHistoryClick} historyCount={historyCount} />
         <div className={`flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-cyan-50 to-blue-50 ${noPadding ? "" : "p-6"}`}>{children}</div>
       </div>
     </div>

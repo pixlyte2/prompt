@@ -51,19 +51,11 @@ export default function Settings() {
   };
 
   return (
-    <AdminLayout title="Settings">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-4 mb-6">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-white bg-opacity-20 rounded-xl">
-            <Shield className="w-8 h-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-white">Gemini API Configuration</h2>
-            <p className="text-blue-100">Your API key is encrypted using AES-256-GCM</p>
-          </div>
-        </div>
-      </div>
+    <AdminLayout 
+      title="Settings" 
+      titleInfo="Configure your Gemini API key with AES-256-GCM encryption"
+      icon={Shield}
+    >
 
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
         <div className="space-y-6">

@@ -71,120 +71,124 @@ export default function Users() {
   };
 
   return (
-    <AdminLayout title="User Management">
+    <AdminLayout 
+      title="User Management" 
+      titleInfo="Manage users and their access permissions"
+      icon={UsersIcon}
+    >
       <PageSectionLoader show={isLoading("page")} />
-      
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-4 mb-6">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-white bg-opacity-20 rounded-xl">
-            <UsersIcon className="w-8 h-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-white">
-              User Management
-            </h2>
-            <p className="text-blue-100">Manage users and their access permissions</p>
-          </div>
-        </div>
-      </div>
 
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-6">Add New User</h3>
+      <div className="max-w-4xl">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
+          <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <Plus className="w-5 h-5 text-blue-600" />
+            Add New User
+          </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <input
               placeholder="Full Name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+              className="border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
             />
             <input
               type="email"
               placeholder="Email Address"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+              className="border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
             />
             <input
               type="password"
               placeholder="Password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+              className="border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
             />
             <select
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
-              className="border-2 border-gray-200 px-4 py-3 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all bg-white"
+              className="border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all bg-white"
             >
               <option value="viewer">Viewer</option>
               <option value="content_manager">Content Manager</option>
             </select>
+          </div>
+          <div className="mt-4">
             <button
               onClick={createUser}
               disabled={loading}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl disabled:opacity-50 flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg disabled:opacity-50 flex items-center gap-2 font-semibold shadow-md hover:shadow-lg transition-all"
             >
-              <Plus size={18} />
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <Plus size={18} />
+              )}
               Create User
             </button>
           </div>
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-w-3xl">
-          <div className="px-6 py-4 border-b bg-gray-50">
-            <h3 className="font-semibold">Users ({users.length})</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full table-fixed">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-6 py-3 text-left font-medium w-48">Name</th>
-                  <th className="px-6 py-3 text-left font-medium w-48">Email</th>
-                  <th className="px-6 py-3 text-left font-medium w-64">Role</th>
-                  <th className="px-6 py-3 text-center font-medium w-24">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {users.map(u => (
-                  <tr key={u._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <UsersIcon className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <span className="font-medium">{u.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">{u.email}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs rounded-full capitalize ${getRoleBadge(u.role)}`}>
-                        {u.role.replace("_", " ")}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => setDeleting(u)}
-                        className="p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
-                        title="Delete user"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {users.length === 0 && (
-              <div className="text-center py-12">
-                <UsersIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
-                <p className="text-gray-500">Create your first user to get started</p>
-              </div>
-            )}
-          </div>
+      <div className="max-w-4xl">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-800">Users ({users.length})</h3>
         </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b-2 border-gray-200">
+              <tr className="text-gray-700">
+                <th className="px-6 py-4 text-left font-semibold">Name</th>
+                <th className="px-6 py-4 text-left font-semibold">Email</th>
+                <th className="px-6 py-4 text-left font-semibold">Role</th>
+                <th className="px-6 py-4 text-center font-semibold w-32">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {users.map(u => (
+                <tr key={u._id} className="hover:bg-gray-50 transition-colors duration-200">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
+                        <UsersIcon className="w-5 h-5 text-white" />
+                      </div>
+                      <span className="font-medium text-gray-900">{u.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-gray-600">{u.email}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getRoleBadge(u.role)}`}>
+                      {u.role.replace("_", " ")}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <button
+                      onClick={() => setDeleting(u)}
+                      className="p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                      title="Delete user"
+                    >
+                      <Trash2 size={24} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {users.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <UsersIcon className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No users found</h3>
+              <p className="text-gray-500">Create your first user to get started</p>
+            </div>
+          )}
+        </div>
+        </div>
+      </div>
 
       <ConfirmModal
         isOpen={!!deleting}

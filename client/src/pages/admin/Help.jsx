@@ -70,15 +70,12 @@ export default function Help() {
   ];
 
   return (
-    <AdminLayout title="Help & Guide">
+    <AdminLayout 
+      title="Help & Guide" 
+      titleInfo="Complete guide to manage prompts and AI interactions"
+      icon={HelpCircle}
+    >
       <div className="bg-gray-50 p-4">
-        <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg p-6 text-white shadow-lg mb-4">
-          <div className="flex items-center gap-3 mb-2">
-            <HelpCircle size={32} />
-            <h1 className="text-3xl font-bold">How to Use CreatorAI</h1>
-          </div>
-          <p className="text-cyan-100">Complete guide to manage prompts and AI interactions</p>
-        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {sections.map((section, idx) => {

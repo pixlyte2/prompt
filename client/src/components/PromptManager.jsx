@@ -540,7 +540,7 @@ const loadPrompts = async () => {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 text-left w-24 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  className="px-6 py-4 text-left w-48 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
                   onClick={() => handleSort('model')}
                 >
                   <div className="flex items-center gap-2 font-semibold">
@@ -602,7 +602,7 @@ const loadPrompts = async () => {
                   </td>
 
                   <td className="px-4 py-2">
-                    <span className="text-gray-600 font-mono text-xs truncate max-w-24 block">
+                    <span className="text-gray-600 font-mono text-xs">
                       {p.aiModel || "-"}
                     </span>
                   </td>
@@ -675,20 +675,20 @@ const loadPrompts = async () => {
 
         {/* PAGINATION */}
         {filtered.length > 0 && (
-          <div className="bg-gray-50 px-4 md:px-6 py-4 border-t border-gray-200">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-              <div className="text-sm text-gray-600">
-                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, filtered.length)} of {filtered.length} results
+          <div className="bg-white px-4 md:px-6 py-4 border-t border-gray-200">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="text-sm font-medium text-gray-700">
+                Showing <span className="text-blue-600 font-semibold">{((page - 1) * pageSize) + 1}</span> to <span className="text-blue-600 font-semibold">{Math.min(page * pageSize, filtered.length)}</span> of <span className="text-blue-600 font-semibold">{filtered.length}</span> results
               </div>
               
               {totalPages > 1 && (
-                <div className="flex items-center gap-2 flex-wrap justify-center">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage(prev => Math.max(1, prev - 1))}
                     disabled={page === 1}
-                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors duration-200 font-medium"
+                    className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 font-semibold text-gray-700 hover:text-blue-600 shadow-sm"
                   >
-                    Previous
+                    ← Previous
                   </button>
                   
                   <div className="flex items-center gap-1">
@@ -698,10 +698,10 @@ const loadPrompts = async () => {
                         <button
                           key={pageNum}
                           onClick={() => setPage(pageNum)}
-                          className={`px-3 py-2 rounded-lg font-medium transition-colors duration-200 ${
+                          className={`min-w-[2.5rem] px-3 py-2 rounded-lg font-semibold transition-all duration-200 shadow-sm ${
                             page === pageNum
-                              ? "bg-blue-600 text-white"
-                              : "text-gray-600 hover:bg-gray-100"
+                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md scale-105"
+                              : "bg-white border-2 border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600"
                           }`}
                         >
                           {pageNum}
@@ -713,9 +713,9 @@ const loadPrompts = async () => {
                   <button
                     onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={page === totalPages}
-                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors duration-200 font-medium"
+                    className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 font-semibold text-gray-700 hover:text-blue-600 shadow-sm"
                   >
-                    Next
+                    Next →
                   </button>
                 </div>
               )}
