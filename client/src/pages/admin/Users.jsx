@@ -132,24 +132,31 @@ export default function Users() {
           </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-w-3xl">
           <div className="px-6 py-4 border-b bg-gray-50">
             <h3 className="font-semibold">Users ({users.length})</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-fixed">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left font-medium">Name</th>
-                  <th className="px-6 py-3 text-left font-medium">Email</th>
-                  <th className="px-6 py-3 text-left font-medium">Role</th>
-                  <th className="px-6 py-3 text-center font-medium">Actions</th>
+                  <th className="px-6 py-3 text-left font-medium w-48">Name</th>
+                  <th className="px-6 py-3 text-left font-medium w-48">Email</th>
+                  <th className="px-6 py-3 text-left font-medium w-64">Role</th>
+                  <th className="px-6 py-3 text-center font-medium w-24">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {users.map(u => (
                   <tr key={u._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium">{u.name}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <UsersIcon className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <span className="font-medium">{u.name}</span>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-gray-600">{u.email}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs rounded-full capitalize ${getRoleBadge(u.role)}`}>
@@ -159,7 +166,8 @@ export default function Users() {
                     <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => setDeleting(u)}
-                        className="p-2 text-red-600 hover:bg-red-100 rounded"
+                        className="p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                        title="Delete user"
                       >
                         <Trash2 size={14} />
                       </button>

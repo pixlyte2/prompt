@@ -147,39 +147,46 @@ export default function PromptTypes() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-w-2xl">
         <div className="px-6 py-4 border-b bg-gray-50">
           <h3 className="font-semibold">Types ({types.length})</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-6 py-3 text-left font-medium">Channel</th>
-                <th className="px-6 py-3 text-left font-medium">Name</th>
-                <th className="px-6 py-3 text-center font-medium">Actions</th>
+                <th className="px-6 py-3 text-left font-medium w-48">Channel</th>
+                <th className="px-6 py-3 text-left font-medium w-48">Name</th>
+                <th className="px-6 py-3 text-center font-medium w-24">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {types.map(t => (
                 <tr key={t._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm">
-                      {t.channelId?.name || "-"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-medium">{t.name}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <Tag className="w-4 h-4 text-purple-600" />
+                        </div>
+                        <span className="inline-flex px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full truncate max-w-28">
+                          {t.channelId?.name || "-"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-medium">{t.name}</td>
                   <td className="px-6 py-4">
                     <div className="flex justify-center gap-2">
                       <button
                         onClick={() => { setEditing(t); setEditName(t.name); }}
-                        className="p-2 text-amber-600 hover:bg-amber-100 rounded"
+                        className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                        title="Edit prompt type"
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         onClick={() => setDeleting(t)}
-                        className="p-2 text-red-600 hover:bg-red-100 rounded"
+                        className="p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                        title="Delete prompt type"
                       >
                         <Trash2 size={14} />
                       </button>

@@ -619,37 +619,37 @@ const loadPrompts = async () => {
                     <div className="flex justify-center items-center gap-2">
                       <button 
                         onClick={() => openPreview(p)} 
-                        className="p-3 bg-purple-100 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="p-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                         title="Preview prompt"
                       >
-                        <Eye size={18} />
+                        <Eye size={14} />
                       </button>
 
                       <button 
                         onClick={() => copyText(p.promptText, p)} 
-                        className="p-3 bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                         title="Copy prompt"
                       >
-                        <Copy size={18} />
+                        <Copy size={14} />
                       </button>
 
                       {(role === "admin" || role === "content_manager") && (
                         <button 
                           onClick={() => openEdit(p)} 
-                          className="p-3 bg-amber-100 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                          className="p-2 bg-amber-600 text-white hover:bg-amber-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                           title="Edit prompt"
                         >
-                          <Pencil size={18} />
+                          <Pencil size={14} />
                         </button>
                       )}
 
                       {role === "admin" && (
                         <button 
                           onClick={() => openDeleteModal(p)} 
-                          className="p-3 bg-red-100 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                          className="p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                           title="Delete prompt"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={14} />
                         </button>
                       )}
                     </div>

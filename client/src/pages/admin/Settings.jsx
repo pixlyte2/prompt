@@ -27,6 +27,11 @@ export default function Settings() {
       return;
     }
 
+    if (apiKey.length < 10) {
+      toast.error("API key seems too short. Please check your key");
+      return;
+    }
+
     setLoading(true);
     try {
       const encrypted = await encryptData(apiKey);
@@ -127,7 +132,7 @@ export default function Settings() {
             </button>
             <button
               onClick={saveApiKey}
-              disabled={loading || !apiKey.trim()}
+              disabled={loading}
               className="px-10 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 transform hover:scale-105"
             >
               {loading ? (

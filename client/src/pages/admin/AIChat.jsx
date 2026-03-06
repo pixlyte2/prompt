@@ -173,7 +173,7 @@ export default function AIChat() {
           </div>
           <button
             onClick={openHistoryModal}
-            className="px-5 py-2.5 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg transition-all flex items-center gap-2 font-semibold text-sm"
+            className="px-5 py-2.5 bg-white hover:bg-gray-100 text-blue-600 rounded-lg transition-all flex items-center gap-2 font-semibold text-sm shadow-md hover:shadow-lg"
           >
             <History size={18} />
             History ({history.length})
@@ -263,9 +263,9 @@ export default function AIChat() {
           </div>
 
           {finalizedPrompt && (
-            <div className="bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-xl p-5">
-              <div className="text-xs font-bold text-cyan-700 uppercase mb-3 tracking-wide">Finalized Prompt</div>
-              <div className="text-sm text-gray-800 whitespace-pre-wrap max-h-48 overflow-y-auto bg-white p-4 rounded-lg">{finalizedPrompt}</div>
+            <div className="bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-xl p-4">
+              <div className="text-xs font-bold text-cyan-700 uppercase mb-2 tracking-wide">Finalized Prompt</div>
+              <div className="text-sm text-gray-800 whitespace-pre-wrap max-h-32 overflow-y-auto bg-white p-3 rounded-lg">{finalizedPrompt}</div>
             </div>
           )}
 
@@ -303,7 +303,7 @@ export default function AIChat() {
       {/* History Modal - Gemini Style */}
       {historyModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-6xl h-[85vh] flex flex-col shadow-2xl">
+          <div className="bg-white rounded-xl w-full max-w-6xl h-[75vh] flex flex-col shadow-2xl">
             <div className="p-5 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-xl">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <History size={24} />

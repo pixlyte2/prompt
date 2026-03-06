@@ -143,7 +143,7 @@ export default function Channels() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-w-2xl">
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800">
               Channels ({filteredChannels.length} {filteredChannels.length === 1 ? 'channel' : 'channels'})
@@ -151,12 +151,12 @@ export default function Channels() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm table-auto">
+            <table className="w-full text-sm table-fixed">
               <thead className="bg-gray-50 border-b-2 border-gray-200">
                 <tr className="text-gray-700">
-                  <th className="px-6 py-4 text-left font-semibold">Channel Name</th>
-                  <th className="px-6 py-4 text-left font-semibold">Created Date</th>
-                  <th className="px-6 py-4 text-center font-semibold w-32">Actions</th>
+                  <th className="px-6 py-4 text-left font-semibold w-48">Channel Name</th>
+                  <th className="px-6 py-4 text-left font-semibold w-32">Created Date</th>
+                  <th className="px-6 py-4 text-center font-semibold w-24">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -164,7 +164,9 @@ export default function Channels() {
                   <tr key={c._id} className="hover:bg-gray-50 transition-colors duration-200">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <Layers className="w-4 h-4 text-blue-600" />
+                        </div>
                         <span className="font-medium text-gray-900">{c.name}</span>
                       </div>
                     </td>
