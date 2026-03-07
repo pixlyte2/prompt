@@ -9,15 +9,23 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    console.log("Login attempt for:", email);
+
     // find user
     const user = await User.findOne({ email });
-    if (!user)
+    if (!user) {
+      console.log("User not found:", email);
       return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log("User found:", user.email, "Role:", user.role);
 
     // compare password
     const match = await bcrypt.compare(password, user.password);
-    if (!match)
+    if (!match) {
+      console.log("Password mismatch for:", email);
       return res.status(401).json({ message: "Wrong password" });
+    }
 
     // ❌ block superadmin here (they have separate login)
     if (user.role === "superadmin") {
@@ -35,12 +43,15 @@ const login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    console.log("Login successful for:", email);
+
     res.json({
       token,
       role: user.role,
       companyId: user.companyId
     });
   } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({ message: err.message });
   }
 };

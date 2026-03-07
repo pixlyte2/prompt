@@ -308,23 +308,23 @@ const loadPrompts = async () => {
   };
 
   return (
-    <div className="bg-gray-50 p-4">
+    <div className="bg-gray-50 p-3">
       <PageSectionLoader show={isLoading("page")} />
 
       {/* HEADER SECTION */}
-      <div className="mb-4">
+      <div className="mb-3">
         {/* CONTROL PANEL */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
           {/* Channel Filters */}
-          <div className="mb-4">
-            <div className="flex gap-3 flex-wrap">
+          <div className="mb-3">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => {
                   setSelectedChannel(null);
                   setSelectedType(null);
                   setPage(1);
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                   !selectedChannel
                     ? "bg-blue-600 text-white shadow-sm"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -342,7 +342,7 @@ const loadPrompts = async () => {
                       setSelectedType(null);
                       setPage(1);
                     }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                       selectedChannel === channel._id
                         ? "bg-blue-600 text-white shadow-sm"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -357,17 +357,17 @@ const loadPrompts = async () => {
 
           {/* Type Filters - Only show when channel is selected */}
           {selectedChannel && (
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-2">
+            <div className="mb-3">
+              <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-medium text-gray-600">Filter by Type:</span>
               </div>
-              <div className="flex gap-3 flex-wrap">
+              <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => {
                     setSelectedType(null);
                     setPage(1);
                   }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                     !selectedType
                       ? "bg-emerald-600 text-white shadow-sm"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -390,7 +390,7 @@ const loadPrompts = async () => {
                         setSelectedType(typeId);
                         setPage(1);
                       }}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                         selectedType === typeId
                           ? "bg-emerald-600 text-white shadow-sm"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -405,7 +405,7 @@ const loadPrompts = async () => {
           )}
 
           {/* Search & Actions */}
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3">
             {/* Search */}
             <div className="flex-1 max-w-md">
               <div className="relative">
@@ -416,9 +416,9 @@ const loadPrompts = async () => {
                     setSearch(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full border border-gray-300 px-4 py-2.5 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 pl-10"
+                  className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 pl-9"
                 />
-                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
@@ -428,8 +428,8 @@ const loadPrompts = async () => {
             <div className="text-sm text-gray-600 hidden md:block">
               <div className="font-medium">{filtered.length} {filtered.length === 1 ? 'result' : 'results'}</div>
               {selectedRows.length > 0 && (
-                <div className="mt-1">
-                  <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                <div className="mt-0.5">
+                  <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                     {selectedRows.length} selected
                   </span>
                 </div>
@@ -437,13 +437,13 @@ const loadPrompts = async () => {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto">
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
               {/* Bulk Actions */}
               {prompts.length > 0 && (
                 <button
                   onClick={handleGlobalSelectAll}
                   disabled={isLoading("selectAll")}
-                  className={`px-3 md:px-4 py-2.5 rounded-lg text-xs md:text-sm font-medium border transition-all duration-200 ${
+                  className={`px-3 py-2 rounded-lg text-xs md:text-sm font-medium border transition-all duration-200 ${
                     isLoading("selectAll") 
                       ? "opacity-50 cursor-not-allowed bg-gray-100 border-gray-200" 
                       : "bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:border-gray-400"
@@ -461,20 +461,20 @@ const loadPrompts = async () => {
               <button
                 onClick={handleExport}
                 disabled={!selectedRows.length}
-                className={`px-3 md:px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-xs md:text-sm ${
+                className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-1.5 text-xs md:text-sm ${
                   selectedRows.length
                     ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
                     : "bg-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
               >
-                <Download size={16} />
+                <Download size={14} />
                 Export JSON ({selectedRows.length})
               </button>
 
               {(role === "admin" || role === "content_manager") && (
                 <button
                   onClick={openCreate}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-xs md:text-sm shadow-sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-1.5 text-xs md:text-sm shadow-sm"
                 >
                   <span className="text-lg leading-none">+</span>
                   New Prompt
@@ -488,7 +488,7 @@ const loadPrompts = async () => {
       {/* RESULTS SECTION */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Results Header */}
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold text-gray-800">
               Results ({filtered.length} {filtered.length === 1 ? 'prompt' : 'prompts'})
@@ -509,7 +509,7 @@ const loadPrompts = async () => {
           <table className="w-full text-sm table-auto min-w-[800px]">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr className="text-gray-700">
-                <th className="px-6 py-4 text-center w-12">
+                <th className="px-4 py-3 text-center w-12">
                   <input
                     type="checkbox"
                     checked={filtered.length > 0 && selectedRows.length === filtered.length && filtered.every(p => selectedRows.includes(p._id))}
@@ -518,7 +518,7 @@ const loadPrompts = async () => {
                   />
                 </th>
                 <th 
-                  className="px-6 py-4 text-left w-32 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  className="px-4 py-3 text-left w-32 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
                   onClick={() => handleSort('channel')}
                 >
                   <div className="flex items-center gap-2 font-semibold">
@@ -529,7 +529,7 @@ const loadPrompts = async () => {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 text-left w-28 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  className="px-4 py-3 text-left w-28 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
                   onClick={() => handleSort('type')}
                 >
                   <div className="flex items-center gap-2 font-semibold">
@@ -540,7 +540,7 @@ const loadPrompts = async () => {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 text-left w-48 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  className="px-4 py-3 text-left w-48 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
                   onClick={() => handleSort('model')}
                 >
                   <div className="flex items-center gap-2 font-semibold">
@@ -551,7 +551,7 @@ const loadPrompts = async () => {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 text-left cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  className="px-4 py-3 text-left cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
                   onClick={() => handleSort('prompt')}
                 >
                   <div className="flex items-center gap-2 font-semibold">
@@ -561,7 +561,7 @@ const loadPrompts = async () => {
                     )}
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center w-32 font-semibold">Actions</th>
+                <th className="px-4 py-3 text-center w-32 font-semibold">Actions</th>
               </tr>
             </thead>
 
@@ -675,18 +675,18 @@ const loadPrompts = async () => {
 
         {/* PAGINATION */}
         {filtered.length > 0 && (
-          <div className="bg-white px-4 md:px-6 py-4 border-t border-gray-200">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="bg-white px-4 py-3 border-t border-gray-200">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-3">
               <div className="text-sm font-medium text-gray-700">
                 Showing <span className="text-blue-600 font-semibold">{((page - 1) * pageSize) + 1}</span> to <span className="text-blue-600 font-semibold">{Math.min(page * pageSize, filtered.length)}</span> of <span className="text-blue-600 font-semibold">{filtered.length}</span> results
               </div>
               
               {totalPages > 1 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <button
                     onClick={() => setPage(prev => Math.max(1, prev - 1))}
                     disabled={page === 1}
-                    className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 font-semibold text-gray-700 hover:text-blue-600 shadow-sm"
+                    className="px-3 py-1.5 bg-white border-2 border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 font-semibold text-gray-700 hover:text-blue-600 shadow-sm text-sm"
                   >
                     ← Previous
                   </button>
@@ -698,7 +698,7 @@ const loadPrompts = async () => {
                         <button
                           key={pageNum}
                           onClick={() => setPage(pageNum)}
-                          className={`min-w-[2.5rem] px-3 py-2 rounded-lg font-semibold transition-all duration-200 shadow-sm ${
+                          className={`min-w-[2rem] px-2 py-1.5 rounded-lg font-semibold transition-all duration-200 shadow-sm text-sm ${
                             page === pageNum
                               ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md scale-105"
                               : "bg-white border-2 border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600"
@@ -713,7 +713,7 @@ const loadPrompts = async () => {
                   <button
                     onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={page === totalPages}
-                    className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 font-semibold text-gray-700 hover:text-blue-600 shadow-sm"
+                    className="px-3 py-1.5 bg-white border-2 border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 font-semibold text-gray-700 hover:text-blue-600 shadow-sm text-sm"
                   >
                     Next →
                   </button>

@@ -9,7 +9,7 @@ export default function AIChat() {
   const [prompts, setPrompts] = useState([]);
   const [selectedPrompt, setSelectedPrompt] = useState("");
   const [sourceText, setSourceText] = useState("");
-  const [videoLength, setVideoLength] = useState("reel");
+  const [videoLength, setVideoLength] = useState("40s");
   const [finalizedPrompt, setFinalizedPrompt] = useState("");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -44,9 +44,16 @@ export default function AIChat() {
     const prompt = prompts.find(p => p._id === selectedPrompt);
     if (!prompt) return;
 
+    const lengthMap = {
+      '40s': '40 seconds',
+      '2min': '2 minutes', 
+      '3min': '3 minutes',
+      '5min': '5 minutes'
+    };
+    
     const finalized = prompt.promptText
       .replace(/\[SOURCE\]/g, sourceText || '[SOURCE]')
-      .replace(/\[LENGTH\]/g, videoLength === 'reel' ? 'Short Video 30s' : 'Long Video 3 min');
+      .replace(/\[LENGTH\]/g, lengthMap[videoLength] || videoLength);
     
     setFinalizedPrompt(finalized);
   };
@@ -165,7 +172,7 @@ export default function AIChat() {
     >
       {/* Main Form Card */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div className="flex gap-3">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">
@@ -176,8 +183,10 @@ export default function AIChat() {
                 onChange={(e) => setVideoLength(e.target.value)}
                 className="w-48 px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white transition-all"
               >
-                <option value="reel">Reel (30s)</option>
-                <option value="long">Long (3 min)</option>
+                <option value="40s">40 seconds</option>
+                <option value="2min">2 minutes</option>
+                <option value="3min">3 minutes</option>
+                <option value="5min">5 minutes</option>
               </select>
             </div>
 
@@ -199,27 +208,14 @@ export default function AIChat() {
                   ))}
                 </select>
                 {selectedPrompt && (
-                  <>
-                    <button
-                      onClick={() => setPreviewModal(true)}
-                      className="px-4 py-2.5 bg-purple-100 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg transition-all flex items-center gap-2 font-semibold whitespace-nowrap shadow-sm hover:shadow-md"
-                      title="Preview prompt"
-                    >
-                      <Eye size={16} />
-                      <span className="hidden sm:inline">Preview</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(finalizedPrompt);
-                        toast.success("Prompt copied");
-                      }}
-                      className="px-4 py-2.5 bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all flex items-center gap-2 font-semibold whitespace-nowrap shadow-sm hover:shadow-md"
-                      title="Copy prompt"
-                    >
-                      <Copy size={16} />
-                      <span className="hidden sm:inline">Copy</span>
-                    </button>
-                  </>
+                  <button
+                    onClick={() => setPreviewModal(true)}
+                    className="px-4 py-2.5 bg-purple-100 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg transition-all flex items-center gap-2 font-semibold whitespace-nowrap shadow-sm hover:shadow-md"
+                    title="Preview prompt"
+                  >
+                    <Eye size={16} />
+                    <span className="hidden sm:inline">Preview</span>
+                  </button>
                 )}
               </div>
             </div>
@@ -240,14 +236,37 @@ export default function AIChat() {
               onChange={(e) => setSourceText(e.target.value)}
               placeholder="Paste YouTube URL, script, or any text here..."
               className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 resize-none transition-all"
-              rows={5}
+              rows={4}
             />
           </div>
 
           {finalizedPrompt && (
-            <div className="bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-xl p-4">
-              <div className="text-xs font-bold text-cyan-700 uppercase mb-2 tracking-wide">Finalized Prompt</div>
-              <div className="text-sm text-gray-800 whitespace-pre-wrap max-h-32 overflow-y-auto bg-white p-3 rounded-lg">{finalizedPrompt}</div>
+            <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 border-2 border-indigo-200 rounded-2xl p-5 shadow-lg">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full animate-pulse"></div>
+                  <h3 className="text-sm font-bold text-indigo-800 uppercase tracking-wide">Finalized Prompt</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(finalizedPrompt);
+                    toast.success("Finalized prompt copied to clipboard!");
+                  }}
+                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md hover:shadow-lg font-semibold text-base transition-all"
+                >
+                  <Copy size={16} />
+                  Copy Prompt
+                </button>
+              </div>
+              <div className="bg-white border border-indigo-200 rounded-xl p-4 shadow-inner">
+                <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed font-medium max-h-32 overflow-y-auto">
+                  {finalizedPrompt}
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-xs text-indigo-600">
+                <div className="w-2 h-2 bg-indigo-400 rounded-full"></div>
+                <span className="font-medium">Ready to generate amazing content</span>
+              </div>
             </div>
           )}
 
@@ -453,7 +472,15 @@ export default function AIChat() {
                 <pre className="whitespace-pre-wrap text-sm text-gray-900 font-sans leading-relaxed">
                   {prompts.find(p => p._id === selectedPrompt)?.promptText
                     ?.replace(/\[SOURCE\]/g, sourceText || '[SOURCE]')
-                    ?.replace(/\[LENGTH\]/g, videoLength === 'reel' ? 'Short Video 30s' : 'Long Video 3 min')}
+                    ?.replace(/\[LENGTH\]/g, (() => {
+                      const lengthMap = {
+                        '40s': '40 seconds',
+                        '2min': '2 minutes', 
+                        '3min': '3 minutes',
+                        '5min': '5 minutes'
+                      };
+                      return lengthMap[videoLength] || videoLength;
+                    })())}
                 </pre>
               </div>
             </div>
@@ -461,13 +488,24 @@ export default function AIChat() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(prompts.find(p => p._id === selectedPrompt)?.promptText);
-                  toast.success("Copied to clipboard");
+                  toast.success("Original prompt copied to clipboard!");
                   setPreviewModal(false);
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
               >
                 <Copy size={18} />
-                Copy
+                Copy Original
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(finalizedPrompt);
+                  toast.success("Finalized prompt copied to clipboard!");
+                  setPreviewModal(false);
+                }}
+                className="bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+              >
+                <Copy size={18} />
+                Copy Finalized
               </button>
               <button
                 onClick={() => setPreviewModal(false)}

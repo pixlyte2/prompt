@@ -27,7 +27,7 @@ export default function Topbar({ title, titleInfo, icon: Icon, onCacheClear, onH
         {onHistoryClick && (
           <button
             onClick={onHistoryClick}
-            className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium group"
+            className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium group"
             title="View history"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-[-360deg] transition-transform duration-500"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
@@ -36,7 +36,7 @@ export default function Topbar({ title, titleInfo, icon: Icon, onCacheClear, onH
         )}
         <button
           onClick={handleClearCache}
-          className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium group"
+          className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium group"
           title="Clear all cached data"
         >
           <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
