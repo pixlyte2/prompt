@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, Plus, Layers, X } from "lucide-react";
+import { Pencil, Trash2, Plus, Layers, X, Search, ArrowUpDown } from "lucide-react";
 import { Toaster, toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
@@ -17,6 +17,8 @@ export default function Channels() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const { startLoading, stopLoading, isLoading } = useLoading();
 
@@ -96,7 +98,24 @@ export default function Channels() {
     }
   };
 
-  const filteredChannels = channels;
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const filteredChannels = channels
+    .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+      const aVal = sortConfig.key === 'createdAt' ? new Date(a[sortConfig.key]).getTime() : a[sortConfig.key]?.toString().toLowerCase() || '';
+      const bVal = sortConfig.key === 'createdAt' ? new Date(b[sortConfig.key]).getTime() : b[sortConfig.key]?.toString().toLowerCase() || '';
+      if (sortConfig.key === 'createdAt') {
+        return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      return sortConfig.direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
 
   return (
     <AdminLayout 
@@ -106,8 +125,8 @@ export default function Channels() {
     >
       <PageSectionLoader show={isLoading("page")} />
 
-      {/* Add Channel Button */}
-      <div className="max-w-3xl mb-4">
+      {/* Add Channel Button and Search */}
+      <div className="max-w-3xl mb-4 flex gap-3">
         <button
           onClick={() => setShowAddModal(true)}
           className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl flex items-center gap-2 transform hover:scale-105"
@@ -115,6 +134,16 @@ export default function Channels() {
           <Plus size={20} />
           Add New Channel
         </button>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Search channels..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+          />
+        </div>
       </div>
 
       {/* Add Channel Modal */}
@@ -183,8 +212,18 @@ export default function Channels() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr className="text-gray-700">
-                <th className="px-4 py-3 text-left font-semibold">Channel Name</th>
-                <th className="px-4 py-3 text-left font-semibold">Created Date</th>
+                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('name')}>
+                  <div className="flex items-center gap-2">
+                    Channel Name
+                    <ArrowUpDown size={14} className="text-gray-400" />
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('createdAt')}>
+                  <div className="flex items-center gap-2">
+                    Created Date
+                    <ArrowUpDown size={14} className="text-gray-400" />
+                  </div>
+                </th>
                 <th className="px-4 py-3 text-center font-semibold w-32">Actions</th>
               </tr>
             </thead>

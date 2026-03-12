@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { Plus, Trash2, Users as UsersIcon, X } from "lucide-react";
+import { Plus, Trash2, Users as UsersIcon, X, Search, ArrowUpDown } from "lucide-react";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -13,6 +13,8 @@ export default function Users() {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const { startLoading, stopLoading, isLoading } = useLoading();
 
@@ -72,6 +74,26 @@ export default function Users() {
     }
   };
 
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const filteredAndSortedUsers = users
+    .filter(u => 
+      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.role.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+      const aVal = a[sortConfig.key]?.toString().toLowerCase() || '';
+      const bVal = b[sortConfig.key]?.toString().toLowerCase() || '';
+      return sortConfig.direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+
   return (
     <AdminLayout 
       title="User Management" 
@@ -80,8 +102,8 @@ export default function Users() {
     >
       <PageSectionLoader show={isLoading("page")} />
 
-      {/* Add User Button */}
-      <div className="max-w-4xl mb-4">
+      {/* Add User Button and Search */}
+      <div className="max-w-4xl mb-4 flex gap-3">
         <button
           onClick={() => setShowAddModal(true)}
           className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl flex items-center gap-2 transform hover:scale-105"
@@ -89,6 +111,16 @@ export default function Users() {
           <Plus size={20} />
           Add New User
         </button>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+          />
+        </div>
       </div>
 
       {/* Add User Modal */}
@@ -188,20 +220,35 @@ export default function Users() {
       <div className="max-w-4xl">
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800">Users ({users.length})</h3>
+          <h3 className="text-lg font-semibold text-gray-800">Users ({filteredAndSortedUsers.length})</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr className="text-gray-700">
-                <th className="px-4 py-3 text-left font-semibold">Name</th>
-                <th className="px-4 py-3 text-left font-semibold">Email</th>
-                <th className="px-4 py-3 text-left font-semibold">Role</th>
+                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('name')}>
+                  <div className="flex items-center gap-2">
+                    Name
+                    <ArrowUpDown size={14} className="text-gray-400" />
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('email')}>
+                  <div className="flex items-center gap-2">
+                    Email
+                    <ArrowUpDown size={14} className="text-gray-400" />
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('role')}>
+                  <div className="flex items-center gap-2">
+                    Role
+                    <ArrowUpDown size={14} className="text-gray-400" />
+                  </div>
+                </th>
                 <th className="px-4 py-3 text-center font-semibold w-32">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {users.map(u => (
+              {filteredAndSortedUsers.map(u => (
                 <tr key={u._id} className="hover:bg-gray-50 transition-colors duration-200">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -230,7 +277,7 @@ export default function Users() {
               ))}
             </tbody>
           </table>
-          {users.length === 0 && (
+          {filteredAndSortedUsers.length === 0 && (
             <div className="text-center py-16">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <UsersIcon className="w-8 h-8 text-gray-400" />

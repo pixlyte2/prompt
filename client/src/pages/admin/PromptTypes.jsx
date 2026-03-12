@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { Plus, Pencil, Trash2, Tag, Download, Layers, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Tag, Download, Layers, X, Search, ArrowUpDown } from "lucide-react";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
 import { exportToCSV } from "../../utils/csvExport";
@@ -16,6 +16,8 @@ export default function PromptTypes() {
   const [editName, setEditName] = useState("");
   const [deleting, setDeleting] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const { startLoading, stopLoading, isLoading } = useLoading();
 
@@ -92,6 +94,31 @@ export default function PromptTypes() {
     toast.success("Exported successfully");
   };
 
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const filteredAndSortedTypes = types
+    .filter(t => 
+      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.channelId?.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+      let aVal, bVal;
+      if (sortConfig.key === 'channel') {
+        aVal = a.channelId?.name?.toLowerCase() || '';
+        bVal = b.channelId?.name?.toLowerCase() || '';
+      } else {
+        aVal = a[sortConfig.key]?.toString().toLowerCase() || '';
+        bVal = b[sortConfig.key]?.toString().toLowerCase() || '';
+      }
+      return sortConfig.direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+
   return (
     <AdminLayout 
       title="Prompt Types" 
@@ -100,8 +127,8 @@ export default function PromptTypes() {
     >
       <PageSectionLoader show={isLoading("page")} />
 
-      {/* Add Prompt Type Button */}
-      <div className="max-w-4xl mb-4">
+      {/* Add Prompt Type Button and Search */}
+      <div className="max-w-4xl mb-4 flex gap-3">
         <button
           onClick={() => setShowAddModal(true)}
           className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl flex items-center gap-2 transform hover:scale-105"
@@ -109,6 +136,16 @@ export default function PromptTypes() {
           <Plus size={20} />
           Add New Prompt Type
         </button>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Search prompt types..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+          />
+        </div>
       </div>
 
       {/* Add Prompt Type Modal */}
@@ -184,19 +221,29 @@ export default function PromptTypes() {
       <div className="max-w-4xl">
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800">Prompt Types ({types.length})</h3>
+          <h3 className="text-lg font-semibold text-gray-800">Prompt Types ({filteredAndSortedTypes.length})</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr className="text-gray-700">
-                <th className="px-4 py-3 text-left font-semibold">Channel</th>
-                <th className="px-4 py-3 text-left font-semibold">Type Name</th>
+                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('channel')}>
+                  <div className="flex items-center gap-2">
+                    Channel
+                    <ArrowUpDown size={14} className="text-gray-400" />
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('name')}>
+                  <div className="flex items-center gap-2">
+                    Type Name
+                    <ArrowUpDown size={14} className="text-gray-400" />
+                  </div>
+                </th>
                 <th className="px-4 py-3 text-center font-semibold w-32">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {types.map(t => (
+              {filteredAndSortedTypes.map(t => (
                 <tr key={t._id} className="hover:bg-gray-50 transition-colors duration-200">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -236,7 +283,7 @@ export default function PromptTypes() {
               ))}
             </tbody>
           </table>
-          {types.length === 0 && (
+          {filteredAndSortedTypes.length === 0 && (
             <div className="text-center py-16">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Tag className="w-8 h-8 text-gray-400" />
