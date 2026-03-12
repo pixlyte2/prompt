@@ -90,6 +90,7 @@ export default function Users() {
               placeholder="Full Name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              autoComplete="off"
               className="border-2 border-gray-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all text-sm"
             />
             <input
@@ -97,6 +98,7 @@ export default function Users() {
               placeholder="Email Address"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+              autoComplete="off"
               className="border-2 border-gray-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all text-sm"
             />
             <input
@@ -104,6 +106,9 @@ export default function Users() {
               placeholder="Password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
+              autoComplete="new-password"
+              data-form-type="other"
+              data-lpignore="true"
               className="border-2 border-gray-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all text-sm"
             />
             <select

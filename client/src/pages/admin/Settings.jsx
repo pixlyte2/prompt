@@ -69,6 +69,9 @@ export default function Settings() {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="Enter your Gemini API key..."
+                autoComplete="off"
+                data-form-type="other"
+                data-lpignore="true"
                 className="w-full border-2 border-gray-200 px-5 py-4 pr-14 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200 text-base"
               />
               <button
