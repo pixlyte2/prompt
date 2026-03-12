@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { Plus, Trash2, Users as UsersIcon } from "lucide-react";
+import { Plus, Trash2, Users as UsersIcon, X } from "lucide-react";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -12,6 +12,7 @@ export default function Users() {
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "viewer" });
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const { startLoading, stopLoading, isLoading } = useLoading();
 
@@ -39,6 +40,7 @@ export default function Users() {
       await api.post("/users/content", form);
       toast.success("User created successfully");
       setForm({ name: "", email: "", password: "", role: "viewer" });
+      setShowAddModal(false);
       const res = await api.get("/users");
       setUsers(res.data);
     } catch (err) {
@@ -78,64 +80,110 @@ export default function Users() {
     >
       <PageSectionLoader show={isLoading("page")} />
 
-      <div className="max-w-4xl">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 mb-4">
-          <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Plus className="w-4 h-4 text-blue-600" />
-            Add New User
-          </h3>
+      {/* Add User Button */}
+      <div className="max-w-4xl mb-4">
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl flex items-center gap-2 transform hover:scale-105"
+        >
+          <Plus size={20} />
+          Add New User
+        </button>
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            <input
-              placeholder="Full Name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              autoComplete="off"
-              className="border-2 border-gray-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all text-sm"
-            />
-            <input
-              type="email"
-              placeholder="Email Address"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              autoComplete="off"
-              className="border-2 border-gray-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all text-sm"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              autoComplete="new-password"
-              data-form-type="other"
-              data-lpignore="true"
-              className="border-2 border-gray-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all text-sm"
-            />
-            <select
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
-              className="border-2 border-gray-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all bg-white text-sm"
-            >
-              <option value="viewer">Viewer</option>
-              <option value="content_manager">Content Manager</option>
-            </select>
-          </div>
-          <div className="mt-3">
-            <button
-              onClick={createUser}
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg disabled:opacity-50 flex items-center gap-2 font-semibold shadow-md hover:shadow-lg transition-all text-sm"
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <Plus size={16} />
-              )}
-              Create User
-            </button>
+      {/* Add User Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl">
+            <div className="p-6 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Plus size={24} />
+                Add New User
+              </h3>
+              <button onClick={() => setShowAddModal(false)} className="hover:bg-white/20 p-2 rounded-lg transition">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Full Name</label>
+                <input
+                  placeholder="Enter full name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  autoComplete="off"
+                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Email Address</label>
+                <input
+                  type="email"
+                  placeholder="Enter email address"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  autoComplete="off"
+                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter password"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  autoComplete="new-password"
+                  data-form-type="other"
+                  data-lpignore="true"
+                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Role</label>
+                <select
+                  value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all bg-white"
+                >
+                  <option value="viewer">Viewer</option>
+                  <option value="content_manager">Content Manager</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createUser}
+                disabled={loading}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus size={20} />
+                    Create User
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="max-w-4xl">
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">

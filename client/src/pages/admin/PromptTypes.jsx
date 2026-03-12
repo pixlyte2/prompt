@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { Plus, Pencil, Trash2, Tag, Download, Layers } from "lucide-react";
+import { Plus, Pencil, Trash2, Tag, Download, Layers, X } from "lucide-react";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
 import { exportToCSV } from "../../utils/csvExport";
@@ -15,6 +15,7 @@ export default function PromptTypes() {
   const [editing, setEditing] = useState(null);
   const [editName, setEditName] = useState("");
   const [deleting, setDeleting] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const { startLoading, stopLoading, isLoading } = useLoading();
 
@@ -46,6 +47,7 @@ export default function PromptTypes() {
       const res = await api.post("/prompt-types", form);
       setTypes(prev => [res.data, ...prev]);
       setForm({ name: "", channelId: "" });
+      setShowAddModal(false);
       toast.success("Created successfully");
     } catch {
       toast.error("Failed to create");
@@ -98,46 +100,86 @@ export default function PromptTypes() {
     >
       <PageSectionLoader show={isLoading("page")} />
 
-      <div className="max-w-4xl">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 mb-4">
-          <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Plus className="w-4 h-4 text-orange-600" />
-            Create New Prompt Type
-          </h3>
+      {/* Add Prompt Type Button */}
+      <div className="max-w-4xl mb-4">
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl flex items-center gap-2 transform hover:scale-105"
+        >
+          <Plus size={20} />
+          Add New Prompt Type
+        </button>
+      </div>
 
-          <div className="flex gap-2">
-            <select
-              value={form.channelId}
-              onChange={(e) => setForm({ ...form, channelId: e.target.value })}
-              className="w-56 border-2 border-gray-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white transition-all text-sm"
-            >
-              <option value="" disabled>Choose a channel...</option>
-              {channels.map(c => (
-                <option key={c._id} value={c._id}>{c.name}</option>
-              ))}
-            </select>
-            <input
-              placeholder="Enter prompt type name..."
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              maxLength={30}
-              className="flex-1 max-w-md border-2 border-gray-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all text-sm"
-            />
-            <button
-              onClick={create}
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg flex items-center gap-2 font-semibold shadow-md hover:shadow-lg transition-all whitespace-nowrap text-sm"
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <Plus size={16} />
-              )}
-              Create Type
-            </button>
+      {/* Add Prompt Type Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="p-6 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Plus size={24} />
+                Add New Prompt Type
+              </h3>
+              <button onClick={() => setShowAddModal(false)} className="hover:bg-white/20 p-2 rounded-lg transition">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Channel</label>
+                <select
+                  value={form.channelId}
+                  onChange={(e) => setForm({ ...form, channelId: e.target.value })}
+                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white transition-all"
+                >
+                  <option value="" disabled>Choose a channel...</option>
+                  {channels.map(c => (
+                    <option key={c._id} value={c._id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Prompt Type Name</label>
+                <input
+                  placeholder="Enter prompt type name..."
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  maxLength={30}
+                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={create}
+                disabled={loading}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus size={20} />
+                    Create Type
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="max-w-4xl">
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">

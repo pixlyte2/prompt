@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, Plus, Layers } from "lucide-react";
+import { Pencil, Trash2, Plus, Layers, X } from "lucide-react";
 import { Toaster, toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
@@ -16,6 +16,7 @@ export default function Channels() {
   const [editingChannel, setEditingChannel] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const { startLoading, stopLoading, isLoading } = useLoading();
 
@@ -46,6 +47,7 @@ export default function Channels() {
       const res = await api.post("/channels", { name });
       setChannels(prev => [res.data, ...prev]);
       setName("");
+      setShowAddModal(false);
       toast.success("Channel created successfully");
     } catch {
       toast.error("Failed to create channel");
@@ -104,36 +106,70 @@ export default function Channels() {
     >
       <PageSectionLoader show={isLoading("page")} />
 
-      <div className="max-w-3xl">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 mb-4">
-          <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Plus className="w-4 h-4 text-purple-600" />
-            Create New Channel
-          </h3>
+      {/* Add Channel Button */}
+      <div className="max-w-3xl mb-4">
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl flex items-center gap-2 transform hover:scale-105"
+        >
+          <Plus size={20} />
+          Add New Channel
+        </button>
+      </div>
 
-          <div className="flex gap-2">
-            <input
-              placeholder="Enter channel name..."
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={30}
-              className="flex-1 max-w-md border-2 border-gray-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all text-sm"
-            />
-            <button
-              onClick={createChannel}
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg flex items-center gap-2 font-semibold shadow-md hover:shadow-lg transition-all whitespace-nowrap text-sm"
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <Plus size={16} />
-              )}
-              Create Channel
-            </button>
+      {/* Add Channel Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="p-6 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Plus size={24} />
+                Add New Channel
+              </h3>
+              <button onClick={() => setShowAddModal(false)} className="hover:bg-white/20 p-2 rounded-lg transition">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Channel Name</label>
+              <input
+                placeholder="Enter channel name..."
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={30}
+                className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+              />
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createChannel}
+                disabled={loading}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus size={20} />
+                    Create Channel
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="max-w-3xl">
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
