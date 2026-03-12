@@ -105,24 +105,24 @@ export default function Channels() {
       <PageSectionLoader show={isLoading("page")} />
 
       <div className="max-w-3xl">
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <Plus className="w-5 h-5 text-purple-600" />
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 mb-4">
+          <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Plus className="w-4 h-4 text-purple-600" />
             Create New Channel
           </h3>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <input
               placeholder="Enter channel name..."
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={30}
-              className="flex-1 max-w-md border-2 border-gray-200 px-4 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+              className="flex-1 max-w-md border-2 border-gray-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all text-sm"
             />
             <button
               onClick={createChannel}
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-semibold shadow-md hover:shadow-lg transition-all whitespace-nowrap"
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg flex items-center gap-2 font-semibold shadow-md hover:shadow-lg transition-all whitespace-nowrap text-sm"
             >
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -136,7 +136,7 @@ export default function Channels() {
       </div>
 
       <div className="max-w-3xl">
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800">
             Channels ({filteredChannels.length})
@@ -147,40 +147,40 @@ export default function Channels() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr className="text-gray-700">
-                <th className="px-6 py-4 text-left font-semibold">Channel Name</th>
-                <th className="px-6 py-4 text-left font-semibold">Created Date</th>
-                <th className="px-6 py-4 text-center font-semibold w-32">Actions</th>
+                <th className="px-4 py-3 text-left font-semibold">Channel Name</th>
+                <th className="px-4 py-3 text-left font-semibold">Created Date</th>
+                <th className="px-4 py-3 text-center font-semibold w-32">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredChannels.map((c) => (
                 <tr key={c._id} className="hover:bg-gray-50 transition-colors duration-200">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
-                        <Layers className="w-5 h-5 text-white" />
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
+                        <Layers className="w-4 h-4 text-white" />
                       </div>
                       <span className="font-medium text-gray-900">{c.name}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-gray-600">
+                  <td className="px-4 py-3 text-gray-600">
                     {new Date(c.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3">
                     <div className="flex justify-center gap-2">
                       <button
                         onClick={() => openEditModal(c)}
-                        className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                        className="p-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                         title="Edit channel"
                       >
-                        <Pencil size={24} />
+                        <Pencil size={16} />
                       </button>
                       <button
                         onClick={() => openDeleteModal(c)}
-                        className="p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                        className="p-1.5 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                         title="Delete channel"
                       >
-                        <Trash2 size={24} />
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </td>

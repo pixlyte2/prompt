@@ -308,11 +308,11 @@ const loadPrompts = async () => {
   };
 
   return (
-    <div className="bg-gray-50 p-3">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <PageSectionLoader show={isLoading("page")} />
 
       {/* HEADER SECTION */}
-      <div className="mb-3">
+      <div className="p-3">
         {/* CONTROL PANEL */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
           {/* Channel Filters */}
@@ -486,7 +486,7 @@ const loadPrompts = async () => {
       </div>
 
       {/* RESULTS SECTION */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white overflow-hidden mt-3 mx-3 mb-3 rounded-2xl shadow-sm border border-gray-100">
         {/* Results Header */}
         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
           <div className="flex justify-between items-center">
@@ -608,9 +608,9 @@ const loadPrompts = async () => {
                   </td>
 
                   <td className="px-4 py-2">
-                    <div className="max-w-2xl">
+                    <div className="max-w-xs">
                       <p className="text-gray-900 truncate leading-relaxed">
-                        {p.promptText}
+                        {p.promptText?.substring(0, 20)}{p.promptText?.length > 20 ? '...' : ''}
                       </p>
                     </div>
                   </td>

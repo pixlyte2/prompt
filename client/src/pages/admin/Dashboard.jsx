@@ -130,11 +130,15 @@ export default function Dashboard() {
   }
 
   return (
-    <AdminLayout title="Dashboard" onCacheClear={() => setRecentPrompts([])}>
-      
-      <div className="p-4 space-y-4">
+    <AdminLayout 
+      title="Dashboard" 
+      titleInfo="Monitor and manage your prompt system"
+      icon={BarChart3}
+      onCacheClear={() => setRecentPrompts([])}
+    >
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-4">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-4 text-white shadow-lg">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-4 text-white shadow-lg mb-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold mb-2">Welcome to Admin Dashboard</h1>
@@ -148,7 +152,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4">
           {cards.map((card, index) => {
             const Icon = card.icon;
             return (
@@ -173,7 +177,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg border p-4">
+        <div className="bg-gray-50 rounded-lg border p-4 mb-4">
           <div className="flex items-center gap-3 mb-3">
             <BarChart3 className="w-5 h-5 text-gray-600" />
             <h3 className="text-lg font-semibold">Quick Actions</h3>
@@ -216,7 +220,7 @@ export default function Dashboard() {
 
         {/* Recent Prompts */}
         {recentPrompts.length > 0 && (
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-gray-50 rounded-lg border p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-gray-600" />

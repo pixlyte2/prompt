@@ -75,7 +75,7 @@ export default function Help() {
       titleInfo="Complete guide to manage prompts and AI interactions"
       icon={HelpCircle}
     >
-      <div className="bg-gray-50 p-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-4">
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {sections.map((section, idx) => {
@@ -101,7 +101,7 @@ export default function Help() {
           })}
         </div>
 
-        <div className="bg-white rounded-lg border p-4 mt-4">
+        <div className="bg-gray-50 rounded-lg border p-4 mt-4">
           <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
             <Copy className="w-5 h-5 text-cyan-600" />
             Quick Tips
