@@ -1,100 +1,83 @@
-import { useEffect, useState } from "react";
-import { Pencil, Trash2, Plus, Layers, X, Search, ArrowUpDown } from "lucide-react";
-import { Toaster, toast } from "react-hot-toast";
-import AdminLayout from "../../layout/AdminLayout";
-import api from "../../services/api";
-import ConfirmModal from "../../components/ConfirmModal";
-import useLoading from "../../hooks/useLoading";
-import PageSectionLoader from "../../components/PageSectionLoader";
+import React, { useState, useEffect } from "react";
+import { toast } from "react-hot-toast";
+import { Plus, Pencil, Trash2, Tag, Search, ArrowUpDown, X } from "lucide-react";
+import api from "../services/api";
+import { exportToCSV } from "../utils/csvExport";
+import useLoading from "../hooks/useLoading";
+import PageSectionLoader from "../components/PageSectionLoader";
 
-export default function Channels() {
-  const [channels, setChannels] = useState([]);
-  const [name, setName] = useState("");
-  const [editName, setEditName] = useState("");
+export default function PromptTypeManager() {
+  const [types, setTypes] = useState([]);
+  const [form, setForm] = useState({ name: "" });
   const [loading, setLoading] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [editingChannel, setEditingChannel] = useState(null);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [channelToDelete, setChannelToDelete] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [deleting, setDeleting] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const { startLoading, stopLoading, isLoading } = useLoading();
 
-  const loadChannels = async () => {
-    try {
-      startLoading("page");
-      const res = await api.get("/channels");
-      setChannels(res.data);
-    } catch {
-      toast.error("Failed to load channels");
-    } finally {
-      stopLoading("page");
-    }
-  };
-
   useEffect(() => {
-    loadChannels();
+    const load = async () => {
+      try {
+        startLoading("page");
+        const pt = await api.get("/prompt-types");
+        setTypes(pt.data);
+      } catch {
+        toast.error("Failed to load data");
+      } finally {
+        stopLoading("page");
+      }
+    };
+    load();
   }, []);
 
-  const createChannel = async () => {
-    if (!name.trim()) return toast.error("Channel name required");
-
-    const exists = channels.some(c => c.name.toLowerCase() === name.trim().toLowerCase());
-    if (exists) return toast.error("Channel name already exists");
-
+  const create = async () => {
+    if (!form.name.trim()) {
+      return toast.error("Name is required");
+    }
     try {
       setLoading(true);
-      const res = await api.post("/channels", { name });
-      setChannels(prev => [res.data, ...prev]);
-      setName("");
+      const res = await api.post("/prompt-types", form);
+      setTypes(prev => [res.data, ...prev]);
+      setForm({ name: "" });
       setShowAddModal(false);
-      toast.success("Channel created successfully");
+      toast.success("Created successfully");
     } catch {
-      toast.error("Failed to create channel");
+      toast.error("Failed to create");
     } finally {
       setLoading(false);
     }
-  };
-
-  const openEditModal = (channel) => {
-    setEditingChannel(channel);
-    setEditName(channel.name);
   };
 
   const saveEdit = async () => {
-    if (!editName.trim()) return toast.error("Channel name required");
-
+    if (!editName.trim()) return toast.error("Name required");
     try {
       setLoading(true);
-      const res = await api.put(`/channels/${editingChannel._id}`, { name: editName });
-      setChannels(prev => prev.map(c => c._id === editingChannel._id ? res.data : c));
-      toast.success("Channel updated successfully");
-      setEditingChannel(null);
+      const res = await api.put(`/prompt-types/${editing._id}`, { name: editName });
+      setTypes(prev => prev.map(t => t._id === editing._id ? res.data : t));
+      toast.success("Updated successfully");
+      setEditing(null);
     } catch {
-      toast.error("Failed to update channel");
+      toast.error("Failed to update");
     } finally {
       setLoading(false);
     }
-  };
-
-  const openDeleteModal = (channel) => {
-    setChannelToDelete(channel);
-    setDeleteModalOpen(true);
   };
 
   const confirmDelete = async () => {
     try {
-      setDeleteLoading(true);
-      await api.delete(`/channels/${channelToDelete._id}`);
-      setChannels(prev => prev.filter(c => c._id !== channelToDelete._id));
-      toast.success("Channel deleted successfully");
-      setDeleteModalOpen(false);
+      setLoading(true);
+      await api.delete(`/prompt-types/${deleting._id}`);
+      setTypes(prev => prev.filter(t => t._id !== deleting._id));
+      toast.success("Deleted successfully");
+      setDeleting(null);
     } catch {
-      toast.error("Failed to delete channel");
+      toast.error("Failed to delete");
     } finally {
-      setDeleteLoading(false);
+      setLoading(false);
     }
   };
 
@@ -105,40 +88,35 @@ export default function Channels() {
     }));
   };
 
-  const filteredChannels = channels
-    .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredAndSortedTypes = types
+    .filter(t => 
+      t.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
     .sort((a, b) => {
       if (!sortConfig.key) return 0;
-      const aVal = sortConfig.key === 'createdAt' ? new Date(a[sortConfig.key]).getTime() : a[sortConfig.key]?.toString().toLowerCase() || '';
-      const bVal = sortConfig.key === 'createdAt' ? new Date(b[sortConfig.key]).getTime() : b[sortConfig.key]?.toString().toLowerCase() || '';
-      if (sortConfig.key === 'createdAt') {
-        return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
-      }
+      const aVal = a[sortConfig.key]?.toString().toLowerCase() || '';
+      const bVal = b[sortConfig.key]?.toString().toLowerCase() || '';
       return sortConfig.direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     });
 
   return (
-    <AdminLayout 
-      title="Channel Management" 
-      titleInfo="Organize your content with channels"
-      icon={Layers}
-    >
+    <>
       <PageSectionLoader show={isLoading("page")} />
 
-      {/* Add Channel Button and Search */}
-      <div className="max-w-3xl mb-4 flex gap-3">
+      {/* Add Prompt Type Button and Search */}
+      <div className="mb-4 flex gap-3">
         <button
           onClick={() => setShowAddModal(true)}
           className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl flex items-center gap-2 transform hover:scale-105"
         >
           <Plus size={20} />
-          Add New Channel
+          Add New Prompt Type
         </button>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Search channels..."
+            placeholder="Search prompt types..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
@@ -146,14 +124,14 @@ export default function Channels() {
         </div>
       </div>
 
-      {/* Add Channel Modal */}
+      {/* Add Prompt Type Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
             <div className="p-6 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Plus size={24} />
-                Add New Channel
+                Add New Prompt Type
               </h3>
               <button onClick={() => setShowAddModal(false)} className="hover:bg-white/20 p-2 rounded-lg transition">
                 <X size={24} />
@@ -161,11 +139,11 @@ export default function Channels() {
             </div>
             
             <div className="p-6">
-              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Channel Name</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Prompt Type Name</label>
               <input
-                placeholder="Enter channel name..."
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter prompt type name..."
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
                 maxLength={30}
                 className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
               />
@@ -179,7 +157,7 @@ export default function Channels() {
                 Cancel
               </button>
               <button
-                onClick={createChannel}
+                onClick={create}
                 disabled={loading}
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
@@ -191,7 +169,7 @@ export default function Channels() {
                 ) : (
                   <>
                     <Plus size={20} />
-                    Create Channel
+                    Create Type
                   </>
                 )}
               </button>
@@ -200,21 +178,17 @@ export default function Channels() {
         </div>
       )}
 
-      <div className="max-w-3xl">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800">
-            Channels ({filteredChannels.length})
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-800">Prompt Types ({filteredAndSortedTypes.length})</h3>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr className="text-gray-700">
                 <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('name')}>
                   <div className="flex items-center gap-2">
-                    Channel Name
+                    Type Name
                     <ArrowUpDown size={14} className="text-gray-400" />
                   </div>
                 </th>
@@ -228,32 +202,32 @@ export default function Channels() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredChannels.map((c) => (
-                <tr key={c._id} className="hover:bg-gray-50 transition-colors duration-200">
+              {filteredAndSortedTypes.map(t => (
+                <tr key={t._id} className="hover:bg-gray-50 transition-colors duration-200">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
-                        <Layers className="w-4 h-4 text-white" />
+                      <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center shadow-sm">
+                        <Tag className="w-4 h-4 text-white" />
                       </div>
-                      <span className="font-medium text-gray-900">{c.name}</span>
+                      <span className="font-medium text-gray-900">{t.name}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-600">
-                    {new Date(c.createdAt).toLocaleDateString()}
+                    {new Date(t.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-center gap-2">
                       <button
-                        onClick={() => openEditModal(c)}
+                        onClick={() => { setEditing(t); setEditName(t.name); }}
                         className="p-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md"
-                        title="Edit channel"
+                        title="Edit prompt type"
                       >
                         <Pencil size={16} />
                       </button>
                       <button
-                        onClick={() => openDeleteModal(c)}
+                        onClick={() => setDeleting(t)}
                         className="p-1.5 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
-                        title="Delete channel"
+                        title="Delete prompt type"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -263,51 +237,69 @@ export default function Channels() {
               ))}
             </tbody>
           </table>
-
-          {filteredChannels.length === 0 && (
+          {filteredAndSortedTypes.length === 0 && (
             <div className="text-center py-16">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Layers className="w-8 h-8 text-gray-400" />
+                <Tag className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No channels found</h3>
-              <p className="text-gray-500">Create your first channel to get started</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No prompt types found</h3>
+              <p className="text-gray-500">Create your first prompt type to get started</p>
             </div>
           )}
         </div>
-        </div>
       </div>
 
-        {/* EDIT MODAL */}
-        {editingChannel && (
-          <ConfirmModal
-            isOpen={true}
-            title="Edit Channel"
-            message={
-              <input
-                className="w-full border-2 border-gray-200 px-4 py-3 rounded-xl mt-3 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="Channel name"
-              />
-            }
-            confirmText="Save Changes"
-            onConfirm={saveEdit}
-            onCancel={() => setEditingChannel(null)}
-            loading={loading}
-          />
-        )}
+      {editing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-lg font-semibold mb-4">Edit Type</h3>
+            <input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="w-full border px-3 py-2 rounded-lg mb-4"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={saveEdit}
+                disabled={loading}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setEditing(null)}
+                className="bg-gray-300 px-4 py-2 rounded-lg"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-        {/* DELETE MODAL */}
-        <ConfirmModal
-          isOpen={deleteModalOpen}
-          title="Delete Channel"
-          message={`Are you sure you want to delete "${channelToDelete?.name}"? This will also remove all associated prompts. This action cannot be undone.`}
-          confirmText="Delete Channel"
-          onConfirm={confirmDelete}
-          onCancel={() => setDeleteModalOpen(false)}
-          loading={deleteLoading}
-          danger={true}
-        />
-    </AdminLayout>
+      {deleting && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-lg font-semibold mb-4">Delete Type</h3>
+            <p className="mb-4">Delete "{deleting.name}"?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={confirmDelete}
+                disabled={loading}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setDeleting(null)}
+                className="bg-gray-300 px-4 py-2 rounded-lg"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

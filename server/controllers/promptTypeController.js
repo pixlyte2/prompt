@@ -6,7 +6,6 @@ const createPromptType = async (req, res) => {
 
     const exists = await PromptType.findOne({
       name,
-      channelId,
       companyId: req.user.companyId
     });
 
@@ -15,14 +14,19 @@ const createPromptType = async (req, res) => {
         .status(400)
         .json({ message: "Prompt type already exists" });
 
-    const type = await PromptType.create({
+    const typeData = {
       name,
-      channelId,
       companyId: req.user.companyId,
       createdBy: req.user.id
-    });
+    };
 
-    await type.populate("channelId", "name");
+    // Only add channelId if it's provided and not null
+    if (channelId) {
+      typeData.channelId = channelId;
+    }
+
+    const type = await PromptType.create(typeData);
+
     res.json(type);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -32,7 +36,7 @@ const createPromptType = async (req, res) => {
 const getPromptTypes = async (req, res) => {
   const types = await PromptType.find({
     companyId: req.user.companyId
-  }).populate("channelId", "name");
+  });
 
   res.json(types);
 };
@@ -51,7 +55,7 @@ const updatePromptType = async (req, res) => {
     { _id: req.params.id, companyId: req.user.companyId },
     { name: req.body.name },
     { new: true }
-  ).populate("channelId", "name");
+  );
 
   res.json(type);
 };

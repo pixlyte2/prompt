@@ -8,9 +8,8 @@ import useLoading from "../../hooks/useLoading";
 import PageSectionLoader from "../../components/PageSectionLoader";
 
 export default function PromptTypes() {
-  const [channels, setChannels] = useState([]);
   const [types, setTypes] = useState([]);
-  const [form, setForm] = useState({ name: "", channelId: "" });
+  const [form, setForm] = useState({ name: "" });
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null);
   const [editName, setEditName] = useState("");
@@ -25,11 +24,7 @@ export default function PromptTypes() {
     const load = async () => {
       try {
         startLoading("page");
-        const [ch, pt] = await Promise.all([
-          api.get("/channels"),
-          api.get("/prompt-types")
-        ]);
-        setChannels(ch.data);
+        const pt = await api.get("/prompt-types");
         setTypes(pt.data);
       } catch {
         toast.error("Failed to load data");
@@ -41,14 +36,14 @@ export default function PromptTypes() {
   }, []);
 
   const create = async () => {
-    if (!form.name.trim() || !form.channelId) {
-      return toast.error("All fields required");
+    if (!form.name.trim()) {
+      return toast.error("Name is required");
     }
     try {
       setLoading(true);
       const res = await api.post("/prompt-types", form);
       setTypes(prev => [res.data, ...prev]);
-      setForm({ name: "", channelId: "" });
+      setForm({ name: "" });
       setShowAddModal(false);
       toast.success("Created successfully");
     } catch {
@@ -89,7 +84,7 @@ export default function PromptTypes() {
 
   const handleExport = () => {
     if (!types.length) return toast.error("No data to export");
-    const data = types.map(t => ({ Name: t.name, Channel: t.channelId?.name || "-" }));
+    const data = types.map(t => ({ Name: t.name }));
     exportToCSV(data, "prompt-types.csv");
     toast.success("Exported successfully");
   };
@@ -103,19 +98,12 @@ export default function PromptTypes() {
 
   const filteredAndSortedTypes = types
     .filter(t => 
-      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.channelId?.name.toLowerCase().includes(searchTerm.toLowerCase())
+      t.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
       if (!sortConfig.key) return 0;
-      let aVal, bVal;
-      if (sortConfig.key === 'channel') {
-        aVal = a.channelId?.name?.toLowerCase() || '';
-        bVal = b.channelId?.name?.toLowerCase() || '';
-      } else {
-        aVal = a[sortConfig.key]?.toString().toLowerCase() || '';
-        bVal = b[sortConfig.key]?.toString().toLowerCase() || '';
-      }
+      const aVal = a[sortConfig.key]?.toString().toLowerCase() || '';
+      const bVal = b[sortConfig.key]?.toString().toLowerCase() || '';
       return sortConfig.direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     });
 
@@ -162,31 +150,15 @@ export default function PromptTypes() {
               </button>
             </div>
             
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Channel</label>
-                <select
-                  value={form.channelId}
-                  onChange={(e) => setForm({ ...form, channelId: e.target.value })}
-                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white transition-all"
-                >
-                  <option value="" disabled>Choose a channel...</option>
-                  {channels.map(c => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Prompt Type Name</label>
-                <input
-                  placeholder="Enter prompt type name..."
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  maxLength={30}
-                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
-                />
-              </div>
+            <div className="p-6">
+              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Prompt Type Name</label>
+              <input
+                placeholder="Enter prompt type name..."
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                maxLength={30}
+                className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+              />
             </div>
 
             <div className="p-6 border-t bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
@@ -227,15 +199,15 @@ export default function PromptTypes() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr className="text-gray-700">
-                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('channel')}>
-                  <div className="flex items-center gap-2">
-                    Channel
-                    <ArrowUpDown size={14} className="text-gray-400" />
-                  </div>
-                </th>
                 <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('name')}>
                   <div className="flex items-center gap-2">
                     Type Name
+                    <ArrowUpDown size={14} className="text-gray-400" />
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('createdAt')}>
+                  <div className="flex items-center gap-2">
+                    Created Date
                     <ArrowUpDown size={14} className="text-gray-400" />
                   </div>
                 </th>
@@ -247,19 +219,14 @@ export default function PromptTypes() {
                 <tr key={t._id} className="hover:bg-gray-50 transition-colors duration-200">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
-                        <Layers className="w-4 h-4 text-white" />
-                      </div>
-                      <span className="font-medium text-gray-900">{t.channelId?.name || "-"}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
                       <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center shadow-sm">
                         <Tag className="w-4 h-4 text-white" />
                       </div>
                       <span className="font-medium text-gray-900">{t.name}</span>
                     </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {new Date(t.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-center gap-2">

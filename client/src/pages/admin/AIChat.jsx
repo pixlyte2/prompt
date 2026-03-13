@@ -227,8 +227,8 @@ export default function AIChat() {
       historyCount={history.length}
     >
       {/* Main Form Card */}
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4">
-        <div className="space-y-3">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 h-[calc(100vh-8rem)]">
+        <div className="space-y-3 h-full flex flex-col">
           <div className="flex gap-3">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">
@@ -283,9 +283,9 @@ export default function AIChat() {
           </div>
 
           {/* Tabs for Source Input and Finalized Prompt */}
-          <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
+          <div className="border-2 border-gray-200 rounded-xl overflow-hidden flex-1 flex flex-col">
             {/* Tab Headers */}
-            <div className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 via-blue-50/30 to-gray-50 px-3">
+            <div className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 via-blue-50/30 to-gray-50 px-3 flex-shrink-0">
               <div className="flex gap-1">
                 <button
                   onClick={() => setChatTab("source")}
@@ -331,22 +331,21 @@ export default function AIChat() {
             </div>
 
             {/* Tab Content */}
-            <div className="bg-white p-3">
+            <div className="bg-white p-3 flex-1 overflow-y-auto">
               {chatTab === "source" ? (
-                <div>
+                <div className="h-full">
                   <textarea
                     value={sourceText}
                     onChange={(e) => setSourceText(e.target.value)}
                     placeholder="Paste YouTube URL, script, or any text here..."
-                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 resize-none transition-all text-sm"
-                    rows={4}
+                    className="w-full h-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 resize-none transition-all text-sm"
                   />
                 </div>
               ) : (
-                <div>
+                <div className="h-full">
                   {finalizedPrompt ? (
-                    <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 border-2 border-indigo-200 rounded-xl p-3 shadow-lg">
-                      <div className="flex items-center justify-between mb-2">
+                    <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 border-2 border-indigo-200 rounded-xl p-3 shadow-lg h-full flex flex-col">
+                      <div className="flex items-center justify-between mb-2 flex-shrink-0">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full animate-pulse"></div>
                           <h3 className="text-xs font-bold text-indigo-800 uppercase tracking-wide">Finalized Prompt</h3>
@@ -362,14 +361,14 @@ export default function AIChat() {
                           Copy
                         </button>
                       </div>
-                      <div className="bg-white border border-indigo-200 rounded-lg p-2.5 shadow-inner">
-                        <div className="text-xs text-gray-800 whitespace-pre-wrap leading-relaxed font-medium max-h-32 overflow-y-auto">
+                      <div className="bg-white border border-indigo-200 rounded-lg p-2.5 shadow-inner flex-1 overflow-y-auto">
+                        <div className="text-xs text-gray-800 whitespace-pre-wrap leading-relaxed font-medium">
                           {finalizedPrompt}
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 text-center">
+                    <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 text-center h-full flex flex-col items-center justify-center">
                       <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
                         <Copy size={20} className="text-gray-400" />
                       </div>
@@ -382,7 +381,7 @@ export default function AIChat() {
             </div>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 flex-shrink-0">
             <input
               type="text"
               value={input}

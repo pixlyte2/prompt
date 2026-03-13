@@ -312,102 +312,166 @@ const loadPrompts = async () => {
       <PageSectionLoader show={isLoading("page")} />
 
       {/* HEADER SECTION */}
-      <div className="p-3">
+      <div className="p-2">
         {/* CONTROL PANEL */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-          {/* Channel Filters */}
-          <div className="mb-3">
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => {
-                  setSelectedChannel(null);
-                  setSelectedType(null);
-                  setPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  !selectedChannel
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                All Channels ({prompts.length})
-              </button>
-              {channels.map((channel) => {
-                const count = prompts.filter(p => p.channelId?._id === channel._id).length;
-                return (
+        <div className="bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 rounded-xl shadow-md border border-gray-200 p-2.5">
+          
+          {/* Channel & Type Filters - Side by Side with Scroll */}
+          <div className="mb-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {/* Channel Filters */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <div className="w-0.5 h-3 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+                  <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Channels</span>
+                </div>
+                <div className="relative group">
+                  <div className="flex gap-1.5 overflow-x-auto scrollbar-hide scroll-smooth" id="channelScroll">
+                    <button
+                      onClick={() => {
+                        setSelectedChannel(null);
+                        setSelectedType(null);
+                        setPage(1);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm whitespace-nowrap flex-shrink-0 ${
+                        !selectedChannel
+                          ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md"
+                          : "bg-white text-gray-700 hover:bg-blue-50 border border-gray-200 hover:border-blue-300"
+                      }`}
+                    >
+                      All ({prompts.length})
+                    </button>
+                    {channels
+                      .filter(channel => prompts.some(p => p.channelId?._id === channel._id))
+                      .map((channel) => ({
+                        ...channel,
+                        count: prompts.filter(p => p.channelId?._id === channel._id).length
+                      }))
+                      .sort((a, b) => b.count - a.count)
+                      .map((channel) => {
+                      const count = channel.count;
+                      return (
+                        <button
+                          key={channel._id}
+                          onClick={() => {
+                            setSelectedChannel(channel._id);
+                            setSelectedType(null);
+                            setPage(1);
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm whitespace-nowrap flex-shrink-0 ${
+                            selectedChannel === channel._id
+                              ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md"
+                              : "bg-white text-gray-700 hover:bg-blue-50 border border-gray-200 hover:border-blue-300"
+                          }`}
+                        >
+                          {channel.name} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Scroll Arrows */}
                   <button
-                    key={channel._id}
-                    onClick={() => {
-                      setSelectedChannel(channel._id);
-                      setSelectedType(null);
-                      setPage(1);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      selectedChannel === channel._id
-                        ? "bg-blue-600 text-white shadow-sm"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
+                    onClick={() => document.getElementById('channelScroll').scrollBy({ left: -200, behavior: 'smooth' })}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
                   >
-                    {channel.name} ({count})
+                    <svg className="w-3 h-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
                   </button>
-                );
-              })}
+                  <button
+                    onClick={() => document.getElementById('channelScroll').scrollBy({ left: 200, behavior: 'smooth' })}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                  >
+                    <svg className="w-3 h-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Type Filters */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <div className="w-0.5 h-3 bg-gradient-to-b from-emerald-500 to-emerald-600 rounded-full"></div>
+                  <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Types</span>
+                </div>
+                {selectedChannel ? (
+                  <div className="relative group">
+                    <div className="flex gap-1.5 overflow-x-auto scrollbar-hide scroll-smooth" id="typeScroll">
+                      <button
+                        onClick={() => {
+                          setSelectedType(null);
+                          setPage(1);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm whitespace-nowrap flex-shrink-0 ${
+                          !selectedType
+                            ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-md"
+                            : "bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200 hover:border-emerald-300"
+                        }`}
+                      >
+                        All ({prompts.filter(p => p.channelId?._id === selectedChannel).length})
+                      </button>
+                      {[...new Set(prompts
+                        .filter(p => p.channelId?._id === selectedChannel)
+                        .map(p => p.promptTypeId)
+                        .filter(Boolean)
+                        .map(type => type._id)
+                      )].map(typeId => {
+                        const type = prompts.find(p => p.promptTypeId?._id === typeId)?.promptTypeId;
+                        const count = prompts.filter(p => p.channelId?._id === selectedChannel && p.promptTypeId?._id === typeId).length;
+                        return { typeId, type, count };
+                      })
+                      .sort((a, b) => b.count - a.count)
+                      .map(({ typeId, type, count }) => {
+                        return (
+                          <button
+                            key={typeId}
+                            onClick={() => {
+                              setSelectedType(typeId);
+                              setPage(1);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm whitespace-nowrap flex-shrink-0 ${
+                              selectedType === typeId
+                                ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-md"
+                                : "bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200 hover:border-emerald-300"
+                            }`}
+                          >
+                            {type?.name} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Scroll Arrows */}
+                    <button
+                      onClick={() => document.getElementById('typeScroll').scrollBy({ left: -200, behavior: 'smooth' })}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                    >
+                      <svg className="w-3 h-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => document.getElementById('typeScroll').scrollBy({ left: 200, behavior: 'smooth' })}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-md rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                    >
+                      <svg className="w-3 h-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-[26px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <span className="text-xs text-gray-500 italic">Select a channel to filter by type</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Type Filters - Only show when channel is selected */}
-          {selectedChannel && (
-            <div className="mb-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-medium text-gray-600">Filter by Type:</span>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => {
-                    setSelectedType(null);
-                    setPage(1);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    !selectedType
-                      ? "bg-emerald-600 text-white shadow-sm"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  All Types ({prompts.filter(p => p.channelId?._id === selectedChannel).length})
-                </button>
-                {[...new Set(prompts
-                  .filter(p => p.channelId?._id === selectedChannel)
-                  .map(p => p.promptTypeId)
-                  .filter(Boolean)
-                  .map(type => type._id)
-                )].map(typeId => {
-                  const type = prompts.find(p => p.promptTypeId?._id === typeId)?.promptTypeId;
-                  const count = prompts.filter(p => p.channelId?._id === selectedChannel && p.promptTypeId?._id === typeId).length;
-                  return (
-                    <button
-                      key={typeId}
-                      onClick={() => {
-                        setSelectedType(typeId);
-                        setPage(1);
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        selectedType === typeId
-                          ? "bg-emerald-600 text-white shadow-sm"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {type?.name} ({count})
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Search & Actions */}
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 pt-2 border-t border-gray-200">
             {/* Search */}
-            <div className="flex-1 max-w-md">
+            <div className="flex-1">
               <div className="relative">
                 <input
                   placeholder="Search prompts..."
@@ -416,20 +480,24 @@ const loadPrompts = async () => {
                     setSearch(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 pl-9"
+                  className="w-full border-2 border-gray-300 px-3 py-1.5 rounded-lg text-xs focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 pl-9 bg-white shadow-sm"
                 />
-                <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="text-sm text-gray-600 hidden md:block">
-              <div className="font-medium">{filtered.length} {filtered.length === 1 ? 'result' : 'results'}</div>
+            {/* Results & Selected */}
+            <div className="flex items-center gap-2">
+              <div className="bg-white px-2.5 py-1.5 rounded-lg shadow-sm border border-gray-200">
+                <span className="text-xs font-semibold text-gray-700">
+                  {filtered.length} {filtered.length === 1 ? 'result' : 'results'}
+                </span>
+              </div>
               {selectedRows.length > 0 && (
-                <div className="mt-0.5">
-                  <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                <div className="bg-blue-600 text-white px-2.5 py-1.5 rounded-lg shadow-md">
+                  <span className="text-xs font-semibold">
                     {selectedRows.length} selected
                   </span>
                 </div>
@@ -437,46 +505,40 @@ const loadPrompts = async () => {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-              {/* Bulk Actions */}
+            <div className="flex flex-wrap items-center gap-2">
               {prompts.length > 0 && (
                 <button
                   onClick={handleGlobalSelectAll}
                   disabled={isLoading("selectAll")}
-                  className={`px-3 py-2 rounded-lg text-xs md:text-sm font-medium border transition-all duration-200 ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all duration-200 shadow-sm ${
                     isLoading("selectAll") 
                       ? "opacity-50 cursor-not-allowed bg-gray-100 border-gray-200" 
                       : "bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:border-gray-400"
                   }`}
                 >
-                  {isLoading("selectAll")
-                    ? "Processing..."
-                    : selectedRows.length === filtered.length && filtered.every(p => selectedRows.includes(p._id))
-                    ? `Deselect All`
-                    : `Select All`}
+                  {isLoading("selectAll") ? "..." : selectedRows.length === filtered.length && filtered.every(p => selectedRows.includes(p._id)) ? `Deselect` : `Select All`}
                 </button>
               )}
 
-              {/* Primary Actions */}
               <button
                 onClick={handleExport}
                 disabled={!selectedRows.length}
-                className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-1.5 text-xs md:text-sm ${
+                className={`px-2.5 py-1.5 rounded-lg font-semibold transition-all duration-200 flex items-center gap-1 text-xs shadow-sm ${
                   selectedRows.length
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                    ? "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md"
                     : "bg-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
               >
                 <Download size={14} />
-                Export JSON ({selectedRows.length})
+                Export
               </button>
 
               {(role === "admin" || role === "content_manager") && (
                 <button
                   onClick={openCreate}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-1.5 text-xs md:text-sm shadow-sm"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 flex items-center gap-1 text-xs shadow-md"
                 >
-                  <span className="text-lg leading-none">+</span>
+                  <span className="text-base leading-none">+</span>
                   New Prompt
                 </button>
               )}
@@ -486,16 +548,16 @@ const loadPrompts = async () => {
       </div>
 
       {/* RESULTS SECTION */}
-      <div className="bg-white overflow-hidden mt-3 mx-3 mb-3 rounded-2xl shadow-sm border border-gray-100">
+      <div className="bg-white overflow-hidden mt-2 mx-2 mb-2 rounded-2xl shadow-sm border border-gray-100">
         {/* Results Header */}
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-2 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-800">
+            <h3 className="text-base font-semibold text-gray-800">
               Results ({filtered.length} {filtered.length === 1 ? 'prompt' : 'prompts'})
             </h3>
             {selectedRows.length > 0 && (
-              <div className="flex items-center gap-2 text-sm text-blue-600">
-                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+              <div className="flex items-center gap-2 text-xs text-blue-600">
+                <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
                 {selectedRows.length} selected
               </div>
             )}
@@ -509,19 +571,19 @@ const loadPrompts = async () => {
           <table className="w-full text-sm table-auto min-w-[800px]">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr className="text-gray-700">
-                <th className="px-4 py-3 text-center w-12">
+                <th className="px-3 py-2 text-center w-10">
                   <input
                     type="checkbox"
                     checked={filtered.length > 0 && selectedRows.length === filtered.length && filtered.every(p => selectedRows.includes(p._id))}
                     onChange={handleGlobalSelectAll}
-                    className="h-4 w-4 accent-blue-600 cursor-pointer"
+                    className="h-3.5 w-3.5 accent-blue-600 cursor-pointer"
                   />
                 </th>
                 <th 
-                  className="px-4 py-3 text-left w-32 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  className="px-3 py-2 text-left w-32 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
                   onClick={() => handleSort('channel')}
                 >
-                  <div className="flex items-center gap-2 font-semibold">
+                  <div className="flex items-center gap-1.5 font-semibold text-xs">
                     Channel
                     {sortField === 'channel' && (
                       <span className="text-blue-600 font-bold">{sortDirection === 'asc' ? '↑' : '↓'}</span>
@@ -529,10 +591,10 @@ const loadPrompts = async () => {
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-3 text-left w-28 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  className="px-3 py-2 text-left w-28 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
                   onClick={() => handleSort('type')}
                 >
-                  <div className="flex items-center gap-2 font-semibold">
+                  <div className="flex items-center gap-1.5 font-semibold text-xs">
                     Type
                     {sortField === 'type' && (
                       <span className="text-blue-600 font-bold">{sortDirection === 'asc' ? '↑' : '↓'}</span>
@@ -540,28 +602,28 @@ const loadPrompts = async () => {
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-3 text-left w-48 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  className="px-3 py-2 text-left w-48 cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
                   onClick={() => handleSort('model')}
                 >
-                  <div className="flex items-center gap-2 font-semibold">
-                    Model
+                  <div className="flex items-center gap-1.5 font-semibold text-xs">
+                    Sub Type
                     {sortField === 'model' && (
                       <span className="text-blue-600 font-bold">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-3 text-left cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
+                  className="px-3 py-2 text-left cursor-pointer hover:bg-gray-100 select-none transition-colors duration-200"
                   onClick={() => handleSort('prompt')}
                 >
-                  <div className="flex items-center gap-2 font-semibold">
+                  <div className="flex items-center gap-1.5 font-semibold text-xs">
                     Prompt Content
                     {sortField === 'prompt' && (
                       <span className="text-blue-600 font-bold">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-center w-32 font-semibold">Actions</th>
+                <th className="px-3 py-2 text-center w-32 font-semibold text-xs">Actions</th>
               </tr>
             </thead>
 
@@ -577,79 +639,79 @@ const loadPrompts = async () => {
                         : `${channelColor} hover:brightness-95`
                     }`}
                   >
-                  <td className="px-4 py-2 text-center">
+                  <td className="px-3 py-1.5 text-center">
                     <input
                       type="checkbox"
                       checked={selectedRows.includes(p._id)}
                       onChange={() => toggleRow(p._id)}
-                      className="h-4 w-4 accent-blue-600 cursor-pointer"
+                      className="h-3.5 w-3.5 accent-blue-600 cursor-pointer"
                     />
                   </td>
 
-                  <td className="px-4 py-2">
+                  <td className="px-3 py-1.5">
                     <div className="flex items-center">
-                      <div className={`w-3 h-3 ${getChannelDotColor(p.channelId?._id)} rounded-full mr-3`}></div>
-                      <span className="font-medium text-gray-900 truncate max-w-32">
+                      <div className={`w-2.5 h-2.5 ${getChannelDotColor(p.channelId?._id)} rounded-full mr-2`}></div>
+                      <span className="font-medium text-gray-900 truncate max-w-32 text-xs">
                         {p.channelId?.name || "-"}
                       </span>
                     </div>
                   </td>
 
-                  <td className="px-4 py-2">
-                    <span className="inline-flex px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full truncate max-w-28">
+                  <td className="px-3 py-1.5">
+                    <span className="inline-flex px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-800 rounded-full truncate max-w-28">
                       {p.promptTypeId?.name || "-"}
                     </span>
                   </td>
 
-                  <td className="px-4 py-2">
+                  <td className="px-3 py-1.5">
                     <span className="text-gray-600 font-mono text-xs">
                       {p.aiModel || "-"}
                     </span>
                   </td>
 
-                  <td className="px-4 py-2">
+                  <td className="px-3 py-1.5">
                     <div className="max-w-xs">
-                      <p className="text-gray-900 truncate leading-relaxed">
+                      <p className="text-gray-900 truncate leading-relaxed text-xs">
                         {p.promptText?.substring(0, 20)}{p.promptText?.length > 20 ? '...' : ''}
                       </p>
                     </div>
                   </td>
 
-                  <td className="px-4 py-2">
-                    <div className="flex justify-center items-center gap-2">
+                  <td className="px-3 py-1.5">
+                    <div className="flex justify-center items-center gap-1.5">
                       <button 
                         onClick={() => openPreview(p)} 
-                        className="p-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                        className="p-1.5 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                         title="Preview prompt"
                       >
-                        <Eye size={14} />
+                        <Eye size={12} />
                       </button>
 
                       <button 
                         onClick={() => copyText(p.promptText, p)} 
-                        className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                        className="p-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                         title="Copy prompt"
                       >
-                        <Copy size={14} />
+                        <Copy size={12} />
                       </button>
 
                       {(role === "admin" || role === "content_manager") && (
                         <button 
                           onClick={() => openEdit(p)} 
-                          className="p-2 bg-amber-600 text-white hover:bg-amber-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                          className="p-1.5 bg-amber-600 text-white hover:bg-amber-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                           title="Edit prompt"
                         >
-                          <Pencil size={14} />
+                          <Pencil size={12} />
                         </button>
                       )}
 
                       {role === "admin" && (
                         <button 
                           onClick={() => openDeleteModal(p)} 
-                          className="p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+                          className="p-1.5 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
                           title="Delete prompt"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={12} />
                         </button>
                       )}
                     </div>
@@ -675,10 +737,10 @@ const loadPrompts = async () => {
 
         {/* PAGINATION */}
         {filtered.length > 0 && (
-          <div className="bg-white px-4 py-3 border-t border-gray-200">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-              <div className="text-sm font-medium text-gray-700">
-                Showing <span className="text-blue-600 font-semibold">{((page - 1) * pageSize) + 1}</span> to <span className="text-blue-600 font-semibold">{Math.min(page * pageSize, filtered.length)}</span> of <span className="text-blue-600 font-semibold">{filtered.length}</span> results
+          <div className="bg-white px-4 py-2 border-t border-gray-200">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-2">
+              <div className="text-xs font-medium text-gray-700">
+                Showing <span className="text-blue-600 font-semibold">{((page - 1) * pageSize) + 1}</span> to <span className="text-blue-600 font-semibold">{Math.min(page * pageSize, filtered.length)}</span> of <span className="text-blue-600 font-semibold">{filtered.length}</span>
               </div>
               
               {totalPages > 1 && (
@@ -686,9 +748,9 @@ const loadPrompts = async () => {
                   <button
                     onClick={() => setPage(prev => Math.max(1, prev - 1))}
                     disabled={page === 1}
-                    className="px-3 py-1.5 bg-white border-2 border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 font-semibold text-gray-700 hover:text-blue-600 shadow-sm text-sm"
+                    className="px-2.5 py-1 bg-white border-2 border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 font-semibold text-gray-700 hover:text-blue-600 shadow-sm text-xs"
                   >
-                    ← Previous
+                    ← Prev
                   </button>
                   
                   <div className="flex items-center gap-1">
@@ -698,7 +760,7 @@ const loadPrompts = async () => {
                         <button
                           key={pageNum}
                           onClick={() => setPage(pageNum)}
-                          className={`min-w-[2rem] px-2 py-1.5 rounded-lg font-semibold transition-all duration-200 shadow-sm text-sm ${
+                          className={`min-w-[1.75rem] px-1.5 py-1 rounded-lg font-semibold transition-all duration-200 shadow-sm text-xs ${
                             page === pageNum
                               ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md scale-105"
                               : "bg-white border-2 border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600"
@@ -713,7 +775,7 @@ const loadPrompts = async () => {
                   <button
                     onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={page === totalPages}
-                    className="px-3 py-1.5 bg-white border-2 border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 font-semibold text-gray-700 hover:text-blue-600 shadow-sm text-sm"
+                    className="px-2.5 py-1 bg-white border-2 border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 font-semibold text-gray-700 hover:text-blue-600 shadow-sm text-xs"
                   >
                     Next →
                   </button>
@@ -766,7 +828,7 @@ const loadPrompts = async () => {
                   <div className="font-medium">{previewPrompt.promptTypeId?.name || "-"}</div>
                 </div>
                 <div>
-                  <span className="text-xs text-gray-500">Model:</span>
+                  <span className="text-xs text-gray-500">Sub Type:</span>
                   <div className="font-medium font-mono text-sm">{previewPrompt.aiModel || "-"}</div>
                 </div>
               </div>

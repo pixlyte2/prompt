@@ -1,4 +1,3 @@
-
 const Channel = require("../models/channel");
 const Prompt = require("../models/prompt");
 
@@ -49,6 +48,8 @@ const deleteChannel = async (req, res) => {
       channelName: channel.name,
       companyId: req.user.companyId
     });
+
+    // Note: Prompt types are no longer tied to channels, so they remain unaffected
 
     await channel.deleteOne();
 

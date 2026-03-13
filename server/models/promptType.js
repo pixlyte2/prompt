@@ -7,7 +7,7 @@ const promptTypeSchema = new mongoose.Schema(
     channelId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Channel",
-      required: true
+      required: false
     },
 
     companyId: {

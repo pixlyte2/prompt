@@ -182,7 +182,7 @@ export default function Dashboard() {
             <BarChart3 className="w-5 h-5 text-gray-600" />
             <h3 className="text-lg font-semibold">Quick Actions</h3>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <button 
               onClick={() => navigate('/admin/users')}
               className="p-4 border border-blue-200 rounded-lg hover:bg-blue-50 text-left transition-colors"
@@ -200,20 +200,12 @@ export default function Dashboard() {
               <p className="text-sm text-gray-600">Organize channels</p>
             </button>
             <button 
-              onClick={() => navigate('/admin/prompt-types')}
-              className="p-4 border border-orange-200 rounded-lg hover:bg-orange-50 text-left transition-colors"
-            >
-              <Tag className="w-8 h-8 text-orange-600 mb-2" />
-              <p className="font-medium">Prompt Types</p>
-              <p className="text-sm text-gray-600">Manage categories</p>
-            </button>
-            <button 
               onClick={() => navigate('/admin/prompts')}
               className="p-4 border border-indigo-200 rounded-lg hover:bg-indigo-50 text-left transition-colors"
             >
               <FileText className="w-8 h-8 text-indigo-600 mb-2" />
-              <p className="font-medium">View Prompts</p>
-              <p className="text-sm text-gray-600">Browse all prompts</p>
+              <p className="font-medium">Manage Prompts</p>
+              <p className="text-sm text-gray-600">Prompts & Types</p>
             </button>
           </div>
         </div>

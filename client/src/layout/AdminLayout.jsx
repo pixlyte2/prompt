@@ -6,7 +6,6 @@ const adminMenu = [
   { label: "Dashboard", path: "/admin", icon: BarChart3, color: "text-gray-600" },
   { label: "Users", path: "/admin/users", icon: Users, color: "text-blue-600" },
   { label: "Channels", path: "/admin/channels", icon: Layers, color: "text-purple-600" },
-  { label: "Prompt Types", path: "/admin/prompt-types", icon: Tag, color: "text-orange-600" },
   { label: "Prompts", path: "/admin/prompts", icon: FileText, color: "text-indigo-600" },
   { label: "AI Chat", path: "/admin/ai-chat", icon: MessageSquare, color: "text-emerald-600" },
   { label: "Settings", path: "/admin/settings", icon: Settings, color: "text-pink-600" },
