@@ -76,10 +76,10 @@ export default function HistoryModal({ onClose, initialItemId }) {
                         <Trash2 size={12} />
                       </button>
                     </div>
-                    <div className="text-[10px] text-gray-400 mt-1">
+                    <div className="text-xs text-gray-400 mt-1">
                       {item.aiModel} · {new Date(item.timestamp).toLocaleDateString()}
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+                    <div className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
                       {item.prompt.substring(0, 80)}{item.prompt.length > 80 ? '...' : ''}
                     </div>
                   </div>

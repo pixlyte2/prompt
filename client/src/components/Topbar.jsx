@@ -17,6 +17,7 @@ export default function Topbar({ title, titleInfo, icon: Icon, onCacheClear }) {
   const handleClearCache = () => {
     clearCache();
     clearRecentPrompts();
+    localStorage.removeItem("AI_CHAT_HISTORY");
     if (onCacheClear) onCacheClear();
     toast.success("Cache cleared");
   };

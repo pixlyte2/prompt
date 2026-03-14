@@ -151,29 +151,29 @@ export default function SuperAdminDashboard() {
 
   /* ===== UI ===== */
   return (
-    <div className="min-h-screen bg-gray-50 p-8 space-y-6">
+    <div className="min-h-screen bg-gray-50 p-6 space-y-4">
 
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">
+          <h1 className="text-sm font-semibold text-gray-900">
             Super Admin Dashboard
           </h1>
-          <p className="text-sm text-gray-500">{profile?.email}</p>
+          <p className="text-xs text-gray-500">{profile?.email}</p>
         </div>
 
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+          className="flex items-center gap-1.5 bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
         >
-          <FiUserPlus /> Create Admin
+          <FiUserPlus size={14} /> Create Admin
         </button>
       </div>
 
       {/* FILTER BAR */}
-      <div className="bg-white rounded-md shadow-sm p-4 flex flex-col md:flex-row gap-4">
-        <div className="flex items-center border rounded px-3 py-2 w-full md:w-1/3">
-          <FiSearch className="text-gray-400 mr-2" />
+      <div className="buffer-card p-3 flex flex-col md:flex-row gap-3">
+        <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2 w-full md:w-1/3">
+          <FiSearch className="text-gray-400 mr-2" size={14} />
           <input
             placeholder="Search name or email"
             className="outline-none w-full text-sm"
@@ -183,7 +183,7 @@ export default function SuperAdminDashboard() {
         </div>
 
         <select
-          className="border rounded px-3 py-2 text-sm md:w-1/4"
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm md:w-1/4"
           value={companyFilter}
           onChange={(e) => setCompanyFilter(e.target.value)}
         >
@@ -195,23 +195,23 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-md shadow-sm overflow-hidden">
+      <div className="buffer-card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-100 text-gray-600">
-            <tr>
-              <th className="p-3 text-left">Name</th>
-              <th className="p-3 text-left">Email</th>
-              <th className="p-3 text-left">Company</th>
-              <th className="p-3 text-center">Actions</th>
+          <thead>
+            <tr className="border-b border-gray-100 text-gray-500 text-xs uppercase tracking-wider">
+              <th className="px-4 py-3 text-left font-medium">Name</th>
+              <th className="px-4 py-3 text-left font-medium">Email</th>
+              <th className="px-4 py-3 text-left font-medium">Company</th>
+              <th className="px-4 py-3 text-center font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredAdmins.map((a) => (
-              <tr key={a._id} className="border-t hover:bg-gray-50">
-                <td className="p-3">{a.name}</td>
-                <td className="p-3">{a.email}</td>
-                <td className="p-3">{a.companyId?.name || "-"}</td>
-                <td className="p-3 flex justify-center gap-3">
+              <tr key={a._id} className="border-b border-gray-50 hover:bg-gray-50">
+                <td className="px-4 py-3">{a.name}</td>
+                <td className="px-4 py-3 text-gray-500">{a.email}</td>
+                <td className="px-4 py-3 text-gray-500">{a.companyId?.name || "-"}</td>
+                <td className="px-4 py-3 flex justify-center gap-1">
                   <ActionBtn icon={<FiEdit />} onClick={() => openEditAdmin(a)} />
                   <ActionBtn icon={<FiKey />} onClick={() => openResetPassword(a)} />
                   <ActionBtn
@@ -230,7 +230,7 @@ export default function SuperAdminDashboard() {
 
             {filteredAdmins.length === 0 && (
               <tr>
-                <td colSpan="4" className="p-6 text-center text-gray-400">
+                <td colSpan="4" className="px-4 py-8 text-center text-xs text-gray-400">
                   No admins found
                 </td>
               </tr>
@@ -271,32 +271,31 @@ export default function SuperAdminDashboard() {
 
       {/* DELETE CONFIRMATION MODAL */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-md rounded-lg p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-red-100 text-red-600 p-2 rounded-full">
-                <FiTrash2 />
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-sm rounded-xl shadow-xl">
+            <div className="p-5">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="bg-red-50 text-red-600 p-1.5 rounded-lg">
+                  <FiTrash2 size={14} />
+                </div>
+                <h3 className="text-base font-semibold text-gray-900">
+                  Delete {deleteCompanyName}
+                </h3>
               </div>
-              <h3 className="text-lg font-semibold">
-                Delete {deleteCompanyName}
-              </h3>
+              <p className="text-sm text-gray-600">
+                This will permanently delete the company and all its admins. This action cannot be undone.
+              </p>
             </div>
-
-            <p className="text-sm text-gray-600 mb-6">
-              This will permanently delete the company and all its admins.
-              This action cannot be undone.
-            </p>
-
-            <div className="flex justify-end gap-3">
+            <div className="px-5 pb-5 flex justify-end gap-2">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 border rounded-md text-sm hover:bg-gray-100"
+                className="buffer-button-secondary text-sm py-2"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteAdmin}
-                className="px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
+                className="buffer-button text-sm py-2 text-white bg-red-600 hover:bg-red-700"
               >
                 Delete
               </button>
@@ -313,8 +312,8 @@ export default function SuperAdminDashboard() {
 const ActionBtn = ({ icon, danger, onClick }) => (
   <button
     onClick={onClick}
-    className={`p-2 rounded hover:bg-gray-100 ${
-      danger ? "text-red-600" : "text-indigo-600"
+    className={`p-1.5 rounded-md hover:bg-gray-100 ${
+      danger ? "text-gray-400 hover:text-red-600 hover:bg-red-50" : "text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
     }`}
   >
     {icon}
@@ -322,11 +321,11 @@ const ActionBtn = ({ icon, danger, onClick }) => (
 );
 
 const Modal = ({ title, children, onClose }) => (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-    <div className="bg-white rounded-md w-full max-w-md p-6 space-y-4">
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl w-full max-w-sm shadow-xl p-5 space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-medium">{title}</h3>
-        <button onClick={onClose}><FiX /></button>
+        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><FiX size={16} /></button>
       </div>
       {children}
     </div>
@@ -336,14 +335,14 @@ const Modal = ({ title, children, onClose }) => (
 const ModalInput = (props) => (
   <input
     {...props}
-    className="w-full border rounded px-3 py-2 text-sm outline-none focus:ring-2 ring-indigo-500"
+    className="buffer-input text-sm"
   />
 );
 
 const ModalSave = ({ ...props }) => (
   <button
     {...props}
-    className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700"
+    className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
   >
     Save
   </button>

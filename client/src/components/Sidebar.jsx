@@ -14,15 +14,15 @@ export default function Sidebar({ menu }) {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">CA</span>
+            <span className="text-white font-bold text-xs">CA</span>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900">CreatorAI</h2>
+          <h2 className="text-base font-semibold text-gray-900">CreatorAI</h2>
         </div>
         
         {/* User Profile */}
         <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-            <span className="text-blue-600 font-medium text-sm">
+          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+            <span className="text-blue-600 font-medium text-xs">
               {(user?.name || 'U').charAt(0).toUpperCase()}
             </span>
           </div>

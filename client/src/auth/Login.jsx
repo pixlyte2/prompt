@@ -43,25 +43,25 @@ export default function Login() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Logo and Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-xl">CA</span>
+        <div className="text-center mb-6">
+          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mx-auto mb-3">
+            <span className="text-white font-bold text-sm">CA</span>
           </div>
-          <h1 className="text-3xl font-semibold text-gray-900 mb-2">Welcome back</h1>
-          <p className="text-gray-500">Sign in to your CreatorAI account</p>
+          <h1 className="text-sm font-semibold text-gray-900 mb-1">Welcome back</h1>
+          <p className="text-xs text-gray-500">Sign in to your CreatorAI account</p>
         </div>
 
         {/* Login Form */}
-        <div className="buffer-card p-8">
-          <form onSubmit={handleLogin} className="space-y-6">
+        <div className="buffer-card p-5">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Email address
               </label>
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="buffer-input"
+                className="buffer-input text-sm"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -69,14 +69,14 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Password
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
-                  className="buffer-input pr-10"
+                  className="buffer-input text-sm pr-10"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -86,7 +86,7 @@ export default function Login() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
@@ -94,7 +94,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full buffer-button-primary py-3 text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full buffer-button-primary py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <div className="flex items-center justify-center gap-2">
@@ -109,8 +109,8 @@ export default function Login() {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-8">
-          <p className="text-sm text-gray-400">
+        <div className="text-center mt-6">
+          <p className="text-xs text-gray-400">
             © 2024 CreatorAI. All rights reserved.
           </p>
         </div>

@@ -34,33 +34,33 @@ function UserCard({ user, onDelete }) {
   const roleInfo = getRoleInfo(user.role);
 
   return (
-    <div className="buffer-card p-6 hover:shadow-md transition-all group">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-            <span className="text-blue-600 font-semibold text-lg">
+    <div className="buffer-card px-3 py-2.5 hover:shadow-md hover:border-gray-300 group">
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+            <span className="text-blue-600 font-medium text-xs">
               {user.name.charAt(0).toUpperCase()}
             </span>
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">{user.name}</h3>
-            <div className="flex items-center gap-1 text-sm text-gray-500">
-              <Mail size={14} />
+            <h3 className="text-sm font-medium text-gray-900">{user.name}</h3>
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <Mail size={12} />
               <span>{user.email}</span>
             </div>
           </div>
         </div>
         <button
           onClick={() => onDelete(user)}
-          className="opacity-0 group-hover:opacity-100 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+          className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md"
           title="Delete user"
         >
-          <Trash2 size={16} />
+          <Trash2 size={14} />
         </button>
       </div>
       
       <div className="flex items-center justify-between">
-        <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full ${roleInfo.color}`}>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded ${roleInfo.color}`}>
           <span>{roleInfo.icon}</span>
           {roleInfo.label}
         </span>
@@ -144,31 +144,31 @@ export default function Users() {
     >
       <PageSectionLoader show={isLoading("page")} />
 
-      <div className="space-y-6">
+      <div className="space-y-3">
         {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+        <div className="flex flex-col sm:flex-row gap-3 justify-between">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
               placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="buffer-input pl-10"
+              className="buffer-input pl-9 py-2 text-sm"
             />
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="buffer-button-primary flex items-center gap-2"
+            className="buffer-button-primary flex items-center gap-1.5 text-sm py-2"
           >
-            <Plus size={18} />
+            <Plus size={16} />
             Add User
           </button>
         </div>
 
         {/* Users Grid */}
         {filteredUsers.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {filteredUsers.map(user => (
               <UserCard 
                 key={user._id} 
@@ -178,23 +178,20 @@ export default function Users() {
             ))}
           </div>
         ) : (
-          <div className="buffer-card p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <UsersIcon className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <div className="buffer-card p-8 text-center">
+            <UsersIcon size={32} className="text-gray-300 mx-auto mb-2" />
+            <p className="text-sm font-medium text-gray-600">
               {searchTerm ? 'No users found' : 'No users yet'}
-            </h3>
-            <p className="text-gray-500 mb-6">
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
               {searchTerm ? 'Try adjusting your search terms' : 'Create your first user to get started'}
             </p>
             {!searchTerm && (
               <button
                 onClick={() => setShowAddModal(true)}
-                className="buffer-button-primary"
+                className="buffer-button-primary text-sm py-2 mt-3 flex items-center gap-1.5 mx-auto"
               >
-                <Plus size={18} className="mr-2" />
-                Add First User
+                <Plus size={14} /> Add First User
               </button>
             )}
           </div>
@@ -202,24 +199,24 @@ export default function Users() {
 
         {/* Add User Modal */}
         {showAddModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
-              <div className="p-6 border-b flex justify-between items-center">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <User size={20} />
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl w-full max-w-md shadow-xl">
+              <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                  <User size={16} />
                   Add New User
                 </h3>
                 <button 
                   onClick={() => setShowAddModal(false)} 
-                  className="text-gray-400 hover:text-gray-600 p-1"
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded"
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
               
-              <div className="p-6 space-y-4">
+              <div className="p-5 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Full Name
                   </label>
                   <input
@@ -227,12 +224,12 @@ export default function Users() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     autoComplete="off"
-                    className="buffer-input"
+                    className="buffer-input text-sm"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Email Address
                   </label>
                   <input
@@ -241,12 +238,12 @@ export default function Users() {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     autoComplete="off"
-                    className="buffer-input"
+                    className="buffer-input text-sm"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Password
                   </label>
                   <input
@@ -259,18 +256,18 @@ export default function Users() {
                     data-lpignore="true"
                     data-1p-ignore="true"
                     name="user-password-field"
-                    className="buffer-input"
+                    className="buffer-input text-sm"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Role
                   </label>
                   <select
                     value={form.role}
                     onChange={(e) => setForm({ ...form, role: e.target.value })}
-                    className="buffer-input"
+                    className="buffer-input text-sm"
                   >
                     <option value="viewer">Viewer</option>
                     <option value="content_manager">Content Manager</option>
@@ -278,28 +275,22 @@ export default function Users() {
                 </div>
               </div>
 
-              <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
+              <div className="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="buffer-button-secondary"
+                  className="buffer-button-secondary text-sm py-2"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={createUser}
                   disabled={loading}
-                  className="buffer-button-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="buffer-button-primary text-sm py-2 disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {loading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Creating...
-                    </>
+                    <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Creating...</>
                   ) : (
-                    <>
-                      <Plus size={16} />
-                      Create User
-                    </>
+                    <><Plus size={14} /> Create User</>
                   )}
                 </button>
               </div>

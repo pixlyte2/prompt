@@ -96,6 +96,9 @@ export default function AIChat() {
     const newItem = {
       id: Date.now(),
       title: promptTitle,
+      channel: prompt?.channelId?.name || "",
+      promptType: prompt?.promptTypeId?.name || "",
+      subType: prompt?.aiModel || "",
       prompt: finalizedPrompt,
       result: result,
       aiModel: aiModel,
@@ -228,17 +231,17 @@ export default function AIChat() {
       icon={MessageSquare}
     >
       {/* Main Form Card */}
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 h-[calc(100vh-8rem)]">
+      <div className="buffer-card p-4 h-[calc(100vh-7rem)]">
         <div className="space-y-3 h-full flex flex-col">
           <div className="flex gap-3">
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">
+              <label className="block text-xs font-medium text-gray-500 mb-1">
                 Video Length
               </label>
               <select
                 value={videoLength}
                 onChange={(e) => setVideoLength(e.target.value)}
-                className="w-40 px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white transition-all text-sm"
+                className="buffer-input text-sm w-40"
               >
                 <option value="40s">40 seconds</option>
                 <option value="2min">2 minutes</option>
@@ -248,19 +251,17 @@ export default function AIChat() {
             </div>
 
             <div className="flex-1">
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide">
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-gray-500">
                   Select Prompt
                 </label>
-                <div className="flex items-center gap-1 text-[10px] text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded">
-                  <span className="font-semibold">💡 Use [LENGTH] & [SOURCE] in prompt</span>
-                </div>
+                <span className="text-xs text-blue-600">💡 Use [LENGTH] & [SOURCE] in prompt</span>
               </div>
               <div className="flex gap-2">
                 <select
                   value={selectedPrompt}
                   onChange={(e) => setSelectedPrompt(e.target.value)}
-                  className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white transition-all text-sm"
+                  className="buffer-input text-sm flex-1"
                 >
                   <option value="">Choose a prompt...</option>
                   {prompts.map(p => (
@@ -272,7 +273,7 @@ export default function AIChat() {
                 {selectedPrompt && (
                   <button
                     onClick={() => setPreviewModal(true)}
-                    className="px-3 py-2 bg-purple-100 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg transition-all flex items-center gap-1.5 font-semibold whitespace-nowrap shadow-sm hover:shadow-md text-sm"
+                    className="buffer-button-secondary text-sm flex items-center gap-1.5 whitespace-nowrap"
                     title="Preview prompt"
                   >
                     <Eye size={14} />
@@ -284,51 +285,30 @@ export default function AIChat() {
           </div>
 
           {/* Tabs for Source Input and Finalized Prompt */}
-          <div className="border-2 border-gray-200 rounded-xl overflow-hidden flex-1 flex flex-col">
-            {/* Tab Headers */}
-            <div className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 via-blue-50/30 to-gray-50 px-3 flex-shrink-0">
-              <div className="flex gap-1">
+          <div className="border border-gray-200 rounded-lg overflow-hidden flex-1 flex flex-col">
+            <div className="border-b border-gray-200 px-3 flex gap-4 flex-shrink-0">
                 <button
                   onClick={() => setChatTab("source")}
-                  className={`relative px-4 py-2.5 font-bold text-xs transition-all duration-300 rounded-t-lg ${
+                  className={`py-2 text-sm font-medium border-b-2 flex items-center gap-1.5 ${
                     chatTab === "source"
-                      ? "text-blue-600"
-                      : "text-gray-500 hover:text-gray-800 hover:bg-white/50"
+                      ? "border-blue-600 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                 >
-                  <span className="relative z-10 flex items-center gap-1.5">
                     <MessageSquare size={14} />
                     Source Input
-                  </span>
-                  {chatTab === "source" && (
-                    <>
-                      <div className="absolute inset-0 bg-white rounded-t-lg shadow-lg" />
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 rounded-t-sm" />
-                      <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-transparent rounded-t-lg" />
-                    </>
-                  )}
                 </button>
                 <button
                   onClick={() => setChatTab("finalized")}
-                  className={`relative px-4 py-2.5 font-bold text-xs transition-all duration-300 rounded-t-lg ${
+                  className={`py-2 text-sm font-medium border-b-2 flex items-center gap-1.5 ${
                     chatTab === "finalized"
-                      ? "text-blue-600"
-                      : "text-gray-500 hover:text-gray-800 hover:bg-white/50"
+                      ? "border-blue-600 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                 >
-                  <span className="relative z-10 flex items-center gap-1.5">
                     <Copy size={14} />
                     Finalized Prompt
-                  </span>
-                  {chatTab === "finalized" && (
-                    <>
-                      <div className="absolute inset-0 bg-white rounded-t-lg shadow-lg" />
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 rounded-t-sm" />
-                      <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-transparent rounded-t-lg" />
-                    </>
-                  )}
                 </button>
-              </div>
             </div>
 
             {/* Tab Content */}
@@ -339,41 +319,36 @@ export default function AIChat() {
                     value={sourceText}
                     onChange={(e) => setSourceText(e.target.value)}
                     placeholder="Paste YouTube URL, script, or any text here..."
-                    className="w-full h-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 resize-none transition-all text-sm"
+                    className="w-full h-full buffer-input text-sm resize-none"
                   />
                 </div>
               ) : (
                 <div className="h-full">
                   {finalizedPrompt ? (
-                    <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 border-2 border-indigo-200 rounded-xl p-3 shadow-lg h-full flex flex-col">
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 h-full flex flex-col">
                       <div className="flex items-center justify-between mb-2 flex-shrink-0">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full animate-pulse"></div>
-                          <h3 className="text-xs font-bold text-indigo-800 uppercase tracking-wide">Finalized Prompt</h3>
-                        </div>
+                        <h3 className="text-xs font-medium text-gray-500">Finalized Prompt</h3>
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(finalizedPrompt);
-                            toast.success("Finalized prompt copied to clipboard!");
+                            toast.success("Copied!");
                           }}
-                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-1.5 shadow-md hover:shadow-lg font-semibold text-xs transition-all"
+                          className="buffer-button-primary text-xs py-1 px-2.5 flex items-center gap-1"
                         >
                           <Copy size={12} />
                           Copy
                         </button>
                       </div>
-                      <div className="bg-white border border-indigo-200 rounded-lg p-2.5 shadow-inner flex-1 overflow-y-auto">
-                        <div className="text-xs text-gray-800 whitespace-pre-wrap leading-relaxed font-medium">
+                      <div className="bg-white border border-gray-200 rounded-lg p-2.5 flex-1 overflow-y-auto">
+                        <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
                           {finalizedPrompt}
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 text-center h-full flex flex-col items-center justify-center">
-                      <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <Copy size={20} className="text-gray-400" />
-                      </div>
-                      <p className="text-gray-500 font-semibold text-xs">No finalized prompt yet</p>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center h-full flex flex-col items-center justify-center">
+                      <Copy size={20} className="text-gray-300 mb-2" />
+                      <p className="text-sm text-gray-500">No finalized prompt yet</p>
                       <p className="text-xs text-gray-400 mt-1">Select a prompt and add source text</p>
                     </div>
                   )}
@@ -390,13 +365,13 @@ export default function AIChat() {
               onKeyPress={handleKeyPress}
               placeholder="Type additional input or question..."
               disabled={loading}
-              className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 disabled:bg-gray-50 transition-all text-sm"
+              className="buffer-input text-sm flex-1 disabled:bg-gray-50"
             />
             <select
               value={aiModel}
               onChange={(e) => setAiModel(e.target.value)}
               disabled={loading}
-              className="w-56 px-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-white disabled:bg-gray-50 transition-all font-medium text-xs"
+              className="buffer-input text-sm w-56 disabled:bg-gray-50"
             >
               <option value="gemini-2.5-flash">⚡ Gemini 2.5 Flash (Recommended)</option>
               <option value="gemini-2.5-pro">💎 Gemini 2.5 Pro (Best Quality)</option>
@@ -407,7 +382,7 @@ export default function AIChat() {
             <button
               onClick={handleSend}
               disabled={loading}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md hover:shadow-lg font-semibold text-sm transition-all"
+              className="buffer-button-primary text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

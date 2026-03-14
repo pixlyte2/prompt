@@ -75,18 +75,18 @@ export default function Help() {
       titleInfo="Complete guide to manage prompts and AI interactions"
       icon={HelpCircle}
     >
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-4">
+      <div className="buffer-card overflow-hidden p-4">
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {sections.map((section, idx) => {
             const Icon = section.icon;
             return (
-              <div key={idx} className="bg-white rounded-lg border p-4 hover:shadow-lg transition-shadow">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-gray-100 rounded-lg">
-                    <Icon className={`w-6 h-6 ${section.color}`} />
+              <div key={idx} className="buffer-card p-3 hover:shadow-md hover:border-gray-300">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="p-1.5 bg-gray-100 rounded-lg">
+                    <Icon className={`w-4 h-4 ${section.color}`} />
                   </div>
-                  <h3 className="text-lg font-semibold">{section.title}</h3>
+                  <h3 className="text-sm font-semibold">{section.title}</h3>
                 </div>
                 <ul className="space-y-2">
                   {section.items.map((item, i) => (
@@ -101,9 +101,9 @@ export default function Help() {
           })}
         </div>
 
-        <div className="bg-gray-50 rounded-lg border p-4 mt-4">
-          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <Copy className="w-5 h-5 text-cyan-600" />
+        <div className="bg-gray-50 rounded-lg border p-3 mt-3">
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+            <Copy className="w-4 h-4 text-cyan-600" />
             Quick Tips
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-700">
