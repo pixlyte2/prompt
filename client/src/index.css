@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,6 +7,30 @@ html, body, #root {
   height: 100%;
   width: 100%;
   margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+@layer components {
+  /* Buffer-inspired custom styles */
+  .buffer-card {
+    @apply bg-white rounded-lg border border-gray-200 shadow-sm;
+  }
+
+  .buffer-button {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  }
+
+  .buffer-button-primary {
+    @apply buffer-button bg-blue-600 text-white hover:bg-blue-700;
+  }
+
+  .buffer-button-secondary {
+    @apply buffer-button bg-gray-100 text-gray-700 hover:bg-gray-200;
+  }
+
+  .buffer-input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200;
+  }
 }
 
 /* Hide scrollbar for horizontal scroll */
@@ -16,5 +41,12 @@ html, body, #root {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Smooth animations */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
 }
 

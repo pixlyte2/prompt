@@ -1,11 +1,76 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { Plus, Trash2, Users as UsersIcon, X, Search, ArrowUpDown } from "lucide-react";
+import { Plus, Trash2, Users as UsersIcon, X, Search, Mail, Shield, User } from "lucide-react";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
 import useLoading from "../../hooks/useLoading";
 import PageSectionLoader from "../../components/PageSectionLoader";
+
+function UserCard({ user, onDelete }) {
+  const getRoleInfo = (role) => {
+    switch (role) {
+      case "content_manager": 
+        return { 
+          label: "Content Manager", 
+          color: "bg-blue-100 text-blue-700", 
+          icon: "✏️" 
+        };
+      case "admin": 
+        return { 
+          label: "Admin", 
+          color: "bg-purple-100 text-purple-700", 
+          icon: "👑" 
+        };
+      default: 
+        return { 
+          label: "Viewer", 
+          color: "bg-gray-100 text-gray-700", 
+          icon: "👁️" 
+        };
+    }
+  };
+
+  const roleInfo = getRoleInfo(user.role);
+
+  return (
+    <div className="buffer-card p-6 hover:shadow-md transition-all group">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+            <span className="text-blue-600 font-semibold text-lg">
+              {user.name.charAt(0).toUpperCase()}
+            </span>
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">{user.name}</h3>
+            <div className="flex items-center gap-1 text-sm text-gray-500">
+              <Mail size={14} />
+              <span>{user.email}</span>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => onDelete(user)}
+          className="opacity-0 group-hover:opacity-100 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+          title="Delete user"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+      
+      <div className="flex items-center justify-between">
+        <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full ${roleInfo.color}`}>
+          <span>{roleInfo.icon}</span>
+          {roleInfo.label}
+        </span>
+        <div className="text-xs text-gray-400">
+          {new Date(user.createdAt).toLocaleDateString()}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -14,7 +79,6 @@ export default function Users() {
   const [deleting, setDeleting] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const { startLoading, stopLoading, isLoading } = useLoading();
 
@@ -66,240 +130,194 @@ export default function Users() {
     }
   };
 
-  const getRoleBadge = (role) => {
-    switch (role) {
-      case "content_manager": return "bg-blue-100 text-blue-700";
-      case "admin": return "bg-purple-100 text-purple-700";
-      default: return "bg-gray-100 text-gray-700";
-    }
-  };
-
-  const handleSort = (key) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-    }));
-  };
-
-  const filteredAndSortedUsers = users
-    .filter(u => 
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.role.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (!sortConfig.key) return 0;
-      const aVal = a[sortConfig.key]?.toString().toLowerCase() || '';
-      const bVal = b[sortConfig.key]?.toString().toLowerCase() || '';
-      return sortConfig.direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    });
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.role.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <AdminLayout 
-      title="User Management" 
-      titleInfo="Manage users and their access permissions"
+      title="Users" 
+      titleInfo={`Manage ${users.length} team members and their permissions`}
       icon={UsersIcon}
     >
       <PageSectionLoader show={isLoading("page")} />
 
-      {/* Add User Button and Search */}
-      <div className="max-w-4xl mb-4 flex gap-3">
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl flex items-center gap-2 transform hover:scale-105"
-        >
-          <Plus size={20} />
-          Add New User
-        </button>
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
-          />
+      <div className="space-y-6">
+        {/* Header Actions */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="buffer-input pl-10"
+            />
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="buffer-button-primary flex items-center gap-2"
+          >
+            <Plus size={18} />
+            Add User
+          </button>
         </div>
-      </div>
 
-      {/* Add User Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl">
-            <div className="p-6 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <Plus size={24} />
-                Add New User
-              </h3>
-              <button onClick={() => setShowAddModal(false)} className="hover:bg-white/20 p-2 rounded-lg transition">
-                <X size={24} />
-              </button>
+        {/* Users Grid */}
+        {filteredUsers.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredUsers.map(user => (
+              <UserCard 
+                key={user._id} 
+                user={user} 
+                onDelete={setDeleting}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="buffer-card p-12 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <UsersIcon className="w-8 h-8 text-gray-400" />
             </div>
-            
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Full Name</label>
-                <input
-                  placeholder="Enter full name"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  autoComplete="off"
-                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="Enter email address"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  autoComplete="off"
-                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Password</label>
-                <input
-                  type="password"
-                  placeholder="Enter password"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  autoComplete="new-password"
-                  data-form-type="other"
-                  data-lpignore="true"
-                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Role</label>
-                <select
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all bg-white"
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {searchTerm ? 'No users found' : 'No users yet'}
+            </h3>
+            <p className="text-gray-500 mb-6">
+              {searchTerm ? 'Try adjusting your search terms' : 'Create your first user to get started'}
+            </p>
+            {!searchTerm && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="buffer-button-primary"
+              >
+                <Plus size={18} className="mr-2" />
+                Add First User
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Add User Modal */}
+        {showAddModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
+              <div className="p-6 border-b flex justify-between items-center">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <User size={20} />
+                  Add New User
+                </h3>
+                <button 
+                  onClick={() => setShowAddModal(false)} 
+                  className="text-gray-400 hover:text-gray-600 p-1"
                 >
-                  <option value="viewer">Viewer</option>
-                  <option value="content_manager">Content Manager</option>
-                </select>
+                  <X size={20} />
+                </button>
               </div>
-            </div>
+              
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    placeholder="Enter full name"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    autoComplete="off"
+                    className="buffer-input"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="Enter email address"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    autoComplete="off"
+                    className="buffer-input"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter password"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    autoComplete="new-password"
+                    data-form-type="other"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    name="user-password-field"
+                    className="buffer-input"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Role
+                  </label>
+                  <select
+                    value={form.role}
+                    onChange={(e) => setForm({ ...form, role: e.target.value })}
+                    className="buffer-input"
+                  >
+                    <option value="viewer">Viewer</option>
+                    <option value="content_manager">Content Manager</option>
+                  </select>
+                </div>
+              </div>
 
-            <div className="p-6 border-t bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={createUser}
-                disabled={loading}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Plus size={20} />
-                    Create User
-                  </>
-                )}
-              </button>
+              <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="buffer-button-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={createUser}
+                  disabled={loading}
+                  className="buffer-button-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={16} />
+                      Create User
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="max-w-4xl">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800">Users ({filteredAndSortedUsers.length})</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b-2 border-gray-200">
-              <tr className="text-gray-700">
-                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('name')}>
-                  <div className="flex items-center gap-2">
-                    Name
-                    <ArrowUpDown size={14} className="text-gray-400" />
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('email')}>
-                  <div className="flex items-center gap-2">
-                    Email
-                    <ArrowUpDown size={14} className="text-gray-400" />
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('role')}>
-                  <div className="flex items-center gap-2">
-                    Role
-                    <ArrowUpDown size={14} className="text-gray-400" />
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-center font-semibold w-32">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredAndSortedUsers.map(u => (
-                <tr key={u._id} className="hover:bg-gray-50 transition-colors duration-200">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
-                        <UsersIcon className="w-4 h-4 text-white" />
-                      </div>
-                      <span className="font-medium text-gray-900">{u.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{u.email}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getRoleBadge(u.role)}`}>
-                      {u.role.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => setDeleting(u)}
-                      className="p-1.5 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-all shadow-sm hover:shadow-md"
-                      title="Delete user"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredAndSortedUsers.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <UsersIcon className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No users found</h3>
-              <p className="text-gray-500">Create your first user to get started</p>
-            </div>
-          )}
-        </div>
-        </div>
+        <ConfirmModal
+          isOpen={!!deleting}
+          title="Delete User"
+          message={`Are you sure you want to delete "${deleting?.name}"? This action cannot be undone.`}
+          confirmText="Delete User"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleting(null)}
+          loading={loading}
+          danger={true}
+        />
       </div>
-
-      <ConfirmModal
-        isOpen={!!deleting}
-        title="Delete User"
-        message={`Are you sure you want to delete "${deleting?.name}"? This action cannot be undone and will remove all associated data.`}
-        confirmText="Delete User"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleting(null)}
-        loading={loading}
-        danger={true}
-      />
     </AdminLayout>
   );
 }

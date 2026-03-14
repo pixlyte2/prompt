@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Loader2, Copy, Eye, Trash2, X, History, MessageSquare, Maximize2, Minimize2 } from "lucide-react";
+import { Send, Loader2, Copy, Eye, X, MessageSquare, Maximize2, Minimize2 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useLocation } from "react-router-dom";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
 import { decryptData } from "../../utils/encryption";
+import { renderMarkdown } from "../../utils/markdown";
+import HistoryModal from "../../components/HistoryModal";
 
 export default function AIChat() {
   const [prompts, setPrompts] = useState([]);
@@ -18,19 +21,34 @@ export default function AIChat() {
   const [previewModal, setPreviewModal] = useState(false);
   const [resultModal, setResultModal] = useState(false);
   const [historyModal, setHistoryModal] = useState(false);
+  const [historyItemId, setHistoryItemId] = useState(null);
   const [currentResult, setCurrentResult] = useState(null);
-  const [history, setHistory] = useState([]);
   const [selectedHistory, setSelectedHistory] = useState(null);
   const [errorModal, setErrorModal] = useState(false);
   const [errorDetails, setErrorDetails] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [historyTab, setHistoryTab] = useState("result");
   const [chatTab, setChatTab] = useState("source");
   const messagesEndRef = useRef(null);
+  const location = useLocation();
 
   useEffect(() => {
-    loadPrompts();
-    loadHistory();
+    loadPrompts().then(() => {
+      const s = location.state;
+      if (!s) return;
+      if (s.promptId) {
+        setSelectedPrompt(s.promptId);
+        if (s.videoLength) setVideoLength(s.videoLength);
+        if (s.sourceText) setSourceText(s.sourceText);
+        if (s.aiModel) setAiModel(s.aiModel);
+      }
+      if (s.openHistoryId) {
+        setHistoryItemId(s.openHistoryId);
+        setHistoryModal(true);
+      } else if (s.openHistory) {
+        setHistoryModal(true);
+      }
+      window.history.replaceState({}, "");
+    });
   }, []);
 
   useEffect(() => {
@@ -65,38 +83,30 @@ export default function AIChat() {
   };
 
   const loadHistory = () => {
-    const stored = localStorage.getItem("AI_CHAT_HISTORY");
-    if (stored) {
-      setHistory(JSON.parse(stored));
-    }
+    try {
+      const stored = localStorage.getItem("AI_CHAT_HISTORY");
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
   };
 
   const saveToHistory = (result) => {
     const prompt = prompts.find(p => p._id === selectedPrompt);
     const promptTitle = prompt ? `${prompt.channelId?.name} - ${prompt.promptTypeId?.name}` : "Untitled";
-    
+    const history = loadHistory();
     const newItem = {
       id: Date.now(),
       title: promptTitle,
       prompt: finalizedPrompt,
       result: result,
       aiModel: aiModel,
+      promptId: selectedPrompt,
+      sourceText: sourceText,
+      videoLength: videoLength,
       timestamp: new Date().toISOString()
     };
-    const updated = [newItem, ...history];
-    setHistory(updated);
-    localStorage.setItem("AI_CHAT_HISTORY", JSON.stringify(updated));
+    localStorage.setItem("AI_CHAT_HISTORY", JSON.stringify([newItem, ...history]));
   };
 
-  const deleteFromHistory = (id) => {
-    const updated = history.filter(item => item.id !== id);
-    setHistory(updated);
-    localStorage.setItem("AI_CHAT_HISTORY", JSON.stringify(updated));
-    if (selectedHistory?.id === id) {
-      setSelectedHistory(updated[0] || null);
-    }
-    toast.success("Deleted from history");
-  };
 
   const loadPrompts = async () => {
     try {
@@ -204,13 +214,6 @@ export default function AIChat() {
     setIsFullScreen(false);
   };
 
-  const openHistoryModal = () => {
-    if (history.length > 0) {
-      setSelectedHistory(history[0]);
-    }
-    setHistoryModal(true);
-  };
-
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -223,8 +226,6 @@ export default function AIChat() {
       title="AI Chat" 
       titleInfo="Create amazing content with AI-powered prompts"
       icon={MessageSquare}
-      onHistoryClick={openHistoryModal} 
-      historyCount={history.length}
     >
       {/* Main Form Card */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 h-[calc(100vh-8rem)]">
@@ -424,336 +425,44 @@ export default function AIChat() {
         </div>
       </div>
 
-      {/* History Modal - Gemini Style */}
-      {historyModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-[90rem] h-[95vh] flex flex-col shadow-2xl">
-            <div className="p-3 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-xl">
-              <h3 className="text-lg font-bold flex items-center gap-2">
-                <History size={20} />
-                Result History
-              </h3>
-              <button onClick={() => setHistoryModal(false)} className="hover:bg-white hover:bg-opacity-20 p-1.5 rounded-lg transition">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="flex flex-1 overflow-hidden">
-              {/* Left Sidebar - History List */}
-              <div className="w-64 border-r bg-gradient-to-b from-gray-50 via-blue-50/30 to-gray-50 overflow-y-auto">
-                {history.length === 0 ? (
-                  <div className="p-6 text-center">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <History size={24} className="text-blue-600" />
-                    </div>
-                    <p className="font-bold text-gray-700 text-sm">No history yet</p>
-                    <p className="text-xs text-gray-500 mt-1">Results will appear here</p>
-                  </div>
-                ) : (
-                  <div className="p-2 space-y-1.5">
-                    {history.map((item, index) => (
-                      <div
-                        key={item.id}
-                        onClick={() => setSelectedHistory(item)}
-                        className={`group relative p-2.5 rounded-lg cursor-pointer transition-all duration-300 ${
-                          selectedHistory?.id === item.id
-                            ? "bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg transform scale-[1.01]"
-                            : "bg-white border border-gray-200 hover:border-blue-400 hover:shadow-lg hover:bg-gradient-to-br hover:from-white hover:via-blue-50/50 hover:to-indigo-50/30 hover:transform hover:scale-[1.01] hover:-translate-y-0.5"
-                        }`}
-                        style={{
-                          animationDelay: `${index * 50}ms`
-                        }}
-                      >
-                        {/* Accent bar */}
-                        <div className={`absolute left-0 top-0 bottom-0 w-0.5 rounded-l-lg transition-all duration-300 ${
-                          selectedHistory?.id === item.id
-                            ? "bg-white"
-                            : "bg-gradient-to-b from-blue-400 to-indigo-500 opacity-0 group-hover:opacity-100"
-                        }`} />
-
-                        <div className="flex justify-between items-start mb-1.5">
-                          <div className={`text-[10px] font-extrabold uppercase tracking-wider transition-all duration-300 flex-1 pr-1 line-clamp-1 ${
-                            selectedHistory?.id === item.id 
-                              ? "text-white" 
-                              : "text-gray-700 group-hover:text-blue-700"
-                          }`}>
-                            {item.title} {item.aiModel && `(${item.aiModel})`}
-                          </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteFromHistory(item.id);
-                            }}
-                            className={`flex-shrink-0 p-1 rounded transition-all duration-300 hover:scale-110 ${
-                              selectedHistory?.id === item.id
-                                ? "text-white/80 hover:text-white hover:bg-white/20"
-                                : "text-gray-400 hover:text-red-600 hover:bg-red-50"
-                            }`}
-                            title="Delete"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-
-                        <div className={`flex items-center gap-1 text-[10px] mb-1.5 transition-all duration-300 ${
-                          selectedHistory?.id === item.id 
-                            ? "text-white/90" 
-                            : "text-gray-500 group-hover:text-blue-600"
-                        }`}>
-                          <div className={`w-1 h-1 rounded-full ${
-                            selectedHistory?.id === item.id ? "bg-white/90" : "bg-blue-400"
-                          }`} />
-                          <span className="font-medium">{new Date(item.timestamp).toLocaleDateString()}</span>
-                        </div>
-
-                        <div className={`text-[10px] leading-relaxed line-clamp-2 transition-all duration-300 ${
-                          selectedHistory?.id === item.id 
-                            ? "text-white/95 font-medium" 
-                            : "text-gray-600 group-hover:text-gray-800"
-                        }`}>
-                          {item.prompt.substring(0, 60)}{item.prompt.length > 60 ? '...' : ''}
-                        </div>
-
-                        {/* Selection indicator */}
-                        {selectedHistory?.id === item.id && (
-                          <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Right Panel - Selected Result */}
-              <div className="flex-1 flex flex-col overflow-hidden bg-white">
-                {selectedHistory ? (
-                  <>
-                    {/* Tabs */}
-                    <div className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 via-blue-50/30 to-gray-50 px-4">
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => setHistoryTab("result")}
-                          className={`relative px-6 py-3.5 font-bold text-sm transition-all duration-300 rounded-t-xl ${
-                            historyTab === "result"
-                              ? "text-blue-600"
-                              : "text-gray-500 hover:text-gray-800 hover:bg-white/50"
-                          }`}
-                        >
-                          <span className="relative z-10 flex items-center gap-2">
-                            <MessageSquare size={16} />
-                            Result
-                          </span>
-                          {historyTab === "result" && (
-                            <>
-                              <div className="absolute inset-0 bg-white rounded-t-xl shadow-lg" />
-                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 rounded-t-sm" />
-                              <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-transparent rounded-t-xl" />
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => setHistoryTab("prompt")}
-                          className={`relative px-6 py-3.5 font-bold text-sm transition-all duration-300 rounded-t-xl ${
-                            historyTab === "prompt"
-                              ? "text-blue-600"
-                              : "text-gray-500 hover:text-gray-800 hover:bg-white/50"
-                          }`}
-                        >
-                          <span className="relative z-10 flex items-center gap-2">
-                            <Copy size={16} />
-                            Prompt
-                          </span>
-                          {historyTab === "prompt" && (
-                            <>
-                              <div className="absolute inset-0 bg-white rounded-t-xl shadow-lg" />
-                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 rounded-t-sm" />
-                              <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-transparent rounded-t-xl" />
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Tab Content */}
-                    {historyTab === "result" ? (
-                      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-blue-50/20 to-indigo-50/20">
-                        <div className="p-6">
-                          {/* Content Card */}
-                          <div className="bg-white rounded-2xl shadow-2xl border-2 border-gray-200 overflow-hidden">
-                            <div className="p-8">
-                              <div 
-                                className="prose prose-base max-w-none"
-                                style={{
-                                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                                  lineHeight: '1.75',
-                                  color: '#1f2937'
-                                }}
-                                dangerouslySetInnerHTML={{ 
-                                  __html: selectedHistory.result
-                                    // Code blocks first (before other replacements)
-                                    .replace(/```([\s\S]*?)```/g, '<pre style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%); color: #f9fafb; padding: 1.25rem; border-radius: 0.75rem; overflow-x: auto; margin: 1.25rem 0; font-family: monospace; font-size: 0.875rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #374151;"><code>$1</code></pre>')
-                                    // Headings
-                                    .replace(/^#### (.+)$/gm, '<h4 style="font-size: 1.125rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #1f2937; padding-bottom: 0.5rem; border-bottom: 2px solid #e5e7eb;">$1</h4>')
-                                    .replace(/^### (.+)$/gm, '<h3 style="font-size: 1.25rem; font-weight: 700; margin-top: 1.75rem; margin-bottom: 0.875rem; color: #1f2937; padding-bottom: 0.5rem; border-bottom: 2px solid #dbeafe;">$1</h3>')
-                                    .replace(/^## (.+)$/gm, '<h2 style="font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: #111827; padding-bottom: 0.75rem; border-bottom: 3px solid #3b82f6; background: linear-gradient(to right, #dbeafe, transparent); padding-left: 1rem; border-radius: 0.25rem;">$1</h2>')
-                                    .replace(/^# (.+)$/gm, '<h1 style="font-size: 1.875rem; font-weight: 800; margin-top: 2rem; margin-bottom: 1.25rem; color: #111827; padding: 1rem; background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); border-left: 4px solid #3b82f6; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">$1</h1>')
-                                    // Horizontal rule
-                                    .replace(/^---$/gm, '<hr style="border: none; height: 2px; background: linear-gradient(to right, transparent, #3b82f6, transparent); margin: 2rem 0;" />')
-                                    // Bold and italic
-                                    .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight: 700; color: #111827; background: linear-gradient(to right, #dbeafe, transparent); padding: 0.125rem 0.25rem; border-radius: 0.25rem;">$1</strong>')
-                                    .replace(/\*(.+?)\*/g, '<em style="font-style: italic; color: #4b5563;">$1</em>')
-                                    // Lists
-                                    .replace(/^\* (.+)$/gm, '<li style="margin-left: 1.5rem; margin-bottom: 0.5rem; padding-left: 0.5rem; list-style-type: none; position: relative;"><span style="position: absolute; left: -1.25rem; color: #3b82f6; font-weight: bold;">•</span>$1</li>')
-                                    .replace(/^- (.+)$/gm, '<li style="margin-left: 1.5rem; margin-bottom: 0.5rem; padding-left: 0.5rem; list-style-type: none; position: relative;"><span style="position: absolute; left: -1.25rem; color: #3b82f6; font-weight: bold;">•</span>$1</li>')
-                                    .replace(/^\d+\. (.+)$/gm, '<li style="margin-left: 1.5rem; margin-bottom: 0.5rem; padding-left: 0.5rem; list-style-type: decimal; color: #1f2937;">$1</li>')
-                                    // Inline code
-                                    .replace(/`([^`]+)`/g, '<code style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 0.25rem 0.5rem; border-radius: 0.375rem; font-family: monospace; font-size: 0.875em; color: #dc2626; font-weight: 600; border: 1px solid #fbbf24;">$1</code>')
-                                    // Paragraphs
-                                    .split('\n\n')
-                                    .map(para => {
-                                      para = para.trim();
-                                      if (!para) return '';
-                                      if (para.startsWith('<h') || para.startsWith('<pre') || para.startsWith('<hr') || para.startsWith('<li')) {
-                                        return para;
-                                      }
-                                      return `<p style="margin-bottom: 1rem; line-height: 1.75; color: #374151; font-size: 1rem;">${para}</p>`;
-                                    })
-                                    .join('')
-                                    // Wrap consecutive list items in ul/ol
-                                    .replace(/(<li[^>]*>.*?<\/li>\s*)+/g, (match) => {
-                                      if (match.includes('list-style-type: decimal')) {
-                                        return `<ol style="margin: 1rem 0; padding: 1rem; background: linear-gradient(to right, #f0f9ff, transparent); border-left: 3px solid #3b82f6; border-radius: 0.5rem;">${match}</ol>`;
-                                      }
-                                      return `<ul style="margin: 1rem 0; padding: 1rem; background: linear-gradient(to right, #f0f9ff, transparent); border-left: 3px solid #3b82f6; border-radius: 0.5rem;">${match}</ul>`;
-                                    })
-                                }} 
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex-1 p-4 overflow-y-auto">
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <pre className="whitespace-pre-wrap text-sm text-gray-800 font-sans leading-relaxed">{selectedHistory.prompt}</pre>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="p-3 border-t bg-white flex justify-end">
-                      <button
-                        onClick={() => {
-                          const textToCopy = historyTab === "result" ? selectedHistory.result : selectedHistory.prompt;
-                          navigator.clipboard.writeText(textToCopy);
-                          toast.success(`${historyTab === "result" ? "Result" : "Prompt"} copied to clipboard`);
-                        }}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 font-semibold shadow-md hover:shadow-lg transition-all text-sm"
-                      >
-                        <Copy size={14} />
-                        Copy {historyTab === "result" ? "Result" : "Prompt"}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-gray-400">
-                    <div className="text-center">
-                      <p className="font-medium">Select a history item to view</p>
-                      <p className="text-sm mt-1">Click on any item from the left sidebar</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {historyModal && <HistoryModal onClose={() => setHistoryModal(false)} initialItemId={historyItemId} />}
 
       {/* Result Modal */}
       {resultModal && currentResult && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`bg-white rounded-2xl w-full flex flex-col shadow-2xl transition-all ${
-            isFullScreen ? 'max-w-[98vw] h-[98vh]' : 'max-w-5xl max-h-[90vh]'
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className={`bg-white rounded-lg w-full flex flex-col border border-gray-200 shadow-lg transition-all ${
+            isFullScreen ? 'max-w-[98vw] h-[98vh]' : 'max-w-4xl max-h-[90vh]'
           }`}>
-            <div className="p-6 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl">
-              <h3 className="text-2xl font-bold">AI Generated Result</h3>
-              <div className="flex items-center gap-2">
+            <div className="px-4 py-3 border-b flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <MessageSquare size={16} className="text-blue-600" />
+                AI Generated Result
+              </h3>
+              <div className="flex items-center gap-1">
                 <button 
                   onClick={() => setIsFullScreen(!isFullScreen)} 
-                  className="hover:bg-blue-700 p-2 rounded-lg transition"
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded"
                   title={isFullScreen ? "Exit fullscreen" : "Fullscreen"}
                 >
-                  {isFullScreen ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
+                  {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </button>
-                <button onClick={handleCloseResultModal} className="hover:bg-blue-700 p-2 rounded-lg transition">
-                  <X size={28} />
+                <button onClick={handleCloseResultModal} className="text-gray-400 hover:text-gray-600 p-1 rounded">
+                  <X size={18} />
                 </button>
               </div>
             </div>
-            <div className={`overflow-y-auto flex-1 bg-gradient-to-br from-gray-50 to-blue-50 ${
-              isFullScreen ? 'p-4' : 'p-8'
-            }`}>
-              <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm ${
-                isFullScreen ? 'p-4' : 'p-8'
-              }`}>
-                <div 
-                  className="prose prose-lg max-w-none"
-                  style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    lineHeight: isFullScreen ? '1.6' : '1.75',
-                    color: '#1f2937',
-                    fontSize: isFullScreen ? '0.875rem' : '1rem'
-                  }}
-                  dangerouslySetInnerHTML={{ 
-                    __html: currentResult
-                      // Code blocks first (before other replacements)
-                      .replace(/```([\s\S]*?)```/g, `<pre style="background-color: #1f2937; color: #f9fafb; padding: ${isFullScreen ? '0.75rem' : '1rem'}; border-radius: 0.5rem; overflow-x: auto; margin: ${isFullScreen ? '0.75rem' : '1rem'} 0; font-family: monospace; font-size: ${isFullScreen ? '0.75rem' : '0.875rem'};"><code>$1</code></pre>`)
-                      // Headings
-                      .replace(/^#### (.+)$/gm, `<h4 style="font-size: ${isFullScreen ? '1rem' : '1.25rem'}; font-weight: 700; margin-top: ${isFullScreen ? '1rem' : '1.25rem'}; margin-bottom: ${isFullScreen ? '0.375rem' : '0.5rem'}; color: #1f2937;">$1</h4>`)
-                      .replace(/^### (.+)$/gm, `<h3 style="font-size: ${isFullScreen ? '1.125rem' : '1.5rem'}; font-weight: 700; margin-top: ${isFullScreen ? '1.125rem' : '1.5rem'}; margin-bottom: ${isFullScreen ? '0.5rem' : '0.75rem'}; color: #1f2937;">$1</h3>`)
-                      .replace(/^## (.+)$/gm, `<h2 style="font-size: ${isFullScreen ? '1.25rem' : '1.875rem'}; font-weight: 700; margin-top: ${isFullScreen ? '1.25rem' : '2rem'}; margin-bottom: ${isFullScreen ? '0.625rem' : '1rem'}; color: #111827;">$1</h2>`)
-                      .replace(/^# (.+)$/gm, `<h1 style="font-size: ${isFullScreen ? '1.5rem' : '2.25rem'}; font-weight: 800; margin-top: ${isFullScreen ? '1.5rem' : '2rem'}; margin-bottom: ${isFullScreen ? '0.75rem' : '1rem'}; color: #111827;">$1</h1>`)
-                      // Horizontal rule
-                      .replace(/^---$/gm, `<hr style="border: none; border-top: 2px solid #e5e7eb; margin: ${isFullScreen ? '1rem' : '1.5rem'} 0;" />`)
-                      // Bold and italic
-                      .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight: 700; color: #111827;">$1</strong>')
-                      .replace(/\*(.+?)\*/g, '<em style="font-style: italic;">$1</em>')
-                      // Lists
-                      .replace(/^\* (.+)$/gm, `<li style="margin-left: 1.5rem; margin-bottom: ${isFullScreen ? '0.25rem' : '0.5rem'}; list-style-type: disc;">$1</li>`)
-                      .replace(/^- (.+)$/gm, `<li style="margin-left: 1.5rem; margin-bottom: ${isFullScreen ? '0.25rem' : '0.5rem'}; list-style-type: disc;">$1</li>`)
-                      .replace(/^\d+\. (.+)$/gm, `<li style="margin-left: 1.5rem; margin-bottom: ${isFullScreen ? '0.25rem' : '0.5rem'}; list-style-type: decimal;">$1</li>`)
-                      // Inline code
-                      .replace(/`([^`]+)`/g, `<code style="background-color: #f3f4f6; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-family: monospace; font-size: ${isFullScreen ? '0.8em' : '0.875em'}; color: #dc2626;">$1</code>`)
-                      // Paragraphs
-                      .split('\n\n')
-                      .map(para => {
-                        para = para.trim();
-                        if (!para) return '';
-                        if (para.startsWith('<h') || para.startsWith('<pre') || para.startsWith('<hr') || para.startsWith('<li')) {
-                          return para;
-                        }
-                        return `<p style="margin-bottom: ${isFullScreen ? '0.75rem' : '1rem'}; line-height: ${isFullScreen ? '1.6' : '1.75'};">${para}</p>`;
-                      })
-                      .join('')
-                      // Wrap consecutive list items in ul/ol
-                      .replace(/(<li[^>]*>.*?<\/li>\s*)+/g, (match) => {
-                        if (match.includes('list-style-type: decimal')) {
-                          return `<ol style="margin: ${isFullScreen ? '0.75rem' : '1rem'} 0;">${match}</ol>`;
-                        }
-                        return `<ul style="margin: ${isFullScreen ? '0.75rem' : '1rem'} 0;">${match}</ul>`;
-                      })
-                  }} 
-                />
-              </div>
+            <div className="overflow-y-auto flex-1 p-4">
+              <div 
+                className="prose prose-sm max-w-none text-sm leading-relaxed text-gray-700"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(currentResult) }} 
+              />
             </div>
-            <div className="p-6 border-t bg-white flex justify-end gap-3">
+            <div className="px-4 py-3 border-t flex justify-end">
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(currentResult);
-                  toast.success("Copied to clipboard");
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+                onClick={() => { navigator.clipboard.writeText(currentResult); toast.success("Copied to clipboard"); }}
+                className="buffer-button-primary text-sm flex items-center gap-1.5"
               >
-                <Copy size={18} />
+                <Copy size={14} />
                 Copy
               </button>
             </div>
@@ -763,76 +472,43 @@ export default function AIChat() {
 
       {/* Error Modal */}
       {errorModal && errorDetails && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl">
-            <div className="p-6 border-b flex justify-between items-center bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-t-2xl">
-              <h3 className="text-2xl font-bold">⚠️ AI Generation Error</h3>
-              <button onClick={() => setErrorModal(false)} className="hover:bg-red-700 p-2 rounded-lg transition">
-                <X size={28} />
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-200 shadow-lg">
+            <div className="px-4 py-3 border-b flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <span className="w-6 h-6 bg-red-50 rounded flex items-center justify-center text-red-600">⚠️</span>
+                AI Generation Error
+              </h3>
+              <button onClick={() => setErrorModal(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded">
+                <X size={18} />
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50 space-y-6">
-              {/* Request Info */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <div>
-                <div className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  Request Information
-                </div>
-                <div className="bg-white p-5 rounded-xl border-2 border-blue-200 shadow-sm">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-xs text-gray-500 font-semibold uppercase block mb-1">Prompt ID:</span>
-                      <div className="font-mono text-sm text-gray-800 bg-gray-50 px-3 py-2 rounded">{errorDetails.request.promptId}</div>
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 font-semibold uppercase block mb-1">AI Model:</span>
-                      <div className="font-mono text-sm text-gray-800 bg-gray-50 px-3 py-2 rounded font-bold">{errorDetails.request.aiModel}</div>
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 font-semibold uppercase block mb-1">Video Length:</span>
-                      <div className="font-mono text-sm text-gray-800 bg-gray-50 px-3 py-2 rounded">{errorDetails.request.videoLength}</div>
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 font-semibold uppercase block mb-1">Timestamp:</span>
-                      <div className="font-mono text-sm text-gray-800 bg-gray-50 px-3 py-2 rounded">{new Date(errorDetails.request.timestamp).toLocaleString()}</div>
-                    </div>
+                <div className="text-xs font-medium text-gray-500 uppercase mb-2">Request</div>
+                <div className="bg-gray-50 rounded-lg border border-gray-200 p-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-xs text-gray-500">Prompt ID</span><div className="font-mono text-gray-800 mt-0.5">{errorDetails.request.promptId}</div></div>
+                    <div><span className="text-xs text-gray-500">AI Model</span><div className="font-mono text-gray-800 mt-0.5 font-medium">{errorDetails.request.aiModel}</div></div>
+                    <div><span className="text-xs text-gray-500">Video Length</span><div className="font-mono text-gray-800 mt-0.5">{errorDetails.request.videoLength}</div></div>
+                    <div><span className="text-xs text-gray-500">Timestamp</span><div className="font-mono text-gray-800 mt-0.5">{new Date(errorDetails.request.timestamp).toLocaleString()}</div></div>
                   </div>
-                  <div className="mt-4">
-                    <span className="text-xs text-gray-500 font-semibold uppercase block mb-1">Source Text:</span>
-                    <div className="font-mono text-sm text-gray-800 bg-gray-50 px-3 py-2 rounded max-h-20 overflow-y-auto">{errorDetails.request.sourceText || 'N/A'}</div>
-                  </div>
-                  <div className="mt-4">
-                    <span className="text-xs text-gray-500 font-semibold uppercase block mb-1">Message:</span>
-                    <div className="font-mono text-sm text-gray-800 bg-gray-50 px-3 py-2 rounded">{errorDetails.request.message}</div>
-                  </div>
+                  <div className="mt-3"><span className="text-xs text-gray-500">Source Text</span><div className="font-mono text-sm text-gray-800 mt-0.5 max-h-16 overflow-y-auto">{errorDetails.request.sourceText || 'N/A'}</div></div>
+                  <div className="mt-3"><span className="text-xs text-gray-500">Message</span><div className="font-mono text-sm text-gray-800 mt-0.5">{errorDetails.request.message}</div></div>
                 </div>
               </div>
 
-              {/* Response Info */}
               <div>
-                <div className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  Response Information
-                </div>
-                <div className="bg-white p-5 rounded-xl border-2 border-red-200 shadow-sm">
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <span className="text-xs text-gray-500 font-semibold uppercase block mb-1">Status Code:</span>
-                      <div className="font-mono text-sm text-red-600 bg-red-50 px-3 py-2 rounded font-bold">{errorDetails.response.status || 'N/A'}</div>
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 font-semibold uppercase block mb-1">Status Text:</span>
-                      <div className="font-mono text-sm text-red-600 bg-red-50 px-3 py-2 rounded font-bold">{errorDetails.response.statusText || 'N/A'}</div>
-                    </div>
+                <div className="text-xs font-medium text-gray-500 uppercase mb-2">Response</div>
+                <div className="bg-red-50 rounded-lg border border-red-200 p-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                    <div><span className="text-xs text-gray-500">Status Code</span><div className="font-mono text-red-600 mt-0.5 font-medium">{errorDetails.response.status || 'N/A'}</div></div>
+                    <div><span className="text-xs text-gray-500">Status Text</span><div className="font-mono text-red-600 mt-0.5 font-medium">{errorDetails.response.statusText || 'N/A'}</div></div>
                   </div>
-                  <div className="mb-4">
-                    <span className="text-xs text-gray-500 font-semibold uppercase block mb-1">Error Message:</span>
-                    <div className="font-mono text-sm text-red-700 bg-red-50 px-3 py-2 rounded font-medium">{errorDetails.response.message}</div>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-500 font-semibold uppercase block mb-1">Full Error Details:</span>
-                    <div className="bg-gray-900 p-4 rounded-lg max-h-64 overflow-y-auto">
+                  <div className="mb-3"><span className="text-xs text-gray-500">Error Message</span><div className="font-mono text-sm text-red-700 mt-0.5">{errorDetails.response.message}</div></div>
+                  <div><span className="text-xs text-gray-500">Full Error</span>
+                    <div className="bg-gray-900 p-3 rounded mt-1 max-h-48 overflow-y-auto">
                       <pre className="text-xs text-green-400 font-mono">{errorDetails.response.fullError}</pre>
                     </div>
                   </div>
@@ -840,24 +516,19 @@ export default function AIChat() {
               </div>
             </div>
 
-            <div className="p-6 border-t bg-white flex justify-end gap-3">
+            <div className="px-4 py-3 border-t flex justify-end gap-2">
               <button
                 onClick={() => {
                   const errorText = `REQUEST INFO:\n${JSON.stringify(errorDetails.request, null, 2)}\n\nRESPONSE INFO:\n${errorDetails.response.fullError}`;
                   navigator.clipboard.writeText(errorText);
                   toast.success("Error details copied to clipboard");
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+                className="buffer-button-primary text-sm flex items-center gap-1.5"
               >
-                <Copy size={18} />
+                <Copy size={14} />
                 Copy Error Details
               </button>
-              <button
-                onClick={() => setErrorModal(false)}
-                className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
-              >
-                Close
-              </button>
+              <button onClick={() => setErrorModal(false)} className="buffer-button-secondary text-sm">Close</button>
             </div>
           </div>
         </div>
@@ -865,75 +536,48 @@ export default function AIChat() {
 
       {/* Preview Modal */}
       {previewModal && selectedPrompt && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col shadow-2xl">
-            <div className="p-6 border-b flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl">
-              <h3 className="text-xl font-bold">Prompt Preview</h3>
-              <button onClick={() => setPreviewModal(false)} className="hover:bg-blue-700 p-2 rounded-lg transition">
-                <X size={24} />
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-200 shadow-lg">
+            <div className="px-4 py-3 border-b flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <Eye size={16} className="text-gray-500" />
+                Prompt Preview
+              </h3>
+              <button onClick={() => setPreviewModal(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded">
+                <X size={18} />
               </button>
             </div>
-            <div className="p-6 space-y-4 border-b bg-gray-50">
-              <div className="flex gap-6">
-                <div>
-                  <span className="text-xs text-gray-500 font-semibold uppercase">Channel:</span>
-                  <div className="font-bold text-gray-800">{prompts.find(p => p._id === selectedPrompt)?.channelId?.name || "-"}</div>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-500 font-semibold uppercase">Type:</span>
-                  <div className="font-bold text-gray-800">{prompts.find(p => p._id === selectedPrompt)?.promptTypeId?.name || "-"}</div>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-500 font-semibold uppercase">Model:</span>
-                  <div className="font-bold font-mono text-sm text-gray-800">{prompts.find(p => p._id === selectedPrompt)?.aiModel || "-"}</div>
-                </div>
-              </div>
+            <div className="px-4 py-3 border-b bg-gray-50 flex gap-6 text-sm">
+              <div><span className="text-xs text-gray-500">Channel</span><div className="font-medium text-gray-800">{prompts.find(p => p._id === selectedPrompt)?.channelId?.name || "-"}</div></div>
+              <div><span className="text-xs text-gray-500">Type</span><div className="font-medium text-gray-800">{prompts.find(p => p._id === selectedPrompt)?.promptTypeId?.name || "-"}</div></div>
+              <div><span className="text-xs text-gray-500">Model</span><div className="font-medium font-mono text-gray-800">{prompts.find(p => p._id === selectedPrompt)?.aiModel || "-"}</div></div>
             </div>
-            <div className="p-6 overflow-y-auto flex-1">
-              <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200">
-                <pre className="whitespace-pre-wrap text-sm text-gray-900 font-sans leading-relaxed">
+            <div className="p-4 overflow-y-auto flex-1">
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <pre className="whitespace-pre-wrap text-sm text-gray-800 font-sans leading-relaxed">
                   {prompts.find(p => p._id === selectedPrompt)?.promptText
                     ?.replace(/\[SOURCE\]/g, sourceText || '[SOURCE]')
                     ?.replace(/\[LENGTH\]/g, (() => {
-                      const lengthMap = {
-                        '40s': '40 seconds',
-                        '2min': '2 minutes', 
-                        '3min': '3 minutes',
-                        '5min': '5 minutes'
-                      };
+                      const lengthMap = { '40s': '40 seconds', '2min': '2 minutes', '3min': '3 minutes', '5min': '5 minutes' };
                       return lengthMap[videoLength] || videoLength;
                     })())}
                 </pre>
               </div>
             </div>
-            <div className="p-6 border-t bg-white flex justify-end gap-3">
+            <div className="px-4 py-3 border-t flex justify-end gap-2">
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(prompts.find(p => p._id === selectedPrompt)?.promptText);
-                  toast.success("Original prompt copied to clipboard!");
-                  setPreviewModal(false);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+                onClick={() => { navigator.clipboard.writeText(prompts.find(p => p._id === selectedPrompt)?.promptText); toast.success("Original prompt copied!"); setPreviewModal(false); }}
+                className="buffer-button-secondary text-sm flex items-center gap-1.5"
               >
-                <Copy size={18} />
+                <Copy size={14} />
                 Copy Original
               </button>
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(finalizedPrompt);
-                  toast.success("Finalized prompt copied to clipboard!");
-                  setPreviewModal(false);
-                }}
-                className="bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+                onClick={() => { navigator.clipboard.writeText(finalizedPrompt); toast.success("Finalized prompt copied!"); setPreviewModal(false); }}
+                className="buffer-button-primary text-sm flex items-center gap-1.5"
               >
-                <Copy size={18} />
+                <Copy size={14} />
                 Copy Finalized
-              </button>
-              <button
-                onClick={() => setPreviewModal(false)}
-                className="bg-gray-300 hover:bg-gray-400 px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition-all"
-              >
-                Close
               </button>
             </div>
           </div>

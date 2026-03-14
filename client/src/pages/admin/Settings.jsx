@@ -56,88 +56,95 @@ export default function Settings() {
       titleInfo="Configure your Gemini API key with AES-256-GCM encryption"
       icon={Shield}
     >
-
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+      <div className="buffer-card p-8">
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
               Gemini API Key *
             </label>
-            <div className="relative w-96">
+            <div className="relative max-w-md">
               <input
                 type={showKey ? "text" : "password"}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="Enter your Gemini API key..."
-                autoComplete="off"
+                autoComplete="new-password"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
                 data-form-type="other"
                 data-lpignore="true"
-                className="w-full border-2 border-gray-200 px-5 py-4 pr-14 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200 text-base"
+                data-1p-ignore="true"
+                name="api-key-field"
+                id="gemini-api-key"
+                className="buffer-input pr-12"
               />
               <button
                 type="button"
                 onClick={() => setShowKey(!showKey)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded transition-colors"
+                tabIndex={-1}
               >
-                {showKey ? <EyeOff size={22} /> : <Eye size={22} />}
+                {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            <p className="text-sm text-gray-600 mt-3">
+            <p className="text-sm text-gray-500 mt-2">
               Get your API key from{" "}
               <a
                 href="https://aistudio.google.com/app/apikey"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-purple-600 hover:text-purple-700 font-semibold underline"
+                className="text-blue-600 hover:text-blue-700 font-medium underline"
               >
                 Google AI Studio
               </a>
             </p>
           </div>
 
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 p-5 rounded-lg">
-            <h3 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
-              📌 How to get your API key:
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
+              <Key size={16} />
+              How to get your API key:
             </h3>
-            <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-              <li className="font-medium">Visit Google AI Studio</li>
-              <li className="font-medium">Sign in with your Google account</li>
-              <li className="font-medium">Click "Create API Key"</li>
-              <li className="font-medium">Copy and paste the key here</li>
+            <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside ml-4">
+              <li>Visit Google AI Studio</li>
+              <li>Sign in with your Google account</li>
+              <li>Click "Create API Key"</li>
+              <li>Copy and paste the key here</li>
             </ol>
           </div>
 
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-5 rounded-lg">
-            <h3 className="text-sm font-bold text-green-900 mb-2 flex items-center gap-2">
-              <Shield size={18} />
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-green-900 mb-2 flex items-center gap-2">
+              <Shield size={16} />
               Security:
             </h3>
-            <p className="text-sm text-green-800 leading-relaxed">
+            <p className="text-sm text-green-800">
               Your API key is encrypted with AES-256-GCM before storage. It's stored locally in your browser and never sent to our servers.
             </p>
           </div>
 
-          <div className="flex justify-between gap-4 pt-6 border-t">
+          <div className="flex justify-between gap-4 pt-4 border-t border-gray-200">
             <button
               onClick={clearApiKey}
               disabled={!apiKey}
-              className="px-8 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+              className="buffer-button-secondary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Clear Key
             </button>
             <button
               onClick={saveApiKey}
               disabled={loading}
-              className="px-10 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 transform hover:scale-105"
+              className="buffer-button-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {loading ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Encrypting...
                 </>
               ) : (
                 <>
-                  <Save className="w-5 h-5" />
+                  <Save size={16} />
                   Save API Key
                 </>
               )}

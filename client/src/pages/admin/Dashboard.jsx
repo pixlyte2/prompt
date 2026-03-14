@@ -1,335 +1,190 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
-import { 
-  Users, 
-  Layers, 
-  FileText, 
-  Tag,
-  Calendar,
-  BarChart3,
-  Copy,
-  Clock,
-  Eye
-} from "lucide-react";
+import { Users, Layers, FileText, MessageSquare, BarChart3, Plus, ArrowUpRight, Activity, Clock, Sparkles } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
-import { getRecentPrompts, clearRecentPrompts } from "../../utils/cache";
+import { getUser } from "../../utils/api";
+import HistoryModal from "../../components/HistoryModal";
 
-function Counter({ value }) {
-  const [count, setCount] = useState(0);
+const statItems = [
+  { key: "totalPrompts", label: "Prompts", icon: FileText, path: "/admin/prompts", bg: "bg-blue-50", fg: "text-blue-600" },
+  { key: "totalChannels", label: "Channels", icon: Layers, path: "/admin/channels", bg: "bg-emerald-50", fg: "text-emerald-600" },
+  { key: "totalUsers", label: "Users", icon: Users, path: "/admin/users", bg: "bg-violet-50", fg: "text-violet-600" },
+  { key: "totalPromptTypes", label: "Prompt Types", icon: Activity, path: "/admin/prompt-types", bg: "bg-amber-50", fg: "text-amber-600" },
+];
 
-  useEffect(() => {
-    let start = 0;
-    const duration = 800;
-    const increment = value / (duration / 16);
+const actions = [
+  { title: "Create Prompt", desc: "Add a new AI prompt", icon: Plus, path: "/admin/prompts", bg: "bg-blue-50", fg: "text-blue-600" },
+  { title: "Manage Users", desc: "Accounts & permissions", icon: Users, path: "/admin/users", bg: "bg-emerald-50", fg: "text-emerald-600" },
+  { title: "AI Chat", desc: "Test with AI assistant", icon: MessageSquare, path: "/admin/ai-chat", bg: "bg-violet-50", fg: "text-violet-600" },
+];
 
-    const timer = setInterval(() => {
-      start += increment;
-      if (start >= value) {
-        setCount(value);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(start));
-      }
-    }, 16);
+function getAIChatHistory() {
+  try {
+    const stored = localStorage.getItem("AI_CHAT_HISTORY");
+    return stored ? JSON.parse(stored) : [];
+  } catch { return []; }
+}
 
-    return () => clearInterval(timer);
-  }, [value]);
-
-  return <span>{count}</span>;
+function timeAgo(ts) {
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalChannels: 0,
-    totalPrompts: 0,
-    totalPromptTypes: 0
-  });
+  const user = getUser();
+  const [stats, setStats] = useState({ totalUsers: 0, totalChannels: 0, totalPrompts: 0, totalPromptTypes: 0 });
   const [loading, setLoading] = useState(true);
-  const [recentPrompts, setRecentPrompts] = useState([]);
-  const [previewModal, setPreviewModal] = useState(false);
-  const [previewPrompt, setPreviewPrompt] = useState(null);
+  const [historyModal, setHistoryModal] = useState(false);
+  const [historyItemId, setHistoryItemId] = useState(null);
 
-  useEffect(() => {
-    setRecentPrompts(getRecentPrompts());
-  }, []);
+  const history = getAIChatHistory();
+  const recentHistory = history.slice(0, 3);
+  const lastUsed = history[0] || null;
 
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const [dashboard, users, channels, prompts, promptTypes] = await Promise.all([
-          api.get("/dashboard").catch(() => ({ data: {} })),
-          api.get("/users").catch(() => ({ data: [] })),
-          api.get("/channels").catch(() => ({ data: [] })),
-          api.get("/prompts").catch(() => ({ data: [] })),
-          api.get("/prompt-types").catch(() => ({ data: [] }))
-        ]);
+  // Parse "Channel - PromptType" from title
+  const lastChannel = lastUsed?.title?.split(" - ")[0] || null;
+  const lastPromptType = lastUsed?.title?.split(" - ")[1] || null;
 
-        setStats({
-          totalUsers: users.data.length || 0,
-          totalChannels: channels.data.length || 0,
-          totalPrompts: prompts.data.length || 0,
-          totalPromptTypes: promptTypes.data.length || 0
-        });
-      } catch {
-        toast.error("Failed to load dashboard stats");
-      } finally {
-        setLoading(false);
-      }
-    };
+  useEffect(() => { loadStats(); }, []);
 
-    loadStats();
-  }, []);
-
-  const cards = [
-    {
-      title: "Total Users",
-      value: stats.totalUsers,
-      icon: Users,
-      color: "blue",
-      bgColor: "bg-blue-50",
-      iconColor: "text-blue-600"
-    },
-    {
-      title: "Channels",
-      value: stats.totalChannels,
-      icon: Layers,
-      color: "purple",
-      bgColor: "bg-purple-50",
-      iconColor: "text-purple-600"
-    },
-    {
-      title: "Prompt Types",
-      value: stats.totalPromptTypes,
-      icon: Tag,
-      color: "orange",
-      bgColor: "bg-orange-50",
-      iconColor: "text-orange-600"
-    },
-    {
-      title: "Total Prompts",
-      value: stats.totalPrompts,
-      icon: FileText,
-      color: "indigo",
-      bgColor: "bg-indigo-50",
-      iconColor: "text-indigo-600"
+  const loadStats = async () => {
+    try {
+      const [users, channels, prompts, promptTypes] = await Promise.all([
+        api.get("/users").catch(() => ({ data: [] })),
+        api.get("/channels").catch(() => ({ data: [] })),
+        api.get("/prompts").catch(() => ({ data: [] })),
+        api.get("/prompt-types").catch(() => ({ data: [] }))
+      ]);
+      setStats({
+        totalUsers: users.data.length || 0,
+        totalChannels: channels.data.length || 0,
+        totalPrompts: prompts.data.length || 0,
+        totalPromptTypes: promptTypes.data.length || 0
+      });
+    } catch {
+      toast.error("Failed to load stats");
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const greeting = new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening";
 
   if (loading) {
     return (
       <AdminLayout title="Dashboard">
-        <div className="flex justify-center items-center h-60">
-          <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="flex justify-center items-center h-64">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout 
-      title="Dashboard" 
-      titleInfo="Monitor and manage your prompt system"
-      icon={BarChart3}
-      onCacheClear={() => setRecentPrompts([])}
-    >
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-4">
-        {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-4 text-white shadow-lg mb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold mb-2">Welcome to Admin Dashboard</h1>
-              <p className="text-blue-100">Monitor and manage your prompt system</p>
-            </div>
-            <div className="flex items-center gap-2 text-blue-100">
-              <Calendar size={20} />
-              <span>{new Date().toLocaleDateString()}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4">
-          {cards.map((card, index) => {
-            const Icon = card.icon;
-            return (
-              <div
-                key={index}
-                className="bg-white rounded-lg border p-4 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm mb-1">{card.title}</p>
-                    <p className={`text-3xl font-bold text-${card.color}-600`}>
-                      <Counter value={card.value} />
-                    </p>
-                  </div>
-                  <div className={`p-3 rounded-lg ${card.bgColor}`}>
-                    <Icon className={`w-6 h-6 ${card.iconColor}`} />
-                  </div>
-                </div>
+    <AdminLayout title="Dashboard" titleInfo={`Good ${greeting}, ${user?.name || "Admin"}`} icon={BarChart3}>
+      <div className="flex flex-col gap-3">
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          {statItems.map(({ key, label, icon: Icon, path, bg, fg }) => (
+            <button key={key} onClick={() => navigate(path)}
+              className="buffer-card px-3 py-2.5 text-left group hover:shadow-md hover:border-gray-300 flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center flex-shrink-0`}>
+                <Icon size={15} className={fg} />
               </div>
-            );
-          })}
+              <div>
+                <p className="text-lg font-semibold text-gray-900 leading-tight">{stats[key]}</p>
+                <p className="text-xs text-gray-500">{label}</p>
+              </div>
+            </button>
+          ))}
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-gray-50 rounded-lg border p-4 mb-4">
-          <div className="flex items-center gap-3 mb-3">
-            <BarChart3 className="w-5 h-5 text-gray-600" />
-            <h3 className="text-lg font-semibold">Quick Actions</h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <button 
-              onClick={() => navigate('/admin/users')}
-              className="p-4 border border-blue-200 rounded-lg hover:bg-blue-50 text-left transition-colors"
-            >
-              <Users className="w-8 h-8 text-blue-600 mb-2" />
-              <p className="font-medium">Manage Users</p>
-              <p className="text-sm text-gray-600">Add or edit users</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+          {actions.map(({ title, desc, icon: Icon, path, bg, fg }) => (
+            <button key={title} onClick={() => navigate(path)}
+              className="buffer-card px-3 py-2.5 text-left flex items-center gap-2.5 group hover:shadow-md hover:border-gray-300">
+              <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center flex-shrink-0`}>
+                <Icon size={15} className={fg} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xs font-semibold text-gray-900">{title}</h3>
+                <p className="text-[11px] text-gray-500 truncate">{desc}</p>
+              </div>
             </button>
-            <button 
-              onClick={() => navigate('/admin/channels')}
-              className="p-4 border border-purple-200 rounded-lg hover:bg-purple-50 text-left transition-colors"
-            >
-              <Layers className="w-8 h-8 text-purple-600 mb-2" />
-              <p className="font-medium">Manage Channels</p>
-              <p className="text-sm text-gray-600">Organize channels</p>
-            </button>
-            <button 
-              onClick={() => navigate('/admin/prompts')}
-              className="p-4 border border-indigo-200 rounded-lg hover:bg-indigo-50 text-left transition-colors"
-            >
-              <FileText className="w-8 h-8 text-indigo-600 mb-2" />
-              <p className="font-medium">Manage Prompts</p>
-              <p className="text-sm text-gray-600">Prompts & Types</p>
-            </button>
-          </div>
+          ))}
         </div>
 
-        {/* Recent Prompts */}
-        {recentPrompts.length > 0 && (
-          <div className="bg-gray-50 rounded-lg border p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-gray-600" />
-                <h3 className="text-lg font-semibold">Recent Prompts</h3>
-              </div>
-              <button
-                onClick={() => {
-                  clearRecentPrompts();
-                  setRecentPrompts([]);
-                  toast.success("Recent prompts cleared");
-                }}
-                className="text-sm text-red-600 hover:text-red-700"
-              >
-                Clear All
+        {/* Last AI Chat */}
+        {lastUsed ? (
+          <button onClick={() => navigate("/admin/ai-chat", { state: { promptId: lastUsed.promptId, sourceText: lastUsed.sourceText, videoLength: lastUsed.videoLength, aiModel: lastUsed.aiModel } })}
+            className="buffer-card px-3 py-2.5 text-left group hover:shadow-md hover:border-gray-300 flex items-center gap-3">
+            <Sparkles size={14} className="text-amber-500 flex-shrink-0" />
+            <span className="text-[11px] font-medium text-gray-500">Last AI Chat</span>
+            {lastChannel && <span className="text-[11px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{lastChannel}</span>}
+            {lastPromptType && <span className="text-[11px] font-medium bg-violet-50 text-violet-700 px-1.5 py-0.5 rounded">{lastPromptType}</span>}
+            {lastUsed.aiModel && <span className="text-[11px] font-medium bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded">{lastUsed.aiModel}</span>}
+            <span className="text-[10px] text-gray-400 ml-auto">{timeAgo(lastUsed.timestamp)}</span>
+          </button>
+        ) : null}
+
+        {/* Recent AI Chat History */}
+        {recentHistory.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+                <Clock size={12} className="text-gray-400" /> Recent AI Generations
+              </h3>
+              <button onClick={() => { setHistoryItemId(null); setHistoryModal(true); }} className="text-[11px] text-blue-600 hover:text-blue-700 font-medium flex items-center gap-0.5">
+                View all <ArrowUpRight size={10} />
               </button>
             </div>
-            <div className="space-y-2">
-              {recentPrompts.slice(0, 5).map((prompt, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setPreviewPrompt(prompt);
-                        setPreviewModal(true);
-                      }}
-                      className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
-                      title="Preview"
-                    >
-                      <Eye size={16} />
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(prompt.promptText);
-                        toast.success("Copied to clipboard");
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                      title="Copy"
-                    >
-                      <Copy size={16} />
-                    </button>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-bold text-blue-600">{prompt.channelId?.name}</span>
-                      <span className="text-xs text-gray-400">•</span>
-                      <span className="text-xs font-bold text-gray-700">{prompt.promptTypeId?.name}</span>
-                      <span className="text-xs text-gray-400">•</span>
-                      <span className="text-xs font-bold text-gray-600 font-mono">{prompt.aiModel}</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {recentHistory.map((item) => (
+                <div key={item.id} onClick={() => { setHistoryItemId(item.id); setHistoryModal(true); }}
+                  className="buffer-card px-3 py-2.5 group hover:shadow-md hover:border-gray-300 cursor-pointer">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1 min-w-0">
+                      {(item.channel || item.title?.split(" - ")[0]) && (
+                        <span className="text-[11px] font-medium px-1.5 py-0.5 rounded truncate bg-blue-50 text-blue-700">{item.channel || item.title?.split(" - ")[0]}</span>
+                      )}
+                      {(item.promptType || item.title?.split(" - ")[1]) && (
+                        <span className="text-[11px] font-medium px-1.5 py-0.5 rounded truncate bg-violet-50 text-violet-700">{item.promptType || item.title?.split(" - ")[1]}</span>
+                      )}
+                      {item.aiModel && (
+                        <span className="text-[11px] font-medium px-1.5 py-0.5 rounded truncate bg-amber-50 text-amber-700">{item.aiModel}</span>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-900">
-                      {prompt.promptText.length > 200 ? `${prompt.promptText.substring(0, 200)}...` : prompt.promptText}
-                    </p>
+                    <span className="text-[10px] text-gray-400 flex-shrink-0 ml-2">{timeAgo(item.timestamp)}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-600 line-clamp-2 leading-relaxed">
+                    {item.result?.replace(/<[^>]*>/g, "").replace(/[#*`_~]/g, "").substring(0, 120)}...
+                  </p>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <span className="text-[10px] text-gray-400">{item.videoLength || ""}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.result); toast.success("Copied"); }}
+                      className="text-[11px] text-blue-600 font-medium opacity-0 group-hover:opacity-100"
+                    >
+                      Copy
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         )}
-
-        {/* Preview Modal */}
-        {previewModal && previewPrompt && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg w-full max-w-3xl max-h-[80vh] flex flex-col">
-              <div className="p-4 border-b flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Prompt Preview</h3>
-                <button onClick={() => setPreviewModal(false)} className="text-gray-500 hover:text-gray-700">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="p-4 space-y-3 border-b">
-                <div className="flex gap-4">
-                  <div>
-                    <span className="text-xs text-gray-500">Channel:</span>
-                    <div className="font-medium">{previewPrompt.channelId?.name || "-"}</div>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-500">Type:</span>
-                    <div className="font-medium">{previewPrompt.promptTypeId?.name || "-"}</div>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-500">Model:</span>
-                    <div className="font-medium font-mono text-sm">{previewPrompt.aiModel || "-"}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="p-4 overflow-y-auto flex-1">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <pre className="whitespace-pre-wrap text-sm text-gray-900 font-sans leading-relaxed">{previewPrompt.promptText}</pre>
-                </div>
-              </div>
-              <div className="p-4 border-t flex justify-end gap-2">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(previewPrompt.promptText);
-                    toast.success("Copied to clipboard");
-                    setPreviewModal(false);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-                >
-                  <Copy size={16} />
-                  Copy
-                </button>
-                <button
-                  onClick={() => setPreviewModal(false)}
-                  className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-lg"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-
       </div>
+
+      {historyModal && <HistoryModal onClose={() => setHistoryModal(false)} initialItemId={historyItemId} />}
     </AdminLayout>
   );
 }
