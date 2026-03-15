@@ -130,6 +130,7 @@ export default function PromptFormModal({
         </div>
 
         {/* Form */}
+        <form onSubmit={(e) => { e.preventDefault(); submit(); }} autoComplete="off">
         <div className="p-5 overflow-y-auto flex-1 space-y-4">
           {/* Channel + Prompt Type row */}
           <div className="grid grid-cols-2 gap-3">
@@ -141,6 +142,8 @@ export default function PromptFormModal({
                   value={form.channelId}
                   onChange={(e) => setForm({ ...form, channelId: e.target.value })}
                   disabled={loading}
+                  autoComplete="off"
+                  data-form-type="other"
                 >
                   <option value="">Select channel...</option>
                   {channels.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
@@ -164,6 +167,8 @@ export default function PromptFormModal({
                   value={form.promptTypeId}
                   onChange={(e) => setForm({ ...form, promptTypeId: e.target.value })}
                   disabled={loading}
+                  autoComplete="off"
+                  data-form-type="other"
                 >
                   <option value="">Select type...</option>
                   {types.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
@@ -191,6 +196,13 @@ export default function PromptFormModal({
               value={form.aiModel}
               onChange={(e) => setForm({ ...form, aiModel: e.target.value })}
               disabled={loading}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+              data-form-type="other"
+              data-lpignore="true"
+              data-1p-ignore="true"
             />
           </div>
 
@@ -204,6 +216,13 @@ export default function PromptFormModal({
               value={form.promptText}
               onChange={(e) => setForm({ ...form, promptText: e.target.value })}
               disabled={loading}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+              data-form-type="other"
+              data-lpignore="true"
+              data-1p-ignore="true"
             />
             <div className="flex justify-between items-center mt-1.5">
               <p className="text-xs text-blue-600">💡 Use [SOURCE] for content, [LENGTH] for video duration</p>
@@ -211,6 +230,7 @@ export default function PromptFormModal({
             </div>
           </div>
         </div>
+        </form>
 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-gray-100 flex justify-between items-center flex-shrink-0">
@@ -251,6 +271,13 @@ export default function PromptFormModal({
                 maxLength={30}
                 className="buffer-input text-sm"
                 autoFocus
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-form-type="other"
+                data-lpignore="true"
+                data-1p-ignore="true"
               />
             </div>
             <div className="px-5 pb-5 flex justify-end gap-2">
@@ -281,6 +308,13 @@ export default function PromptFormModal({
                 maxLength={30}
                 className="buffer-input text-sm"
                 autoFocus
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-form-type="other"
+                data-lpignore="true"
+                data-1p-ignore="true"
               />
             </div>
             <div className="px-5 pb-5 flex justify-end gap-2">

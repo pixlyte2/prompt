@@ -1,16 +1,14 @@
 import { useState } from "react";
-import { FileText, Tag, Layers } from "lucide-react";
-import PromptManager from "./PromptManager";
-import PromptTypeManager from "./PromptTypeManager";
-import ChannelManager from "./ChannelManager";
+import { MessageSquare, Settings } from "lucide-react";
+import AIChatManager from "./AIChatManager";
+import SettingsManager from "./SettingsManager";
 
-export default function PromptManagementTabs() {
-  const [activeTab, setActiveTab] = useState("prompts");
+export default function AIChatTabs() {
+  const [activeTab, setActiveTab] = useState("chat");
 
   const tabs = [
-    { key: "prompts", label: "Prompts", icon: FileText },
-    { key: "types", label: "Prompt Types", icon: Tag },
-    { key: "channels", label: "Channels", icon: Layers },
+    { key: "chat", label: "AI Chat", icon: MessageSquare },
+    { key: "settings", label: "Settings", icon: Settings },
   ];
 
   return (
@@ -35,9 +33,8 @@ export default function PromptManagementTabs() {
 
       {/* Tab Content */}
       <div className="flex-1 min-h-0">
-        {activeTab === "prompts" && <PromptManager />}
-        {activeTab === "types" && <PromptTypeManager />}
-        {activeTab === "channels" && <ChannelManager />}
+        {activeTab === "chat" && <AIChatManager />}
+        {activeTab === "settings" && <SettingsManager />}
       </div>
     </div>
   );

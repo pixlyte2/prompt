@@ -76,8 +76,10 @@ export default function HistoryModal({ onClose, initialItemId }) {
                         <Trash2 size={12} />
                       </button>
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">
-                      {item.aiModel} · {new Date(item.timestamp).toLocaleDateString()}
+                    <div className="text-xs text-gray-400 mt-1 space-y-0.5">
+                      <div>{item.aiModel}</div>
+                      {item.subType && <div className="font-medium text-gray-500">Sub Type: {item.subType}</div>}
+                      <div>{new Date(item.timestamp).toLocaleDateString()}</div>
                     </div>
                     <div className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
                       {item.prompt.substring(0, 80)}{item.prompt.length > 80 ? '...' : ''}
@@ -92,6 +94,27 @@ export default function HistoryModal({ onClose, initialItemId }) {
           <div className="flex-1 flex flex-col overflow-hidden">
             {selected ? (
               <>
+                <div className="border-b px-4 py-3 bg-gray-50">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-xs text-gray-500 font-medium">Channel:</span>
+                      <div className="text-gray-800">{selected.channel || '-'}</div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 font-medium">Type:</span>
+                      <div className="text-gray-800">{selected.promptType || '-'}</div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 font-medium">AI Model:</span>
+                      <div className="text-gray-800 font-mono">{selected.aiModel || '-'}</div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 font-medium">Sub Type:</span>
+                      <div className="text-gray-800">{selected.subType || '-'}</div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="border-b px-4 flex gap-4">
                   {["result", "prompt"].map((t) => (
                     <button

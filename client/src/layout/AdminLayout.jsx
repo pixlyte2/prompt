@@ -1,14 +1,12 @@
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
-import { BarChart3, Users, Layers, Tag, FileText, MessageSquare, Settings, HelpCircle } from "lucide-react";
+import { BarChart3, Users, FileText, MessageSquare, HelpCircle } from "lucide-react";
 
 const adminMenu = [
   { label: "Dashboard", path: "/admin", icon: BarChart3 },
   { label: "Users", path: "/admin/users", icon: Users },
-  { label: "Channels", path: "/admin/channels", icon: Layers },
   { label: "Prompts", path: "/admin/prompts", icon: FileText },
   { label: "AI Chat", path: "/admin/ai-chat", icon: MessageSquare },
-  { label: "Settings", path: "/admin/settings", icon: Settings },
   { label: "Help", path: "/admin/help", icon: HelpCircle }
 ];
 

@@ -210,7 +210,7 @@ export default function PromptManager() {
               </th>
               {[
                 { key: "channel", label: "Channel", w: "w-28" },
-                { key: "type", label: "Type", w: "w-24" },
+                { key: "type", label: "Type", w: "w-32" },
                 { key: "model", label: "Sub Type", w: "w-28" },
                 { key: "prompt", label: "Prompt" },
               ].map(({ key, label, w }) => (
@@ -236,8 +236,8 @@ export default function PromptManager() {
                   <td className="px-3 py-2.5 w-28">
                     <span className="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded truncate block max-w-24">{p.channelId?.name || "-"}</span>
                   </td>
-                  <td className="px-3 py-2.5 w-24">
-                    <span className="text-xs font-medium bg-gray-100 text-gray-700 px-2 py-0.5 rounded truncate block max-w-20">{p.promptTypeId?.name || "-"}</span>
+                  <td className="px-3 py-2.5 w-32">
+                    <span className="text-xs font-medium bg-gray-100 text-gray-700 px-2 py-0.5 rounded truncate block max-w-28">{p.promptTypeId?.name || "-"}</span>
                   </td>
                   <td className="px-3 py-2.5 w-28 text-xs text-gray-500 font-mono">{p.aiModel || "-"}</td>
                   <td className="px-3 py-2.5">
