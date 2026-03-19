@@ -81,17 +81,17 @@ export default function Help() {
           {sections.map((section, idx) => {
             const Icon = section.icon;
             return (
-              <div key={idx} className="buffer-card p-3 hover:shadow-md hover:border-gray-300">
+              <div key={idx} className="buffer-card p-3 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600">
                 <div className="flex items-center gap-2.5 mb-2">
-                  <div className="p-1.5 bg-gray-100 rounded-lg">
+                  <div className="p-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg">
                     <Icon className={`w-4 h-4 ${section.color}`} />
                   </div>
-                  <h3 className="text-sm font-semibold">{section.title}</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{section.title}</h3>
                 </div>
                 <ul className="space-y-2">
                   {section.items.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                      <span className="text-cyan-600 mt-1">•</span>
+                    <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <span className="text-cyan-600 dark:text-cyan-400 mt-1">•</span>
                       <span>{item}</span>
                     </li>
                   ))}
@@ -101,26 +101,26 @@ export default function Help() {
           })}
         </div>
 
-        <div className="bg-gray-50 rounded-lg border p-3 mt-3">
-          <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-            <Copy className="w-4 h-4 text-cyan-600" />
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 mt-3">
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-gray-900 dark:text-gray-100">
+            <Copy className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
             Quick Tips
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-700">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-700 dark:text-gray-300">
             <div className="flex items-start gap-2">
-              <span className="text-cyan-600">✓</span>
+              <span className="text-cyan-600 dark:text-cyan-400">✓</span>
               <span>Use <Eye className="inline w-4 h-4" /> icon to preview prompts before copying</span>
             </div>
             <div className="flex items-start gap-2">
-              <span className="text-cyan-600">✓</span>
+              <span className="text-cyan-600 dark:text-cyan-400">✓</span>
               <span>Recent prompts are cached for quick access</span>
             </div>
             <div className="flex items-start gap-2">
-              <span className="text-cyan-600">✓</span>
+              <span className="text-cyan-600 dark:text-cyan-400">✓</span>
               <span>Clear cache button refreshes all data</span>
             </div>
             <div className="flex items-start gap-2">
-              <span className="text-cyan-600">✓</span>
+              <span className="text-cyan-600 dark:text-cyan-400">✓</span>
               <span>Export prompts as JSON for backup</span>
             </div>
           </div>

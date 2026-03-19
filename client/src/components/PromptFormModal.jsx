@@ -113,18 +113,18 @@ export default function PromptFormModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-xl">
+      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-xl">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              {editingPrompt ? <Save size={16} className="text-blue-600" /> : <Plus size={16} className="text-blue-600" />}
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+              {editingPrompt ? <Save size={16} className="text-blue-600 dark:text-blue-400" /> : <Plus size={16} className="text-blue-600 dark:text-blue-400" />}
             </div>
-            <h2 className="text-base font-semibold text-gray-900">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
               {editingPrompt ? "Edit Prompt" : "New Prompt"}
             </h2>
           </div>
-          <button onClick={handleClose} disabled={loading} className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-50">
+          <button onClick={handleClose} disabled={loading} className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50">
             <X size={18} />
           </button>
         </div>
@@ -135,7 +135,7 @@ export default function PromptFormModal({
           {/* Channel + Prompt Type row */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Channel *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Channel *</label>
               <div className="flex gap-1.5">
                 <select
                   className="buffer-input text-sm flex-1"
@@ -151,7 +151,7 @@ export default function PromptFormModal({
                 <button
                   type="button"
                   onClick={() => setShowAddChannel(true)}
-                  className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 border border-gray-300 hover:border-emerald-300"
+                  className="p-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border border-gray-300 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-600"
                   title="Add channel"
                   disabled={loading}
                 >
@@ -160,7 +160,7 @@ export default function PromptFormModal({
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Prompt Type *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Prompt Type *</label>
               <div className="flex gap-1.5">
                 <select
                   className="buffer-input text-sm flex-1"
@@ -176,7 +176,7 @@ export default function PromptFormModal({
                 <button
                   type="button"
                   onClick={() => setShowAddType(true)}
-                  className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 border border-gray-300 hover:border-emerald-300"
+                  className="p-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border border-gray-300 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-600"
                   title="Add type"
                   disabled={loading}
                 >
@@ -188,7 +188,7 @@ export default function PromptFormModal({
 
           {/* Sub Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Sub Type</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Sub Type</label>
             <input
               type="text"
               className="buffer-input text-sm"
@@ -208,7 +208,7 @@ export default function PromptFormModal({
 
           {/* Prompt Content */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Prompt Content *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Prompt Content *</label>
             <textarea
               rows={6}
               className="buffer-input text-sm resize-none"
@@ -225,16 +225,16 @@ export default function PromptFormModal({
               data-1p-ignore="true"
             />
             <div className="flex justify-between items-center mt-1.5">
-              <p className="text-xs text-blue-600">💡 Use [SOURCE] for content, [LENGTH] for video duration</p>
-              <span className="text-xs text-gray-400">{form.promptText.length} chars</span>
+              <p className="text-xs text-blue-600 dark:text-blue-400">💡 Use [SOURCE] for content, [LENGTH] for video duration</p>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{form.promptText.length} chars</span>
             </div>
           </div>
         </div>
         </form>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-gray-100 flex justify-between items-center flex-shrink-0">
-          <span className="text-xs text-gray-400">* Required</span>
+        <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
+          <span className="text-xs text-gray-400 dark:text-gray-500">* Required</span>
           <div className="flex gap-2">
             <button onClick={handleClose} disabled={loading} className="buffer-button-secondary text-sm py-2 disabled:opacity-50">
               Cancel
@@ -257,12 +257,12 @@ export default function PromptFormModal({
       {/* Inline Add Channel */}
       {showAddChannel && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-xl w-full max-w-sm shadow-xl">
-            <div className="p-5 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">New Channel</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-sm shadow-xl">
+            <div className="p-5 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">New Channel</h3>
             </div>
             <div className="p-5">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Channel name</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Channel name</label>
               <input
                 placeholder="e.g. Instagram, YouTube..."
                 value={newChannelName}
@@ -294,12 +294,12 @@ export default function PromptFormModal({
       {/* Inline Add Prompt Type */}
       {showAddType && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-xl w-full max-w-sm shadow-xl">
-            <div className="p-5 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">New Prompt Type</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-sm shadow-xl">
+            <div className="p-5 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">New Prompt Type</h3>
             </div>
             <div className="p-5">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Type name</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Type name</label>
               <input
                 placeholder="e.g. Script, Hook, CTA..."
                 value={newTypeName}

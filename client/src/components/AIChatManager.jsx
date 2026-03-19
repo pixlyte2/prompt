@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Loader2, Copy, Eye, X, MessageSquare, Maximize2, Minimize2 } from "lucide-react";
+import { Send, Loader2, Copy, Eye, X, MessageSquare, Maximize2, Minimize2, Download } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
@@ -28,6 +28,7 @@ export default function AIChatManager() {
   const [errorDetails, setErrorDetails] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [chatTab, setChatTab] = useState("source");
+  const [fetchingCaptions, setFetchingCaptions] = useState(false);
   const messagesEndRef = useRef(null);
   const location = useLocation();
 
@@ -240,6 +241,73 @@ export default function AIChatManager() {
     setIsFullScreen(false);
   };
 
+  // YouTube URL detection
+  const isYouTubeUrl = (url) => {
+    const youtubeRegex = /^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
+    return youtubeRegex.test(url.trim());
+  };
+
+  const extractVideoId = (url) => {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
+  const fetchYouTubeCaptions = async () => {
+    const videoId = extractVideoId(sourceText);
+    if (!videoId) {
+      toast.error("Invalid YouTube URL");
+      return;
+    }
+
+    setFetchingCaptions(true);
+    try {
+      // Create a custom axios instance for caption fetching
+      const captionApi = axios.create({
+        baseURL: import.meta.env.VITE_API_URL,
+        timeout: 30000, // 30 seconds timeout
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const response = await captionApi.post('/youtube/captions', { videoId });
+      
+      if (response.data.captions) {
+        setSourceText(response.data.captions);
+        toast.success("Captions fetched successfully!");
+      } else {
+        toast.error("No captions available for this video");
+      }
+    } catch (error) {
+      console.error('Caption fetch error:', error);
+      let errorMessage = "Failed to fetch captions";
+      
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = "Request timed out. Please try again.";
+      } else if (error.response?.status === 404) {
+        errorMessage = "Video not found or captions not available";
+      } else if (error.response?.status === 403) {
+        errorMessage = "Access denied. Video may be private or restricted.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.code === 'ERR_NETWORK' || !error.response) {
+        // Backend endpoint doesn't exist
+        toast.error("Caption fetching not available. Please manually copy captions from YouTube.", {
+          duration: 5000
+        });
+        // Open YouTube video in new tab for manual caption copying
+        window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
+        return;
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setFetchingCaptions(false);
+    }
+  };
+
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -252,7 +320,7 @@ export default function AIChatManager() {
       <div className="space-y-3 h-full flex flex-col">
         <div className="flex gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
               Video Length
             </label>
             <select
@@ -269,10 +337,10 @@ export default function AIChatManager() {
 
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-medium text-gray-500">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
                 Select Prompt
               </label>
-              <span className="text-xs text-blue-600">💡 Use [LENGTH] & [SOURCE] in prompt</span>
+              <span className="text-xs text-blue-600 dark:text-blue-400">💡 Use [LENGTH] & [SOURCE] in prompt</span>
             </div>
             <div className="flex gap-2">
               <select
@@ -302,15 +370,15 @@ export default function AIChatManager() {
         </div>
 
         {/* Tabs for Source Input and Finalized Prompt */}
-        <div className="border border-gray-200 rounded-lg overflow-hidden flex-1 flex flex-col">
-          <div className="border-b border-gray-200 px-3 flex justify-between items-center flex-shrink-0">
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden flex-1 flex flex-col">
+          <div className="border-b border-gray-200 dark:border-gray-700 px-3 flex justify-between items-center flex-shrink-0">
             <div className="flex gap-4">
               <button
                 onClick={() => setChatTab("source")}
                 className={`py-2 text-sm font-medium border-b-2 flex items-center gap-1.5 ${
                   chatTab === "source"
                     ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                 }`}
               >
                   <MessageSquare size={14} />
@@ -321,7 +389,7 @@ export default function AIChatManager() {
                 className={`py-2 text-sm font-medium border-b-2 flex items-center gap-1.5 ${
                   chatTab === "finalized"
                     ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                 }`}
               >
                   <Copy size={14} />
@@ -346,31 +414,58 @@ export default function AIChatManager() {
           </div>
 
           {/* Tab Content */}
-          <div className="bg-white p-3 flex-1 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 p-3 flex-1 overflow-y-auto">
             {chatTab === "source" ? (
-              <div className="h-full">
-                <textarea
-                  value={sourceText}
-                  onChange={(e) => setSourceText(e.target.value)}
-                  placeholder="Paste YouTube URL, script, or any text here..."
-                  className="w-full h-full buffer-input text-sm resize-none"
-                />
+              <div className="h-full flex flex-col">
+                <div className="flex-1">
+                  <textarea
+                    value={sourceText}
+                    onChange={(e) => setSourceText(e.target.value)}
+                    placeholder="Paste YouTube URL, script, or any text here..."
+                    className="w-full h-full buffer-input text-sm resize-none"
+                  />
+                </div>
+                {/* YouTube Caption Fetch Button */}
+                {sourceText && isYouTubeUrl(sourceText) && (
+                  <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                    <button
+                      onClick={fetchYouTubeCaptions}
+                      disabled={fetchingCaptions}
+                      className="buffer-button-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {fetchingCaptions ? (
+                        <>
+                          <Loader2 size={12} className="animate-spin" />
+                          Fetching Captions...
+                        </>
+                      ) : (
+                        <>
+                          <Download size={12} />
+                          Get YouTube Captions
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      💡 This will fetch and replace the URL with the video's caption text
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="h-full">
                 {finalizedPrompt ? (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 h-full flex flex-col">
-                    <div className="bg-white border border-gray-200 rounded-lg p-3 flex-1 overflow-y-auto">
-                      <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                  <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 h-full flex flex-col">
+                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 flex-1 overflow-y-auto">
+                      <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
                         {finalizedPrompt}
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center h-full flex flex-col items-center justify-center">
-                    <Copy size={20} className="text-gray-300 mb-2" />
-                    <p className="text-sm text-gray-500">No finalized prompt yet</p>
-                    <p className="text-xs text-gray-400 mt-1">Select a prompt and add source text</p>
+                  <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center h-full flex flex-col items-center justify-center">
+                    <Copy size={20} className="text-gray-300 dark:text-gray-600 mb-2" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No finalized prompt yet</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Select a prompt and add source text</p>
                   </div>
                 )}
               </div>
@@ -386,13 +481,13 @@ export default function AIChatManager() {
             onKeyPress={handleKeyPress}
             placeholder="Type additional input or question..."
             disabled={loading}
-            className="buffer-input text-sm flex-1 disabled:bg-gray-50"
+            className="buffer-input text-sm flex-1 disabled:bg-gray-50 dark:disabled:bg-gray-700"
           />
           <select
             value={aiModel}
             onChange={(e) => setAiModel(e.target.value)}
             disabled={loading}
-            className="buffer-input text-sm w-56 disabled:bg-gray-50"
+            className="buffer-input text-sm w-56 disabled:bg-gray-50 dark:disabled:bg-gray-700"
           >
             <option value="gemini-2.5-flash">⚡ Gemini 2.5 Flash (Recommended)</option>
             <option value="gemini-2.5-pro">💎 Gemini 2.5 Pro (Best Quality)</option>
@@ -425,34 +520,34 @@ export default function AIChatManager() {
       {/* Result Modal */}
       {resultModal && currentResult && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className={`bg-white rounded-lg w-full flex flex-col border border-gray-200 shadow-lg transition-all ${
+          <div className={`bg-white dark:bg-gray-800 rounded-lg w-full flex flex-col border border-gray-200 dark:border-gray-700 shadow-lg transition-all ${
             isFullScreen ? 'max-w-[98vw] h-[98vh]' : 'max-w-4xl max-h-[90vh]'
           }`}>
-            <div className="px-4 py-3 border-b flex justify-between items-center">
-              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                <MessageSquare size={16} className="text-blue-600" />
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <MessageSquare size={16} className="text-blue-600 dark:text-blue-400" />
                 AI Generated Result
               </h3>
               <div className="flex items-center gap-1">
                 <button 
                   onClick={() => setIsFullScreen(!isFullScreen)} 
-                  className="text-gray-400 hover:text-gray-600 p-1 rounded"
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded"
                   title={isFullScreen ? "Exit fullscreen" : "Fullscreen"}
                 >
                   {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </button>
-                <button onClick={handleCloseResultModal} className="text-gray-400 hover:text-gray-600 p-1 rounded">
+                <button onClick={handleCloseResultModal} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded">
                   <X size={18} />
                 </button>
               </div>
             </div>
             <div className="overflow-y-auto flex-1 p-4">
               <div 
-                className="prose prose-sm max-w-none text-sm leading-relaxed text-gray-700"
+                className="prose prose-sm max-w-none text-sm leading-relaxed text-gray-700 dark:text-gray-300"
                 dangerouslySetInnerHTML={{ __html: renderMarkdown(currentResult) }} 
               />
             </div>
-            <div className="px-4 py-3 border-t flex justify-end">
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
               <button
                 onClick={() => { navigator.clipboard.writeText(currentResult); toast.success("Copied to clipboard"); }}
                 className="buffer-button-primary text-sm flex items-center gap-1.5"
@@ -481,28 +576,28 @@ export default function AIChatManager() {
             
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <div>
-                <div className="text-xs font-medium text-gray-500 uppercase mb-2">Request</div>
-                <div className="bg-gray-50 rounded-lg border border-gray-200 p-3">
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Request</div>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
                   <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div><span className="text-xs text-gray-500">Prompt ID</span><div className="font-mono text-gray-800 mt-0.5">{errorDetails.request.promptId}</div></div>
-                    <div><span className="text-xs text-gray-500">AI Model</span><div className="font-mono text-gray-800 mt-0.5 font-medium">{errorDetails.request.aiModel}</div></div>
-                    <div><span className="text-xs text-gray-500">Video Length</span><div className="font-mono text-gray-800 mt-0.5">{errorDetails.request.videoLength}</div></div>
-                    <div><span className="text-xs text-gray-500">Timestamp</span><div className="font-mono text-gray-800 mt-0.5">{new Date(errorDetails.request.timestamp).toLocaleString()}</div></div>
+                    <div><span className="text-xs text-gray-500 dark:text-gray-400">Prompt ID</span><div className="font-mono text-gray-800 dark:text-gray-200 mt-0.5">{errorDetails.request.promptId}</div></div>
+                    <div><span className="text-xs text-gray-500 dark:text-gray-400">AI Model</span><div className="font-mono text-gray-800 dark:text-gray-200 mt-0.5 font-medium">{errorDetails.request.aiModel}</div></div>
+                    <div><span className="text-xs text-gray-500 dark:text-gray-400">Video Length</span><div className="font-mono text-gray-800 dark:text-gray-200 mt-0.5">{errorDetails.request.videoLength}</div></div>
+                    <div><span className="text-xs text-gray-500 dark:text-gray-400">Timestamp</span><div className="font-mono text-gray-800 dark:text-gray-200 mt-0.5">{new Date(errorDetails.request.timestamp).toLocaleString()}</div></div>
                   </div>
-                  <div className="mt-3"><span className="text-xs text-gray-500">Source Text</span><div className="font-mono text-sm text-gray-800 mt-0.5 max-h-16 overflow-y-auto">{errorDetails.request.sourceText || 'N/A'}</div></div>
-                  <div className="mt-3"><span className="text-xs text-gray-500">Message</span><div className="font-mono text-sm text-gray-800 mt-0.5">{errorDetails.request.message}</div></div>
+                  <div className="mt-3"><span className="text-xs text-gray-500 dark:text-gray-400">Source Text</span><div className="font-mono text-sm text-gray-800 dark:text-gray-200 mt-0.5 max-h-16 overflow-y-auto">{errorDetails.request.sourceText || 'N/A'}</div></div>
+                  <div className="mt-3"><span className="text-xs text-gray-500 dark:text-gray-400">Message</span><div className="font-mono text-sm text-gray-800 dark:text-gray-200 mt-0.5">{errorDetails.request.message}</div></div>
                 </div>
               </div>
 
               <div>
-                <div className="text-xs font-medium text-gray-500 uppercase mb-2">Response</div>
-                <div className="bg-red-50 rounded-lg border border-red-200 p-3">
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Response</div>
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 p-3">
                   <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                    <div><span className="text-xs text-gray-500">Status Code</span><div className="font-mono text-red-600 mt-0.5 font-medium">{errorDetails.response.status || 'N/A'}</div></div>
-                    <div><span className="text-xs text-gray-500">Status Text</span><div className="font-mono text-red-600 mt-0.5 font-medium">{errorDetails.response.statusText || 'N/A'}</div></div>
+                    <div><span className="text-xs text-gray-500 dark:text-gray-400">Status Code</span><div className="font-mono text-red-600 dark:text-red-400 mt-0.5 font-medium">{errorDetails.response.status || 'N/A'}</div></div>
+                    <div><span className="text-xs text-gray-500 dark:text-gray-400">Status Text</span><div className="font-mono text-red-600 dark:text-red-400 mt-0.5 font-medium">{errorDetails.response.statusText || 'N/A'}</div></div>
                   </div>
-                  <div className="mb-3"><span className="text-xs text-gray-500">Error Message</span><div className="font-mono text-sm text-red-700 mt-0.5">{errorDetails.response.message}</div></div>
-                  <div><span className="text-xs text-gray-500">Full Error</span>
+                  <div className="mb-3"><span className="text-xs text-gray-500 dark:text-gray-400">Error Message</span><div className="font-mono text-sm text-red-700 dark:text-red-300 mt-0.5">{errorDetails.response.message}</div></div>
+                  <div><span className="text-xs text-gray-500 dark:text-gray-400">Full Error</span>
                     <div className="bg-gray-900 p-3 rounded mt-1 max-h-48 overflow-y-auto">
                       <pre className="text-xs text-green-400 font-mono">{errorDetails.response.fullError}</pre>
                     </div>
@@ -532,24 +627,24 @@ export default function AIChatManager() {
       {/* Preview Modal */}
       {previewModal && selectedPrompt && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-200 shadow-lg">
-            <div className="px-4 py-3 border-b flex justify-between items-center">
-              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                <Eye size={16} className="text-gray-500" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-200 dark:border-gray-700 shadow-lg">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Eye size={16} className="text-gray-500 dark:text-gray-400" />
                 Prompt Preview
               </h3>
-              <button onClick={() => setPreviewModal(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded">
+              <button onClick={() => setPreviewModal(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded">
                 <X size={18} />
               </button>
             </div>
-            <div className="px-4 py-3 border-b bg-gray-50 flex gap-6 text-sm">
-              <div><span className="text-xs text-gray-500">Channel</span><div className="font-medium text-gray-800">{prompts.find(p => p._id === selectedPrompt)?.channelId?.name || "-"}</div></div>
-              <div><span className="text-xs text-gray-500">Type</span><div className="font-medium text-gray-800">{prompts.find(p => p._id === selectedPrompt)?.promptTypeId?.name || "-"}</div></div>
-              <div><span className="text-xs text-gray-500">Model</span><div className="font-medium font-mono text-gray-800">{prompts.find(p => p._id === selectedPrompt)?.aiModel || "-"}</div></div>
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex gap-6 text-sm">
+              <div><span className="text-xs text-gray-500 dark:text-gray-400">Channel</span><div className="font-medium text-gray-800 dark:text-gray-200">{prompts.find(p => p._id === selectedPrompt)?.channelId?.name || "-"}</div></div>
+              <div><span className="text-xs text-gray-500 dark:text-gray-400">Type</span><div className="font-medium text-gray-800 dark:text-gray-200">{prompts.find(p => p._id === selectedPrompt)?.promptTypeId?.name || "-"}</div></div>
+              <div><span className="text-xs text-gray-500 dark:text-gray-400">Model</span><div className="font-medium font-mono text-gray-800 dark:text-gray-200">{prompts.find(p => p._id === selectedPrompt)?.aiModel || "-"}</div></div>
             </div>
             <div className="p-4 overflow-y-auto flex-1">
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <pre className="whitespace-pre-wrap text-sm text-gray-800 font-sans leading-relaxed">
+              <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                <pre className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200 font-sans leading-relaxed">
                   {prompts.find(p => p._id === selectedPrompt)?.promptText
                     ?.replace(/\[SOURCE\]/g, sourceText || '[SOURCE]')
                     ?.replace(/\[LENGTH\]/g, (() => {

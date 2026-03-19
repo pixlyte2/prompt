@@ -12,7 +12,7 @@ const adminMenu = [
 
 export default function AdminLayout({ title, titleInfo, icon: Icon, children, onCacheClear, noPadding }) {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar menu={adminMenu} />
 
       <div className="flex-1 flex flex-col ml-0 md:ml-64">

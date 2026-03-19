@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import PrivateRoute from "./components/PrivateRoute";
+import { DarkModeProvider } from "./contexts/DarkModeContext";
 
 import Login from "./auth/Login";
 import SuperAdminLogin from "./auth/SuperAdminLogin";
@@ -17,16 +18,16 @@ import PromptTypes from "./pages/admin/PromptTypes";
 
 export default function App() {
   return (
-    <>
+    <DarkModeProvider>
       <Toaster
         position="top-right"
         toastOptions={{
           duration: 4000,
           style: {
             borderRadius: "8px",
-            background: "#ffffff",
-            color: "#334155",
-            border: "1px solid #e2e8f0",
+            background: "var(--toast-bg, #ffffff)",
+            color: "var(--toast-color, #334155)",
+            border: "1px solid var(--toast-border, #e2e8f0)",
             boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
             fontSize: "14px",
             fontWeight: "500",
@@ -132,6 +133,6 @@ export default function App() {
           }
         />
       </Routes>
-    </>
+    </DarkModeProvider>
   );
 }

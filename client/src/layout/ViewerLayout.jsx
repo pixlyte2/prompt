@@ -8,7 +8,7 @@ const viewerMenu = [
 
 export default function ViewerLayout({ title, titleInfo, icon, children, onCacheClear, noPadding }) {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar menu={viewerMenu} />
 
       <div className="flex-1 flex flex-col ml-0 md:ml-64">

@@ -31,15 +31,15 @@ export default function SuperAdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Logo and Header */}
         <div className="text-center mb-6">
           <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center mx-auto mb-3">
             <Shield className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-sm font-semibold text-gray-900 mb-1">Super Admin</h1>
-          <p className="text-xs text-gray-500">Restricted access • Super Admin only</p>
+          <h1 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Super Admin</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Restricted access • Super Admin only</p>
         </div>
 
         {/* Login Form */}
@@ -75,7 +75,7 @@ export default function SuperAdminLogin() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -101,7 +101,7 @@ export default function SuperAdminLogin() {
 
         {/* Footer */}
         <div className="text-center mt-6">
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-400 dark:text-gray-500">
             © 2024 CreatorAI. All rights reserved.
           </p>
         </div>

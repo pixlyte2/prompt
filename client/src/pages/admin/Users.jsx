@@ -43,8 +43,8 @@ function UserCard({ user, onDelete }) {
             </span>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-900">{user.name}</h3>
-            <div className="flex items-center gap-1 text-xs text-gray-500">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</h3>
+            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
               <Mail size={12} />
               <span>{user.email}</span>
             </div>
@@ -52,7 +52,7 @@ function UserCard({ user, onDelete }) {
         </div>
         <button
           onClick={() => onDelete(user)}
-          className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md"
+          className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
           title="Delete user"
         >
           <Trash2 size={14} />
@@ -64,7 +64,7 @@ function UserCard({ user, onDelete }) {
           <span>{roleInfo.icon}</span>
           {roleInfo.label}
         </span>
-        <div className="text-xs text-gray-400">
+        <div className="text-xs text-gray-400 dark:text-gray-500">
           {new Date(user.createdAt).toLocaleDateString()}
         </div>
       </div>
@@ -180,10 +180,10 @@ export default function Users() {
         ) : (
           <div className="buffer-card p-8 text-center">
             <UsersIcon size={32} className="text-gray-300 mx-auto mb-2" />
-            <p className="text-sm font-medium text-gray-600">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
               {searchTerm ? 'No users found' : 'No users yet'}
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
               {searchTerm ? 'Try adjusting your search terms' : 'Create your first user to get started'}
             </p>
             {!searchTerm && (
@@ -200,15 +200,15 @@ export default function Users() {
         {/* Add User Modal */}
         {showAddModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl w-full max-w-md shadow-xl">
-              <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md shadow-xl">
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                   <User size={16} />
                   Add New User
                 </h3>
                 <button 
                   onClick={() => setShowAddModal(false)} 
-                  className="text-gray-400 hover:text-gray-600 p-1 rounded"
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded"
                 >
                   <X size={18} />
                 </button>
@@ -216,7 +216,7 @@ export default function Users() {
               
               <div className="p-5 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Full Name
                   </label>
                   <input
@@ -229,7 +229,7 @@ export default function Users() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Email Address
                   </label>
                   <input
@@ -243,7 +243,7 @@ export default function Users() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Password
                   </label>
                   <input
@@ -261,7 +261,7 @@ export default function Users() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Role
                   </label>
                   <select
@@ -275,7 +275,7 @@ export default function Users() {
                 </div>
               </div>
 
-              <div className="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">
+              <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2">
                 <button
                   onClick={() => setShowAddModal(false)}
                   className="buffer-button-secondary text-sm py-2"

@@ -139,12 +139,12 @@ export default function PromptTypes() {
       {/* Add Prompt Type Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-sm shadow-xl">
-            <div className="p-5 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">New Prompt Type</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-sm shadow-xl">
+            <div className="p-5 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">New Prompt Type</h3>
             </div>
             <div className="p-5">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Type name</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Type name</label>
               <input
                 placeholder="Enter prompt type name..."
                 value={form.name}
@@ -176,11 +176,11 @@ export default function PromptTypes() {
         <div className="buffer-card flex-1 overflow-hidden flex flex-col min-h-0">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 text-gray-500 text-xs uppercase tracking-wider">
-                <th className="px-4 py-3 text-left font-medium cursor-pointer hover:text-gray-700" onClick={() => handleSort('name')}>
+              <tr className="border-b border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
+                <th className="px-4 py-3 text-left font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" onClick={() => handleSort('name')}>
                   <span className="inline-flex items-center gap-1">Name <ArrowUpDown size={12} /></span>
                 </th>
-                <th className="px-4 py-3 text-left font-medium cursor-pointer hover:text-gray-700" onClick={() => handleSort('createdAt')}>
+                <th className="px-4 py-3 text-left font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" onClick={() => handleSort('createdAt')}>
                   <span className="inline-flex items-center gap-1">Created <ArrowUpDown size={12} /></span>
                 </th>
                 <th className="px-4 py-3 text-right font-medium w-24">Actions</th>
@@ -191,30 +191,30 @@ export default function PromptTypes() {
             <table className="w-full text-sm">
               <tbody>
                 {filteredAndSortedTypes.map(t => (
-                  <tr key={t._id} className="border-b border-gray-50 hover:bg-gray-50 group">
+                  <tr key={t._id} className="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 group">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
-                          <Tag size={14} className="text-amber-600" />
+                        <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0">
+                          <Tag size={14} className="text-amber-600 dark:text-amber-400" />
                         </div>
-                        <span className="font-medium text-gray-900">{t.name}</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{t.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                       {new Date(t.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100">
                         <button
                           onClick={() => { setEditing(t); setEditName(t.name); }}
-                          className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                          className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                           title="Edit"
                         >
                           <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => setDeleting(t)}
-                          className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50"
+                          className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                           title="Delete"
                         >
                           <Trash2 size={14} />
@@ -226,7 +226,7 @@ export default function PromptTypes() {
               </tbody>
             </table>
             {filteredAndSortedTypes.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+              <div className="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-gray-500">
                 <Tag size={32} className="mb-2" />
                 <p className="text-sm font-medium">No prompt types found</p>
               </div>
@@ -237,9 +237,9 @@ export default function PromptTypes() {
 
       {editing && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-sm shadow-xl">
-            <div className="p-5 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">Edit Type</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-sm shadow-xl">
+            <div className="p-5 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Edit Type</h3>
             </div>
             <div className="p-5">
               <input
@@ -260,10 +260,10 @@ export default function PromptTypes() {
 
       {deleting && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-sm shadow-xl">
+          <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-sm shadow-xl">
             <div className="p-5">
-              <h3 className="text-base font-semibold text-gray-900 mb-1">Delete Type</h3>
-              <p className="text-sm text-gray-600">Delete "{deleting.name}"? This can't be undone.</p>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Delete Type</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Delete "{deleting.name}"? This can't be undone.</p>
             </div>
             <div className="px-5 pb-5 flex justify-end gap-2">
               <button onClick={() => setDeleting(null)} className="buffer-button-secondary text-sm py-2">Cancel</button>

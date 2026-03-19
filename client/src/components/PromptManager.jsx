@@ -141,10 +141,10 @@ export default function PromptManager() {
               className="buffer-input pl-9 py-2 text-sm"
             />
           </div>
-          <span className="text-xs text-gray-500">{filtered.length} results</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{filtered.length} results</span>
           {selectedRows.length > 0 && (
             <>
-              <span className="text-xs font-medium text-blue-600">{selectedRows.length} selected</span>
+              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">{selectedRows.length} selected</span>
               <button onClick={handleExport} className="buffer-button-secondary text-xs py-1.5 flex items-center gap-1">
                 <Download size={14} /> Export
               </button>
@@ -160,10 +160,10 @@ export default function PromptManager() {
         {/* Filter pills */}
         <div className="flex gap-4">
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-            <span className="text-xs text-gray-400 flex-shrink-0">Channel:</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">Channel:</span>
             <button
               onClick={() => { setSelectedChannel(null); setSelectedType(null); setPage(1); }}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium flex-shrink-0 ${!selectedChannel ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium flex-shrink-0 ${!selectedChannel ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"}`}
             >
               All ({prompts.length})
             </button>
@@ -171,18 +171,18 @@ export default function PromptManager() {
               <button
                 key={c._id}
                 onClick={() => { setSelectedChannel(c._id); setSelectedType(null); setPage(1); }}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium flex-shrink-0 ${selectedChannel === c._id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium flex-shrink-0 ${selectedChannel === c._id ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"}`}
               >
                 {c.name} ({c.count})
               </button>
             ))}
           </div>
           {selectedChannel && (
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-l border-gray-200 pl-4">
-              <span className="text-xs text-gray-400 flex-shrink-0">Type:</span>
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-l border-gray-200 dark:border-gray-700 pl-4">
+              <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">Type:</span>
               <button
                 onClick={() => { setSelectedType(null); setPage(1); }}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium flex-shrink-0 ${!selectedType ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium flex-shrink-0 ${!selectedType ? "bg-emerald-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"}`}
               >
                 All
               </button>
@@ -190,7 +190,7 @@ export default function PromptManager() {
                 <button
                   key={t._id}
                   onClick={() => { setSelectedType(t._id); setPage(1); }}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium flex-shrink-0 ${selectedType === t._id ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium flex-shrink-0 ${selectedType === t._id ? "bg-emerald-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"}`}
                 >
                   {t.name} ({t.count})
                 </button>
@@ -202,62 +202,71 @@ export default function PromptManager() {
 
       {/* Table */}
       <div className="buffer-card flex-1 overflow-hidden flex flex-col min-h-0">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 text-gray-500 text-xs uppercase tracking-wider">
-              <th className="px-3 py-3 w-10 text-center">
-                <input type="checkbox" checked={allSelected} onChange={() => setSelectedRows(allSelected ? [] : filtered.map(p => p._id))} className="h-3.5 w-3.5 accent-blue-600 cursor-pointer" />
-              </th>
-              {[
-                { key: "channel", label: "Channel", w: "w-28" },
-                { key: "type", label: "Type", w: "w-32" },
-                { key: "model", label: "Sub Type", w: "w-28" },
-                { key: "prompt", label: "Prompt" },
-              ].map(({ key, label, w }) => (
-                <th key={key} className={`px-3 py-3 text-left font-medium cursor-pointer hover:text-gray-700 ${w || ""}`} onClick={() => handleSort(key)}>
-                  <span className="inline-flex items-center gap-1">
-                    {label}
-                    {sortField === key && <span className="text-blue-600">{sortDirection === "asc" ? "↑" : "↓"}</span>}
-                  </span>
-                </th>
-              ))}
-              <th className="px-3 py-3 text-right font-medium w-28">Actions</th>
-            </tr>
-          </thead>
-        </table>
         <div className="flex-1 overflow-y-auto">
           <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-white dark:bg-gray-800 z-10">
+              <tr className="border-b border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
+                <th className="px-3 py-3 w-10 text-center">
+                  <input type="checkbox" checked={allSelected} onChange={() => setSelectedRows(allSelected ? [] : filtered.map(p => p._id))} className="h-3.5 w-3.5 accent-blue-600 cursor-pointer" />
+                </th>
+                <th className="px-3 py-3 text-left font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 w-28" onClick={() => handleSort("channel")}>
+                  <span className="inline-flex items-center gap-1">
+                    Channel
+                    {sortField === "channel" && <span className="text-blue-600 dark:text-blue-400">{sortDirection === "asc" ? "↑" : "↓"}</span>}
+                  </span>
+                </th>
+                <th className="px-3 py-3 text-left font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 w-32" onClick={() => handleSort("type")}>
+                  <span className="inline-flex items-center gap-1">
+                    Type
+                    {sortField === "type" && <span className="text-blue-600 dark:text-blue-400">{sortDirection === "asc" ? "↑" : "↓"}</span>}
+                  </span>
+                </th>
+                <th className="px-3 py-3 text-left font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 w-28" onClick={() => handleSort("model")}>
+                  <span className="inline-flex items-center gap-1">
+                    Sub Type
+                    {sortField === "model" && <span className="text-blue-600 dark:text-blue-400">{sortDirection === "asc" ? "↑" : "↓"}</span>}
+                  </span>
+                </th>
+                <th className="px-3 py-3 text-left font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" onClick={() => handleSort("prompt")}>
+                  <span className="inline-flex items-center gap-1">
+                    Prompt
+                    {sortField === "prompt" && <span className="text-blue-600 dark:text-blue-400">{sortDirection === "asc" ? "↑" : "↓"}</span>}
+                  </span>
+                </th>
+                <th className="px-3 py-3 text-right font-medium w-28">Actions</th>
+              </tr>
+            </thead>
             <tbody>
               {paginated.map(p => (
-                <tr key={p._id} className={`border-b border-gray-50 group ${selectedRows.includes(p._id) ? "bg-blue-50" : "hover:bg-gray-50"}`}>
+                <tr key={p._id} className={`border-b border-gray-50 dark:border-gray-700 group ${selectedRows.includes(p._id) ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-700"}`}>
                   <td className="px-3 py-2.5 w-10 text-center">
                     <input type="checkbox" checked={selectedRows.includes(p._id)} onChange={() => toggleRow(p._id)} className="h-3.5 w-3.5 accent-blue-600 cursor-pointer" />
                   </td>
                   <td className="px-3 py-2.5 w-28">
-                    <span className="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded truncate block max-w-24">{p.channelId?.name || "-"}</span>
+                    <span className="text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded truncate block max-w-24">{p.channelId?.name || "-"}</span>
                   </td>
                   <td className="px-3 py-2.5 w-32">
-                    <span className="text-xs font-medium bg-gray-100 text-gray-700 px-2 py-0.5 rounded truncate block max-w-28">{p.promptTypeId?.name || "-"}</span>
+                    <span className="text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded truncate block max-w-28">{p.promptTypeId?.name || "-"}</span>
                   </td>
-                  <td className="px-3 py-2.5 w-28 text-xs text-gray-500 font-mono">{p.aiModel || "-"}</td>
+                  <td className="px-3 py-2.5 w-28 text-xs text-gray-500 dark:text-gray-400 font-mono">{p.aiModel || "-"}</td>
                   <td className="px-3 py-2.5">
-                    <p className="text-xs text-gray-700 truncate max-w-xs">{p.promptText?.substring(0, 60)}{p.promptText?.length > 60 ? "..." : ""}</p>
+                    <p className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-xs">{p.promptText?.substring(0, 60)}{p.promptText?.length > 60 ? "..." : ""}</p>
                   </td>
                   <td className="px-3 py-2.5 w-28 text-right">
                     <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100">
-                      <button onClick={() => { addRecentPrompt(p); setPreviewPrompt(p); setPreviewModal(true); }} className="p-1.5 rounded-md text-gray-400 hover:text-violet-600 hover:bg-violet-50" title="Preview">
+                      <button onClick={() => { addRecentPrompt(p); setPreviewPrompt(p); setPreviewModal(true); }} className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20" title="Preview">
                         <Eye size={14} />
                       </button>
-                      <button onClick={() => copyText(p.promptText, p)} className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50" title="Copy">
+                      <button onClick={() => copyText(p.promptText, p)} className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20" title="Copy">
                         <Copy size={14} />
                       </button>
                       {(role === "admin" || role === "content_manager") && (
-                        <button onClick={() => { setSelectedPrompt(p); setShowFormModal(true); }} className="p-1.5 rounded-md text-gray-400 hover:text-amber-600 hover:bg-amber-50" title="Edit">
+                        <button onClick={() => { setSelectedPrompt(p); setShowFormModal(true); }} className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20" title="Edit">
                           <Pencil size={14} />
                         </button>
                       )}
                       {role === "admin" && (
-                        <button onClick={() => { setPromptToDelete(p); setDeleteModalOpen(true); }} className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50" title="Delete">
+                        <button onClick={() => { setPromptToDelete(p); setDeleteModalOpen(true); }} className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20" title="Delete">
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -268,7 +277,7 @@ export default function PromptManager() {
             </tbody>
           </table>
           {filtered.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+            <div className="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-gray-500">
               <Search size={32} className="mb-2" />
               <p className="text-sm font-medium">No prompts found</p>
               <p className="text-xs mt-1">Try adjusting your search or filters</p>
@@ -278,20 +287,20 @@ export default function PromptManager() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-4 py-2.5 border-t border-gray-100 flex justify-between items-center text-xs">
-            <span className="text-gray-500">
+          <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center text-xs">
+            <span className="text-gray-500 dark:text-gray-400">
               {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} of {filtered.length}
             </span>
             <div className="flex items-center gap-1">
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-2.5 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed">
                 Prev
               </button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map(n => (
-                <button key={n} onClick={() => setPage(n)} className={`min-w-[1.75rem] py-1 rounded-md font-medium ${page === n ? "bg-blue-600 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+                <button key={n} onClick={() => setPage(n)} className={`min-w-[1.75rem] py-1 rounded-md font-medium ${page === n ? "bg-blue-600 text-white" : "border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"}`}>
                   {n}
                 </button>
               ))}
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-2.5 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed">
                 Next
               </button>
             </div>
@@ -321,35 +330,35 @@ export default function PromptManager() {
       {/* Preview Modal */}
       {previewModal && previewPrompt && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-xl">
-            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="text-base font-semibold text-gray-900">Prompt Preview</h3>
-              <button onClick={() => setPreviewModal(false)} className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+          <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-xl">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Prompt Preview</h3>
+              <button onClick={() => setPreviewModal(false)} className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                 <X size={18} />
               </button>
             </div>
-            <div className="px-5 py-3 border-b border-gray-100 flex gap-3">
+            <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 flex gap-3">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-gray-400">Channel:</span>
-                <span className="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{previewPrompt.channelId?.name || "-"}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">Channel:</span>
+                <span className="text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">{previewPrompt.channelId?.name || "-"}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-gray-400">Type:</span>
-                <span className="text-xs font-medium bg-gray-100 text-gray-700 px-2 py-0.5 rounded">{previewPrompt.promptTypeId?.name || "-"}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">Type:</span>
+                <span className="text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded">{previewPrompt.promptTypeId?.name || "-"}</span>
               </div>
               {previewPrompt.aiModel && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-gray-400">Sub Type:</span>
-                  <span className="text-xs font-mono text-gray-600">{previewPrompt.aiModel}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">Sub Type:</span>
+                  <span className="text-xs font-mono text-gray-600 dark:text-gray-300">{previewPrompt.aiModel}</span>
                 </div>
               )}
             </div>
             <div className="p-5 overflow-y-auto flex-1">
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                <pre className="whitespace-pre-wrap text-sm text-gray-800 font-sans leading-relaxed">{previewPrompt.promptText}</pre>
+              <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+                <pre className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200 font-sans leading-relaxed">{previewPrompt.promptText}</pre>
               </div>
             </div>
-            <div className="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">
+            <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2">
               <button
                 onClick={() => { copyText(previewPrompt.promptText, previewPrompt); setPreviewModal(false); }}
                 className="buffer-button-primary text-sm py-2 flex items-center gap-1.5"

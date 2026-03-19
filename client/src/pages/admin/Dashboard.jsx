@@ -100,8 +100,8 @@ export default function Dashboard() {
                 <Icon size={15} className={fg} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900 leading-tight">{stats[key]}</p>
-                <p className="text-xs text-gray-500">{label}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight">{stats[key]}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
               </div>
             </button>
           ))}
@@ -116,8 +116,8 @@ export default function Dashboard() {
                 <Icon size={15} className={fg} />
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-                <p className="text-xs text-gray-500 truncate">{desc}</p>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{desc}</p>
               </div>
             </button>
           ))}
@@ -128,11 +128,11 @@ export default function Dashboard() {
           <button onClick={() => navigate("/admin/ai-chat", { state: { promptId: lastUsed.promptId, sourceText: lastUsed.sourceText, videoLength: lastUsed.videoLength, aiModel: lastUsed.aiModel } })}
             className="buffer-card px-3 py-2.5 text-left group hover:shadow-md hover:border-gray-300 flex items-center gap-3">
             <Sparkles size={14} className="text-amber-500 flex-shrink-0" />
-            <span className="text-xs font-medium text-gray-500">Last AI Chat</span>
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Last AI Chat</span>
             {lastChannel && <span className="text-xs font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{lastChannel}</span>}
             {lastPromptType && <span className="text-xs font-medium bg-violet-50 text-violet-700 px-1.5 py-0.5 rounded">{lastPromptType}</span>}
             {(lastUsed.subType || lastUsed.aiModel) && <span className="text-xs font-medium bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded">{lastUsed.subType || lastUsed.aiModel}</span>}
-            <span className="text-xs text-gray-400 ml-auto">{timeAgo(lastUsed.timestamp)}</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{timeAgo(lastUsed.timestamp)}</span>
           </button>
         ) : null}
 
@@ -142,8 +142,8 @@ export default function Dashboard() {
             {/* Recent AI Chat (Prompts/Input) */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-                  <MessageSquare size={12} className="text-gray-400" /> Recent AI Chat
+                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <MessageSquare size={12} className="text-gray-400 dark:text-gray-500" /> Recent AI Chat
                 </h3>
                 <button onClick={() => navigate("/admin/ai-chat")} className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-0.5">
                   Open Chat <ArrowUpRight size={10} />
@@ -165,14 +165,14 @@ export default function Dashboard() {
                           <span className="text-xs font-medium px-1.5 py-0.5 rounded truncate bg-amber-50 text-amber-700">{item.subType}</span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{timeAgo(item.timestamp)}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2">{timeAgo(item.timestamp)}</span>
                     </div>
-                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
                       {item.sourceText?.substring(0, 120) || item.prompt?.substring(0, 120)}{((item.sourceText || item.prompt)?.length > 120) ? "..." : ""}
                     </p>
                     <div className="flex items-center justify-between mt-1.5">
-                      <span className="text-xs text-gray-400">{item.videoLength || ""}</span>
-                      <span className="text-xs text-gray-400 font-mono">{item.aiModel || ""}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">{item.videoLength || ""}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">{item.aiModel || ""}</span>
                     </div>
                   </div>
                 ))}
@@ -182,8 +182,8 @@ export default function Dashboard() {
             {/* Recent AI Generations (Results/Output) */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-                  <Clock size={12} className="text-gray-400" /> Recent AI Generations
+                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <Clock size={12} className="text-gray-400 dark:text-gray-500" /> Recent AI Generations
                 </h3>
                 <button onClick={() => { setHistoryItemId(null); setHistoryModal(true); }} className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-0.5">
                   View all <ArrowUpRight size={10} />
@@ -205,13 +205,13 @@ export default function Dashboard() {
                           <span className="text-xs font-medium px-1.5 py-0.5 rounded truncate bg-amber-50 text-amber-700">{item.subType}</span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{timeAgo(item.timestamp)}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2">{timeAgo(item.timestamp)}</span>
                     </div>
-                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
                       {item.result?.replace(/<[^>]*>/g, "").replace(/[#*`_~]/g, "").substring(0, 120)}...
                     </p>
                     <div className="flex items-center justify-between mt-1.5">
-                      <span className="text-xs text-gray-400">{item.videoLength || ""}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">{item.videoLength || ""}</span>
                       <button
                         onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.result); toast.success("Copied"); }}
                         className="text-xs text-blue-600 font-medium opacity-0 group-hover:opacity-100"

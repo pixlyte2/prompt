@@ -47,22 +47,22 @@ export default function SettingsManager() {
     <div className="max-w-lg space-y-3">
       {/* Status */}
       <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border ${
-        hasStoredKey ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"
+        hasStoredKey ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800" : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
       }`}>
         {hasStoredKey
-          ? <CheckCircle2 size={15} className="text-emerald-600 flex-shrink-0" />
-          : <XCircle size={15} className="text-amber-600 flex-shrink-0" />
+          ? <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+          : <XCircle size={15} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
         }
-        <span className={`text-xs font-medium ${hasStoredKey ? "text-emerald-800" : "text-amber-800"}`}>
+        <span className={`text-xs font-medium ${hasStoredKey ? "text-emerald-800 dark:text-emerald-200" : "text-amber-800 dark:text-amber-200"}`}>
           {hasStoredKey ? "API key configured — encrypted with AES-256-GCM" : "No API key configured — AI Chat won't work"}
         </span>
       </div>
 
       {/* API Key Card */}
       <div className="buffer-card">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-          <Key size={14} className="text-gray-400" />
-          <h3 className="text-sm font-semibold text-gray-900">Gemini API Key</h3>
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
+          <Key size={14} className="text-gray-400 dark:text-gray-500" />
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Gemini API Key</h3>
         </div>
 
         <div className="p-4 space-y-3">
@@ -87,7 +87,7 @@ export default function SettingsManager() {
             <button
               type="button"
               onClick={() => setShowKey(!showKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-0.5 rounded"
               tabIndex={-1}
             >
               {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -99,7 +99,7 @@ export default function SettingsManager() {
               href="https://aistudio.google.com/app/apikey"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium inline-flex items-center gap-1"
+              className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium inline-flex items-center gap-1"
             >
               Get key from Google AI Studio <ExternalLink size={10} />
             </a>
@@ -107,7 +107,7 @@ export default function SettingsManager() {
               {hasStoredKey && (
                 <button
                   onClick={clearApiKey}
-                  className="text-xs text-gray-400 hover:text-red-600 flex items-center gap-1 px-2 py-1.5 rounded-md hover:bg-red-50"
+                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-1 px-2 py-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   <Trash2 size={12} /> Clear
                 </button>
@@ -130,11 +130,11 @@ export default function SettingsManager() {
 
       {/* How-to */}
       <div className="buffer-card">
-        <div className="px-4 py-3 border-b border-gray-100">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Setup Guide</h3>
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Setup Guide</h3>
         </div>
         <div className="p-4">
-          <ol className="text-xs text-gray-600 space-y-2">
+          <ol className="text-xs text-gray-600 dark:text-gray-300 space-y-2">
             {[
               "Visit Google AI Studio",
               "Sign in with your Google account",
@@ -142,7 +142,7 @@ export default function SettingsManager() {
               "Paste the key above and hit Save"
             ].map((step, i) => (
               <li key={i} className="flex items-start gap-2.5">
-                <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center flex-shrink-0 text-xs font-medium">{i + 1}</span>
+                <span className="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 flex items-center justify-center flex-shrink-0 text-xs font-medium">{i + 1}</span>
                 <span className="pt-0.5">{step}</span>
               </li>
             ))}
@@ -151,9 +151,9 @@ export default function SettingsManager() {
       </div>
 
       {/* Security Note */}
-      <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-200">
-        <Shield size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
-        <p className="text-xs text-gray-500 leading-relaxed">
+      <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <Shield size={14} className="text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
           Your key is encrypted locally with AES-256-GCM and never leaves your browser.
         </p>
       </div>
