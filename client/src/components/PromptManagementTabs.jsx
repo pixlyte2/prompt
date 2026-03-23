@@ -8,7 +8,7 @@ export default function PromptManagementTabs() {
   const [activeTab, setActiveTab] = useState("prompts");
 
   const tabs = [
-    { key: "prompts", label: "Prompts", icon: FileText },
+    { key: "promptsss", label: "Prompts", icon: FileText },
     { key: "types", label: "Prompt Types", icon: Tag },
     { key: "channels", label: "Channels", icon: Layers },
   ];

@@ -1,77 +1,67 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { Plus, Trash2, Users as UsersIcon, X, Search, Mail, Shield, User } from "lucide-react";
+import { Plus, Trash2, Users as UsersIcon, X, Search, Mail } from "lucide-react";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
 import useLoading from "../../hooks/useLoading";
 import PageSectionLoader from "../../components/PageSectionLoader";
 
+/* ================= USER CARD ================= */
 function UserCard({ user, onDelete }) {
   const getRoleInfo = (role) => {
     switch (role) {
-      case "content_manager": 
-        return { 
-          label: "Content Manager", 
-          color: "bg-blue-100 text-blue-700", 
-          icon: "✏️" 
-        };
-      case "admin": 
-        return { 
-          label: "Admin", 
-          color: "bg-purple-100 text-purple-700", 
-          icon: "👑" 
-        };
-      default: 
-        return { 
-          label: "Viewer", 
-          color: "bg-gray-100 text-gray-700", 
-          icon: "👁️" 
-        };
+      case "content_manager":
+        return { label: "Content Manager", color: "bg-blue-100 text-blue-700" };
+      case "admin":
+        return { label: "Admin", color: "bg-purple-100 text-purple-700" };
+      default:
+        return { label: "Viewer", color: "bg-gray-100 text-gray-700" };
     }
   };
 
   const roleInfo = getRoleInfo(user.role);
 
   return (
-    <div className="buffer-card px-3 py-2.5 hover:shadow-md hover:border-gray-300 group">
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-            <span className="text-blue-600 font-medium text-xs">
-              {user.name.charAt(0).toUpperCase()}
-            </span>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</h3>
-            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-              <Mail size={12} />
-              <span>{user.email}</span>
-            </div>
-          </div>
+    <div className="buffer-card flex items-center justify-between px-4 py-3 hover:shadow-md transition group">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-medium">
+          {user.name.charAt(0).toUpperCase()}
         </div>
-        <button
-          onClick={() => onDelete(user)}
-          className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
-          title="Delete user"
-        >
-          <Trash2 size={14} />
-        </button>
+
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-white">
+            {user.name}
+          </p>
+          <p className="text-xs text-gray-500 flex items-center gap-1">
+            <Mail size={12} />
+            {user.email}
+          </p>
+        </div>
       </div>
-      
-      <div className="flex items-center justify-between">
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded ${roleInfo.color}`}>
-          <span>{roleInfo.icon}</span>
+
+      <div className="flex items-center gap-6">
+        <span className={`text-xs px-3 py-1 rounded-full ${roleInfo.color}`}>
           {roleInfo.label}
         </span>
-        <div className="text-xs text-gray-400 dark:text-gray-500">
-          {new Date(user.createdAt).toLocaleDateString()}
+
+        <div className="text-xs text-gray-400 text-right">
+          <p>Created</p>
+          <p>{new Date(user.createdAt).toLocaleDateString()}</p>
         </div>
+
+        <button
+          onClick={() => onDelete(user)}
+          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600"
+        >
+          <Trash2 size={16} />
+        </button>
       </div>
     </div>
   );
 }
 
+/* ================= MAIN ================= */
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "viewer" });
@@ -79,6 +69,7 @@ export default function Users() {
   const [deleting, setDeleting] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
 
   const { startLoading, stopLoading, isLoading } = useLoading();
 
@@ -130,168 +121,151 @@ export default function Users() {
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  /* ================= FILTER ================= */
+  const filteredUsers = users.filter(u => {
+    const matchSearch =
+      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchRole =
+      activeFilter === "all" || u.role === activeFilter;
+
+    return matchSearch && matchRole;
+  });
+
+  /* ================= STATS ================= */
+  const total = users.length;
+  const admins = users.filter(u => u.role === "admin").length;
+  const content = users.filter(u => u.role === "content_manager").length;
+  const viewers = users.filter(u => u.role === "viewer").length;
 
   return (
-    <AdminLayout 
-      title="Users" 
-      titleInfo={`Manage ${users.length} team members and their permissions`}
-      icon={UsersIcon}
-    >
+    <AdminLayout title="Users" icon={UsersIcon}>
       <PageSectionLoader show={isLoading("page")} />
 
-      <div className="space-y-3">
-        {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-between">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+      <div className="space-y-5">
+
+        {/* 🔥 STATS - PRO */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+          {[
+            { label: "Total Users", value: total, filter: "all", color: "blue" },
+            { label: "Admins", value: admins, filter: "admin", color: "purple" },
+            { label: "Content", value: content, filter: "content_manager", color: "green" },
+            { label: "Viewers", value: viewers, filter: "viewer", color: "gray" }
+          ].map((item, i) => (
+            <div
+              key={i}
+              onClick={() => setActiveFilter(item.filter)}
+              className={`buffer-card p-4 cursor-pointer transition hover:shadow-md ${
+                activeFilter === item.filter ? "ring-2 ring-blue-500" : ""
+              }`}
+            >
+              <p className="text-xs text-gray-500">{item.label}</p>
+
+              <p className="text-2xl font-semibold mt-1 text-gray-900 dark:text-white">
+                {item.value}
+              </p>
+
+              {/* MINI CHART */}
+              <div className="mt-3 h-8 flex items-end gap-[3px]">
+                {[5, 8, 6, 10, 7, 9, 6].map((h, idx) => (
+                  <div
+                    key={idx}
+                    className={
+                      item.color === "blue"
+                        ? "bg-blue-400/60"
+                        : item.color === "purple"
+                        ? "bg-purple-400/60"
+                        : item.color === "green"
+                        ? "bg-green-400/60"
+                        : "bg-gray-400/60"
+                    }
+                    style={{ height: `${h * 3}px`, width: "100%" }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+
+        </div>
+
+        {/* SEARCH + ADD */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
-              type="text"
               placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="buffer-input pl-9 py-2 text-sm"
+              className="buffer-input pl-9 text-sm"
             />
           </div>
+
           <button
             onClick={() => setShowAddModal(true)}
-            className="buffer-button-primary flex items-center gap-1.5 text-sm py-2"
+            className="buffer-button-primary flex items-center gap-2 text-sm"
           >
             <Plus size={16} />
             Add User
           </button>
         </div>
 
-        {/* Users Grid */}
-        {filteredUsers.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-            {filteredUsers.map(user => (
-              <UserCard 
-                key={user._id} 
-                user={user} 
-                onDelete={setDeleting}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="buffer-card p-8 text-center">
-            <UsersIcon size={32} className="text-gray-300 mx-auto mb-2" />
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              {searchTerm ? 'No users found' : 'No users yet'}
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              {searchTerm ? 'Try adjusting your search terms' : 'Create your first user to get started'}
-            </p>
-            {!searchTerm && (
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="buffer-button-primary text-sm py-2 mt-3 flex items-center gap-1.5 mx-auto"
-              >
-                <Plus size={14} /> Add First User
-              </button>
-            )}
-          </div>
-        )}
+        {/* USERS */}
+        <div className="space-y-3">
+          {filteredUsers.length > 0 ? (
+            filteredUsers.map(user => (
+              <UserCard key={user._id} user={user} onDelete={setDeleting} />
+            ))
+          ) : (
+            <div className="buffer-card p-8 text-center">
+              <p className="text-sm text-gray-500">No users found</p>
+            </div>
+          )}
+        </div>
 
-        {/* Add User Modal */}
+        {/* MODAL */}
         {showAddModal && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md shadow-xl">
-              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                  <User size={16} />
-                  Add New User
-                </h3>
-                <button 
-                  onClick={() => setShowAddModal(false)} 
-                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded"
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="buffer-card w-full max-w-md p-6">
+              <h3 className="text-base font-semibold mb-4">Add User</h3>
+
+              <div className="space-y-3">
+                <input
+                  placeholder="Name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="buffer-input"
+                />
+                <input
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="buffer-input"
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="buffer-input"
+                />
+                <select
+                  value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  className="buffer-input"
                 >
-                  <X size={18} />
-                </button>
-              </div>
-              
-              <div className="p-5 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Full Name
-                  </label>
-                  <input
-                    placeholder="Enter full name"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    autoComplete="off"
-                    className="buffer-input text-sm"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="Enter email address"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    autoComplete="off"
-                    className="buffer-input text-sm"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Enter password"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    autoComplete="new-password"
-                    data-form-type="other"
-                    data-lpignore="true"
-                    data-1p-ignore="true"
-                    name="user-password-field"
-                    className="buffer-input text-sm"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Role
-                  </label>
-                  <select
-                    value={form.role}
-                    onChange={(e) => setForm({ ...form, role: e.target.value })}
-                    className="buffer-input text-sm"
-                  >
-                    <option value="viewer">Viewer</option>
-                    <option value="content_manager">Content Manager</option>
-                  </select>
-                </div>
+                  <option value="viewer">Viewer</option>
+                  <option value="content_manager">Content Manager</option>
+                </select>
               </div>
 
-              <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2">
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="buffer-button-secondary text-sm py-2"
-                >
+              <div className="flex justify-end gap-2 mt-5">
+                <button onClick={() => setShowAddModal(false)} className="buffer-button-secondary">
                   Cancel
                 </button>
-                <button
-                  onClick={createUser}
-                  disabled={loading}
-                  className="buffer-button-primary text-sm py-2 disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  {loading ? (
-                    <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Creating...</>
-                  ) : (
-                    <><Plus size={14} /> Create User</>
-                  )}
+                <button onClick={createUser} className="buffer-button-primary">
+                  Create
                 </button>
               </div>
             </div>
@@ -301,12 +275,12 @@ export default function Users() {
         <ConfirmModal
           isOpen={!!deleting}
           title="Delete User"
-          message={`Are you sure you want to delete "${deleting?.name}"? This action cannot be undone.`}
-          confirmText="Delete User"
+          message={`Delete "${deleting?.name}"?`}
+          confirmText="Delete"
           onConfirm={confirmDelete}
           onCancel={() => setDeleting(null)}
           loading={loading}
-          danger={true}
+          danger
         />
       </div>
     </AdminLayout>

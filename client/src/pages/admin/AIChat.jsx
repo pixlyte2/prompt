@@ -5,7 +5,7 @@ import { MessageSquare } from "lucide-react";
 export default function AIChat() {
   return (
     <AdminLayout 
-      title="AI Chat" 
+      title="AI Chatss" 
       titleInfo="Create amazing content with AI-powered prompts"
       icon={MessageSquare}
     >
