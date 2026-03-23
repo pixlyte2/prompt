@@ -399,34 +399,45 @@ export default function AIChatManager() {
                   Finalized Prompt
               </button>
             </div>
-            
-            {/* Copy button - only show when finalized tab is active and there's content */}
-            {chatTab === "finalized" && finalizedPrompt && (
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(finalizedPrompt);
-                  toast.success("Copied to clipboard!");
-                }}
-                className="buffer-button-primary text-xs py-1.5 px-3 flex items-center gap-1.5 ml-2"
-                title="Copy finalized prompt"
-              >
-                <Copy size={12} />
-                Copy
-              </button>
-            )}
           </div>
 
           {/* Tab Content */}
           <div className="bg-white dark:bg-gray-800 p-3 flex-1 overflow-y-auto">
             {chatTab === "source" ? (
               <div className="h-full flex flex-col">
-                <div className="flex-1">
+                <div className="flex-1 relative">
                   <textarea
                     value={sourceText}
                     onChange={(e) => setSourceText(e.target.value)}
                     placeholder="Paste YouTube URL, script, or any text here..."
                     className="w-full h-full buffer-input text-sm resize-none"
                   />
+                  {/* Copy and Preview buttons for finalized prompt - centered */}
+                  {sourceText && finalizedPrompt && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="flex gap-2 pointer-events-auto">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(finalizedPrompt);
+                            toast.success("Finalized prompt copied!");
+                          }}
+                          className="buffer-button-primary text-xs py-2 px-4 flex items-center gap-2 shadow-lg"
+                          title="Copy finalized prompt"
+                        >
+                          <Copy size={14} />
+                          Copy Finalized Prompt
+                        </button>
+                        <button
+                          onClick={() => setPreviewModal(true)}
+                          className="buffer-button-secondary text-xs py-2 px-4 flex items-center gap-2 shadow-lg"
+                          title="Preview finalized prompt"
+                        >
+                          <Eye size={14} />
+                          Preview
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {/* YouTube Caption Fetch Button */}
                 {sourceText && isYouTubeUrl(sourceText) && (
@@ -457,10 +468,34 @@ export default function AIChatManager() {
             ) : (
               <div className="h-full">
                 {finalizedPrompt ? (
-                  <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 h-full flex flex-col">
+                  <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 h-full flex flex-col relative">
                     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 flex-1 overflow-y-auto">
                       <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
                         {finalizedPrompt}
+                      </div>
+                    </div>
+                    {/* Copy and Preview buttons for finalized prompt - centered */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="flex gap-2 pointer-events-auto">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(finalizedPrompt);
+                            toast.success("Finalized prompt copied!");
+                          }}
+                          className="buffer-button-primary text-xs py-2 px-4 flex items-center gap-2 shadow-lg"
+                          title="Copy finalized prompt"
+                        >
+                          <Copy size={14} />
+                          Copy Finalized Prompt
+                        </button>
+                        <button
+                          onClick={() => setPreviewModal(true)}
+                          className="buffer-button-secondary text-xs py-2 px-4 flex items-center gap-2 shadow-lg"
+                          title="Preview finalized prompt"
+                        >
+                          <Eye size={14} />
+                          Preview
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -490,7 +525,7 @@ export default function AIChatManager() {
             value={aiModel}
             onChange={(e) => setAiModel(e.target.value)}
             disabled={loading}
-            className="buffer-input text-sm w-56 disabled:bg-gray-50 dark:disabled:bg-gray-700"
+            className="buffer-input text-sm w-1/4 disabled:bg-gray-50 dark:disabled:bg-gray-700"
           >
             <option value="gemini-2.5-flash">⚡ Gemini 2.5 Flash (Recommended)</option>
             <option value="gemini-2.5-pro">💎 Gemini 2.5 Pro (Best Quality)</option>
