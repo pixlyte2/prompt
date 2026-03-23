@@ -7,7 +7,7 @@ export default function AIChatTabs() {
   const [activeTab, setActiveTab] = useState("chat");
 
   const tabs = [
-    { key: "chat", label: "AI Chatss", icon: MessageSquare },
+    { key: "chat", label: "AI Chat", icon: MessageSquare },
     { key: "settings", label: "Settings", icon: Settings },
   ];
 

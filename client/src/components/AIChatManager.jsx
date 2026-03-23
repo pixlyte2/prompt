@@ -92,14 +92,16 @@ export default function AIChatManager() {
 
   const saveToHistory = (result) => {
     const prompt = prompts.find(p => p._id === selectedPrompt);
-    const promptTitle = prompt ? `${prompt.channelId?.name} - ${prompt.promptTypeId?.name}` : "Untitled";
+    console.log('Saving to history - prompt object:', prompt); // Debug log
+    
+    const promptTitle = prompt ? `${prompt.channelId?.name || 'Unknown'} - ${prompt.promptTypeId?.name || 'Unknown'}` : "Untitled";
     const history = loadHistory();
     const newItem = {
       id: Date.now(),
       title: promptTitle,
       channel: prompt?.channelId?.name || "",
       promptType: prompt?.promptTypeId?.name || "",
-      subType: prompt?.aiModel || "",
+      subType: prompt?.subType || "", // Remove aiModel fallback since it's saved separately
       prompt: finalizedPrompt,
       result: result,
       aiModel: aiModel,
@@ -108,6 +110,7 @@ export default function AIChatManager() {
       videoLength: videoLength,
       timestamp: new Date().toISOString()
     };
+    console.log('Saving history item:', newItem); // Debug log
     localStorage.setItem("AI_CHAT_HISTORY", JSON.stringify([newItem, ...history]));
   };
 
