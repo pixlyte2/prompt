@@ -1,6 +1,33 @@
 const Prompt = require("../models/prompt");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
+exports.validateContent = async (req, res) => {
+  try {
+    const { content, aiModel, apiKey } = req.body;
+    if (!content || !apiKey) return res.status(400).json({ message: "Content and API key are required" });
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: aiModel || "gemini-2.5-flash",
+      generationConfig: { maxOutputTokens: 65536, temperature: 0.7 }
+    });
+
+    const prompt = `You are a content policy and ad-suitability expert. Analyze the following content and respond ONLY with valid JSON (no markdown, no code fences) in this exact format:
+{"issues":[{"type":"string","severity":"High|Medium|Low","description":"string"}],"optimizedContent":"string with the rewritten/optimized version of the content that fixes all issues"}
+
+Content to validate:
+${content}`;
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().replace(/```json\n?|```\n?/g, '').trim();
+    const parsed = JSON.parse(text);
+    return res.json(parsed);
+  } catch (error) {
+    console.error("Validate content error:", error);
+    res.status(500).json({ message: error.message || "Validation failed" });
+  }
+};
+
 exports.chat = async (req, res) => {
   try {
     const { promptId, sourceText, videoLength, aiModel, message, history, apiKey } = req.body;

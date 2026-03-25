@@ -319,7 +319,7 @@ export default function AIChatManager() {
   };
 
   return (
-    <div className="buffer-card p-4 h-[calc(100vh-10rem)]">
+    <div className="buffer-card p-4 h-full">
       <div className="space-y-3 h-full flex flex-col">
         <div className="flex gap-3">
           <div>
