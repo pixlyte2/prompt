@@ -6,6 +6,7 @@ import axios from "axios";
 import api from "../services/api";
 import { decryptData } from "../utils/encryption";
 import { renderMarkdown } from "../utils/markdown";
+import { useDarkMode } from "../contexts/DarkModeContext";
 import HistoryModal from "./HistoryModal";
 
 export default function AIChatManager() {
@@ -31,6 +32,7 @@ export default function AIChatManager() {
   const [fetchingCaptions, setFetchingCaptions] = useState(false);
   const messagesEndRef = useRef(null);
   const location = useLocation();
+  const { isDark } = useDarkMode();
 
   useEffect(() => {
     loadPrompts().then(() => {
@@ -582,7 +584,7 @@ export default function AIChatManager() {
             <div className="overflow-y-auto flex-1 p-4">
               <div 
                 className="prose prose-sm max-w-none text-sm leading-relaxed text-gray-700 dark:text-gray-300"
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(currentResult) }} 
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(currentResult, isDark) }} 
               />
             </div>
             <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
