@@ -2,29 +2,13 @@ import { useState, useEffect } from "react";
 import { Copy, Trash2, X, History } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { renderMarkdown } from "../utils/markdown";
+import { useDarkMode } from "../contexts/DarkModeContext";
 
 export default function HistoryModal({ onClose, initialItemId }) {
+  const { isDark: isDarkMode } = useDarkMode();
   const [history, setHistory] = useState([]);
   const [selected, setSelected] = useState(null);
   const [tab, setTab] = useState("result");
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
-    // Detect dark mode
-    const checkDarkMode = () => {
-      const isDark = document.documentElement.classList.contains('dark') || 
-                     window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDarkMode(isDark);
-    };
-    
-    checkDarkMode();
-    
-    // Listen for theme changes
-    const observer = new MutationObserver(checkDarkMode);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem("AI_CHAT_HISTORY");
