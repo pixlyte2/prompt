@@ -16,6 +16,7 @@ import ViewerPrompts from "./pages/viewer/Prompts";
 import Users from "./pages/admin/Users";
 import Dashboard from "./pages/superadmin/Dashboard";
 import PromptTypes from "./pages/admin/PromptTypes";
+import TrendPulse from "./pages/admin/TrendPulse";
 
 export default function App() {
   return (
@@ -121,6 +122,15 @@ export default function App() {
           element={
             <PrivateRoute allowedRoles={["admin"]}>
               <AIChat />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/trend-pulse"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <TrendPulse />
             </PrivateRoute>
           }
         />
