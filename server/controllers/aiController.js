@@ -1,6 +1,31 @@
 const Prompt = require("../models/prompt");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
+const GEMINI_MODEL_MAP = {
+  "gemini-2.5-flash": "gemini-2.5-flash",
+  "gemini-2.5-pro": "gemini-2.5-pro",
+  "gemini-2.0-flash": "gemini-2.0-flash",
+  "gemini-flash-latest": "gemini-flash-latest",
+  "gemini-pro-latest": "gemini-pro-latest",
+};
+
+const ASSISTANT_SYSTEM = `You are **CreatorAI Assistant**, an in-app helper for people using the CreatorAI admin app (prompt management, channels, users, AI Chat with Google Gemini, Content Guard).
+
+**What you do**
+- Explain screens and workflows in short, clear steps. Name UI areas as users see them (e.g. "AI Chat", "Prompt Management", "Settings" tab for the API key).
+- Help draft or improve prompt ideas, placeholders like [SOURCE] and [LENGTH], and content strategy — you cannot see their database; if they need account-specific help, ask them to describe what they see.
+- Answer general questions about using Gemini in this app (models, API key in Settings, encrypted local storage).
+
+**Rules**
+- Do not pretend you clicked buttons or changed data in their account.
+- Prefer markdown: short lists, **bold** for labels, code spans for field names when useful.
+- If asked about things outside CreatorAI or general Gemini API billing, answer briefly and offer to focus on the app.
+- Keep replies concise unless the user asks for detail.`;
+
+function resolveGeminiModelId(aiModel) {
+  return GEMINI_MODEL_MAP[aiModel] || null;
+}
+
 exports.validateContent = async (req, res) => {
   try {
     const { content, aiModel, apiKey } = req.body;
@@ -86,27 +111,17 @@ exports.chat = async (req, res) => {
     try {
       console.log("🚀 Calling Gemini API...");
       
-      // Validate model name and use correct format
-      const modelMap = {
-        "gemini-2.5-flash": "gemini-2.5-flash",
-        "gemini-2.5-pro": "gemini-2.5-pro",
-        "gemini-2.0-flash": "gemini-2.0-flash",
-        "gemini-flash-latest": "gemini-flash-latest",
-        "gemini-pro-latest": "gemini-pro-latest"
-      };
-      
-      const validModels = Object.keys(modelMap);
-      
+      const validModels = Object.keys(GEMINI_MODEL_MAP);
+
       console.log("Validating model:", aiModel, "Type:", typeof aiModel);
-      
-      if (!validModels.includes(aiModel)) {
+
+      const actualModelName = resolveGeminiModelId(aiModel);
+      if (!actualModelName) {
         console.log("❌ Invalid model detected:", aiModel);
-        return res.status(400).json({ 
-          message: `Invalid AI model: ${aiModel}. Valid models are: ${validModels.join(', ')}` 
+        return res.status(400).json({
+          message: `Invalid AI model: ${aiModel}. Valid models are: ${validModels.join(", ")}`,
         });
       }
-      
-      const actualModelName = modelMap[aiModel];
       console.log("✅ Model validated successfully:", aiModel, "-> Using:", actualModelName);
       
       // Set max output tokens based on model
@@ -175,5 +190,72 @@ exports.chat = async (req, res) => {
   } catch (error) {
     console.error("❌ AI chat error:", error);
     res.status(500).json({ message: error.message || "Failed to process chat request" });
+  }
+};
+
+exports.assistant = async (req, res) => {
+  try {
+    const { message, history, aiModel, apiKey } = req.body;
+    const text = typeof message === "string" ? message.trim() : "";
+
+    if (!text) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+    if (text.length > 12000) {
+      return res.status(400).json({ message: "Message is too long" });
+    }
+    if (!apiKey) {
+      return res.status(400).json({
+        message: "Gemini API key is required. Add it in AI Chat → Settings.",
+      });
+    }
+    if (!aiModel) {
+      return res.status(400).json({ message: "AI model is required" });
+    }
+
+    const actualModelName = resolveGeminiModelId(aiModel);
+    if (!actualModelName) {
+      return res.status(400).json({
+        message: `Invalid AI model. Valid models are: ${Object.keys(GEMINI_MODEL_MAP).join(", ")}`,
+      });
+    }
+
+    const maxOutputTokens = aiModel === "gemini-2.0-flash" ? 8192 : 16384;
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: actualModelName,
+      systemInstruction: ASSISTANT_SYSTEM,
+      generationConfig: {
+        maxOutputTokens,
+        temperature: 0.65,
+      },
+    });
+
+    const chatHistory = [];
+    if (history && Array.isArray(history)) {
+      history.forEach((msg) => {
+        if (msg.role === "user") {
+          chatHistory.push({ role: "user", parts: [{ text: msg.content }] });
+        } else if (msg.role === "assistant") {
+          chatHistory.push({ role: "model", parts: [{ text: msg.content }] });
+        }
+      });
+    }
+
+    const chat = model.startChat({ history: chatHistory });
+    const result = await chat.sendMessage(text);
+    const response = await result.response;
+    const aiResponse = response.text();
+
+    return res.json({ response: aiResponse });
+  } catch (aiError) {
+    console.error("Assistant error:", aiError.message);
+    if (aiError.message?.includes("API key")) {
+      return res.status(401).json({ message: "Invalid API key. Check Settings in AI Chat." });
+    }
+    return res.status(500).json({
+      message: aiError.message || "Assistant request failed",
+    });
   }
 };

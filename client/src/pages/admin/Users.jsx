@@ -23,36 +23,38 @@ function UserCard({ user, onDelete }) {
   const roleInfo = getRoleInfo(user.role);
 
   return (
-    <div className="buffer-card flex items-center justify-between px-4 py-3 hover:shadow-md transition group">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-medium">
+    <div className="buffer-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 hover:shadow-md transition group">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-medium flex-shrink-0">
           {user.name.charAt(0).toUpperCase()}
         </div>
 
-        <div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
             {user.name}
           </p>
-          <p className="text-xs text-gray-500 flex items-center gap-1">
-            <Mail size={12} />
-            {user.email}
+          <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 break-all">
+            <Mail size={12} className="flex-shrink-0" />
+            <span className="min-w-0">{user.email}</span>
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 sm:flex-nowrap sm:justify-end">
         <span className={`text-xs px-3 py-1 rounded-full ${roleInfo.color}`}>
           {roleInfo.label}
         </span>
 
-        <div className="text-xs text-gray-400 text-right">
+        <div className="text-xs text-gray-400 dark:text-gray-500 text-left sm:text-right">
           <p>Created</p>
           <p>{new Date(user.createdAt).toLocaleDateString()}</p>
         </div>
 
         <button
+          type="button"
           onClick={() => onDelete(user)}
-          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600"
+          className="sm:opacity-0 sm:group-hover:opacity-100 text-gray-400 hover:text-red-600 dark:hover:text-red-400 p-1 rounded ml-auto sm:ml-0"
+          aria-label={`Delete ${user.name}`}
         >
           <Trash2 size={16} />
         </button>
@@ -191,8 +193,8 @@ export default function Users() {
         </div>
 
         {/* SEARCH + ADD */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="relative w-full max-w-md">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="relative w-full sm:max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               placeholder="Search users..."
@@ -203,8 +205,9 @@ export default function Users() {
           </div>
 
           <button
+            type="button"
             onClick={() => setShowAddModal(true)}
-            className="buffer-button-primary flex items-center gap-2 text-sm"
+            className="buffer-button-primary flex items-center justify-center gap-2 text-sm w-full sm:w-auto flex-shrink-0"
           >
             <Plus size={16} />
             Add User
@@ -226,8 +229,8 @@ export default function Users() {
 
         {/* MODAL */}
         {showAddModal && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="buffer-card w-full max-w-md p-6">
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="buffer-card w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
               <h3 className="text-base font-semibold mb-4">Add User</h3>
 
               <div className="space-y-3">

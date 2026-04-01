@@ -323,15 +323,15 @@ export default function AIChatManager() {
   return (
     <div className="buffer-card p-4 h-full">
       <div className="space-y-3 h-full flex flex-col">
-        <div className="flex gap-3">
-          <div>
+        <div className="flex flex-col md:flex-row gap-3 md:items-end">
+          <div className="w-full md:w-auto md:flex-shrink-0">
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
               Video Length
             </label>
             <select
               value={videoLength}
               onChange={(e) => setVideoLength(e.target.value)}
-              className="buffer-input text-sm w-40"
+              className="buffer-input text-sm w-full md:w-40"
             >
               <option value="40s">40 seconds</option>
               <option value="2min">2 minutes</option>
@@ -340,14 +340,16 @@ export default function AIChatManager() {
             </select>
           </div>
 
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
+          <div className="flex-1 min-w-0 w-full">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-1">
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
                 Select Prompt
               </label>
-              <span className="text-xs text-blue-600 dark:text-blue-400">💡 Use [LENGTH] & [SOURCE] in prompt</span>
+              <span className="text-xs text-blue-600 dark:text-blue-400 break-words sm:text-right">
+                💡 Use [LENGTH] & [SOURCE] in prompt
+              </span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <select
                 value={selectedPrompt}
                 onChange={(e) => setSelectedPrompt(e.target.value)}
@@ -377,7 +379,7 @@ export default function AIChatManager() {
         {/* Tabs for Source Input and Finalized Prompt */}
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden flex-1 flex flex-col">
           <div className="border-b border-gray-200 dark:border-gray-700 px-3 flex justify-between items-center flex-shrink-0">
-            <div className="flex gap-4">
+            <div className="flex gap-2 sm:gap-4 flex-wrap">
               <button
                 onClick={() => setChatTab("source")}
                 className={`py-2 text-sm font-medium border-b-2 flex items-center gap-1.5 ${
@@ -416,22 +418,25 @@ export default function AIChatManager() {
                   />
                   {/* Copy and Preview buttons for finalized prompt - centered */}
                   {sourceText && finalizedPrompt && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="flex gap-2 pointer-events-auto">
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-2">
+                      <div className="flex flex-col sm:flex-row gap-2 pointer-events-auto max-w-full">
                         <button
+                          type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(finalizedPrompt);
                             toast.success("Finalized prompt copied!");
                           }}
-                          className="buffer-button-primary text-xs py-2 px-4 flex items-center gap-2 shadow-lg"
+                          className="buffer-button-primary text-xs py-2 px-3 sm:px-4 flex items-center justify-center gap-2 shadow-lg text-center"
                           title="Copy finalized prompt"
                         >
                           <Copy size={14} />
-                          Copy Finalized Prompt
+                          <span className="hidden sm:inline">Copy Finalized Prompt</span>
+                          <span className="sm:hidden">Copy</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => setPreviewModal(true)}
-                          className="buffer-button-secondary text-xs py-2 px-4 flex items-center gap-2 shadow-lg"
+                          className="buffer-button-secondary text-xs py-2 px-3 sm:px-4 flex items-center justify-center gap-2 shadow-lg"
                           title="Preview finalized prompt"
                         >
                           <Eye size={14} />
@@ -477,22 +482,25 @@ export default function AIChatManager() {
                       </div>
                     </div>
                     {/* Copy and Preview buttons for finalized prompt - centered */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="flex gap-2 pointer-events-auto">
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-2">
+                      <div className="flex flex-col sm:flex-row gap-2 pointer-events-auto max-w-full">
                         <button
+                          type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(finalizedPrompt);
                             toast.success("Finalized prompt copied!");
                           }}
-                          className="buffer-button-primary text-xs py-2 px-4 flex items-center gap-2 shadow-lg"
+                          className="buffer-button-primary text-xs py-2 px-3 sm:px-4 flex items-center justify-center gap-2 shadow-lg"
                           title="Copy finalized prompt"
                         >
                           <Copy size={14} />
-                          Copy Finalized Prompt
+                          <span className="hidden sm:inline">Copy Finalized Prompt</span>
+                          <span className="sm:hidden">Copy</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => setPreviewModal(true)}
-                          className="buffer-button-secondary text-xs py-2 px-4 flex items-center gap-2 shadow-lg"
+                          className="buffer-button-secondary text-xs py-2 px-3 sm:px-4 flex items-center justify-center gap-2 shadow-lg"
                           title="Preview finalized prompt"
                         >
                           <Eye size={14} />
@@ -513,7 +521,7 @@ export default function AIChatManager() {
           </div>
         </div>
 
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
           <input
             type="text"
             value={input}
@@ -521,13 +529,13 @@ export default function AIChatManager() {
             onKeyPress={handleKeyPress}
             placeholder="Type additional input or question..."
             disabled={loading}
-            className="buffer-input text-sm flex-1 disabled:bg-gray-50 dark:disabled:bg-gray-700"
+            className="buffer-input text-sm w-full sm:flex-1 min-w-0 disabled:bg-gray-50 dark:disabled:bg-gray-700"
           />
           <select
             value={aiModel}
             onChange={(e) => setAiModel(e.target.value)}
             disabled={loading}
-            className="buffer-input text-sm w-1/4 disabled:bg-gray-50 dark:disabled:bg-gray-700"
+            className="buffer-input text-sm w-full sm:w-auto sm:min-w-[12rem] sm:max-w-[42%] md:max-w-none disabled:bg-gray-50 dark:disabled:bg-gray-700"
           >
             <option value="gemini-2.5-flash">⚡ Gemini 2.5 Flash (Recommended)</option>
             <option value="gemini-2.5-pro">💎 Gemini 2.5 Pro (Best Quality)</option>
@@ -538,7 +546,7 @@ export default function AIChatManager() {
           <button
             onClick={handleSend}
             disabled={loading}
-            className="buffer-button-primary text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="buffer-button-primary text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto flex-shrink-0"
           >
             {loading ? (
               <>
@@ -603,13 +611,17 @@ export default function AIChatManager() {
       {/* Error Modal */}
       {errorModal && errorDetails && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-200 shadow-lg">
-            <div className="px-4 py-3 border-b flex justify-between items-center">
-              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-700 shadow-lg">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <span className="w-6 h-6 bg-red-50 rounded flex items-center justify-center text-red-600">⚠️</span>
                 AI Generation Error
               </h3>
-              <button onClick={() => setErrorModal(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded">
+              <button
+                type="button"
+                onClick={() => setErrorModal(false)}
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -618,7 +630,7 @@ export default function AIChatManager() {
               <div>
                 <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Request</div>
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div><span className="text-xs text-gray-500 dark:text-gray-400">Prompt ID</span><div className="font-mono text-gray-800 dark:text-gray-200 mt-0.5">{errorDetails.request.promptId}</div></div>
                     <div><span className="text-xs text-gray-500 dark:text-gray-400">AI Model</span><div className="font-mono text-gray-800 dark:text-gray-200 mt-0.5 font-medium">{errorDetails.request.aiModel}</div></div>
                     <div><span className="text-xs text-gray-500 dark:text-gray-400">Video Length</span><div className="font-mono text-gray-800 dark:text-gray-200 mt-0.5">{errorDetails.request.videoLength}</div></div>
@@ -632,7 +644,7 @@ export default function AIChatManager() {
               <div>
                 <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Response</div>
                 <div className="bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 p-3">
-                  <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mb-3">
                     <div><span className="text-xs text-gray-500 dark:text-gray-400">Status Code</span><div className="font-mono text-red-600 dark:text-red-400 mt-0.5 font-medium">{errorDetails.response.status || 'N/A'}</div></div>
                     <div><span className="text-xs text-gray-500 dark:text-gray-400">Status Text</span><div className="font-mono text-red-600 dark:text-red-400 mt-0.5 font-medium">{errorDetails.response.statusText || 'N/A'}</div></div>
                   </div>
@@ -646,19 +658,22 @@ export default function AIChatManager() {
               </div>
             </div>
 
-            <div className="px-4 py-3 border-t flex justify-end gap-2">
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col-reverse sm:flex-row justify-end gap-2">
               <button
+                type="button"
                 onClick={() => {
                   const errorText = `REQUEST INFO:\n${JSON.stringify(errorDetails.request, null, 2)}\n\nRESPONSE INFO:\n${errorDetails.response.fullError}`;
                   navigator.clipboard.writeText(errorText);
                   toast.success("Error details copied to clipboard");
                 }}
-                className="buffer-button-primary text-sm flex items-center gap-1.5"
+                className="buffer-button-primary text-sm flex items-center justify-center gap-1.5 w-full sm:w-auto"
               >
                 <Copy size={14} />
                 Copy Error Details
               </button>
-              <button onClick={() => setErrorModal(false)} className="buffer-button-secondary text-sm">Close</button>
+              <button type="button" onClick={() => setErrorModal(false)} className="buffer-button-secondary text-sm w-full sm:w-auto">
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -677,10 +692,10 @@ export default function AIChatManager() {
                 <X size={18} />
               </button>
             </div>
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex gap-6 text-sm">
-              <div><span className="text-xs text-gray-500 dark:text-gray-400">Channel</span><div className="font-medium text-gray-800 dark:text-gray-200">{prompts.find(p => p._id === selectedPrompt)?.channelId?.name || "-"}</div></div>
-              <div><span className="text-xs text-gray-500 dark:text-gray-400">Type</span><div className="font-medium text-gray-800 dark:text-gray-200">{prompts.find(p => p._id === selectedPrompt)?.promptTypeId?.name || "-"}</div></div>
-              <div><span className="text-xs text-gray-500 dark:text-gray-400">Model</span><div className="font-medium font-mono text-gray-800 dark:text-gray-200">{prompts.find(p => p._id === selectedPrompt)?.aiModel || "-"}</div></div>
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex flex-wrap gap-x-6 gap-y-3 text-sm">
+              <div className="min-w-0"><span className="text-xs text-gray-500 dark:text-gray-400">Channel</span><div className="font-medium text-gray-800 dark:text-gray-200 break-words">{prompts.find(p => p._id === selectedPrompt)?.channelId?.name || "-"}</div></div>
+              <div className="min-w-0"><span className="text-xs text-gray-500 dark:text-gray-400">Type</span><div className="font-medium text-gray-800 dark:text-gray-200 break-words">{prompts.find(p => p._id === selectedPrompt)?.promptTypeId?.name || "-"}</div></div>
+              <div className="min-w-0"><span className="text-xs text-gray-500 dark:text-gray-400">Model</span><div className="font-medium font-mono text-gray-800 dark:text-gray-200 break-all">{prompts.find(p => p._id === selectedPrompt)?.aiModel || "-"}</div></div>
             </div>
             <div className="p-4 overflow-y-auto flex-1">
               <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -694,17 +709,19 @@ export default function AIChatManager() {
                 </pre>
               </div>
             </div>
-            <div className="px-4 py-3 border-t flex justify-end gap-2">
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col-reverse sm:flex-row justify-end gap-2">
               <button
+                type="button"
                 onClick={() => { navigator.clipboard.writeText(prompts.find(p => p._id === selectedPrompt)?.promptText); toast.success("Original prompt copied!"); setPreviewModal(false); }}
-                className="buffer-button-secondary text-sm flex items-center gap-1.5"
+                className="buffer-button-secondary text-sm flex items-center justify-center gap-1.5 w-full sm:w-auto"
               >
                 <Copy size={14} />
                 Copy Original
               </button>
               <button
+                type="button"
                 onClick={() => { navigator.clipboard.writeText(finalizedPrompt); toast.success("Finalized prompt copied!"); setPreviewModal(false); }}
-                className="buffer-button-primary text-sm flex items-center gap-1.5"
+                className="buffer-button-primary text-sm flex items-center justify-center gap-1.5 w-full sm:w-auto"
               >
                 <Copy size={14} />
                 Copy Finalized

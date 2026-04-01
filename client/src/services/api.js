@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getCache, setCache, clearCacheByPrefix } from "../utils/cache";
+import { getCache, setCache, clearCache, clearCacheByPrefix } from "../utils/cache";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -14,12 +14,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+const GET_CACHE_TTL_MS = {
+  "/dashboard": 60_000,
+};
+
 const cachedGet = async (url) => {
   const cached = getCache(url);
   if (cached) return { data: cached };
-  
+
   const response = await api.get(url);
-  setCache(url, response.data);
+  setCache(url, response.data, GET_CACHE_TTL_MS[url] ?? 900_000);
   return response;
 };
 
@@ -29,18 +33,21 @@ const cachedApi = {
     const response = await api.post(url, data);
     const prefix = url.split('?')[0].split('/')[1];
     clearCacheByPrefix(`/${prefix}`);
+    clearCache("/dashboard");
     return response;
   },
   put: async (url, data) => {
     const response = await api.put(url, data);
     const prefix = url.split('?')[0].split('/')[1];
     clearCacheByPrefix(`/${prefix}`);
+    clearCache("/dashboard");
     return response;
   },
   delete: async (url) => {
     const response = await api.delete(url);
     const prefix = url.split('?')[0].split('/')[1];
     clearCacheByPrefix(`/${prefix}`);
+    clearCache("/dashboard");
     return response;
   }
 };

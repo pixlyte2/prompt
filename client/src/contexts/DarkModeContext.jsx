@@ -10,27 +10,34 @@ export const useDarkMode = () => {
   return context;
 };
 
-export const DarkModeProvider = ({ children }) => {
-  const [isDark, setIsDark] = useState(() => {
-    // Check localStorage first
-    const stored = localStorage.getItem('darkMode');
-    if (stored !== null) {
+function readInitialDarkPreference() {
+  const stored = localStorage.getItem('darkMode');
+  if (stored !== null) {
+    try {
       return JSON.parse(stored);
+    } catch {
+      /* ignore */
     }
-    // Fall back to system preference
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  }
+  // Legacy: Topbar used `theme`; migrate once so one source of truth
+  const legacyTheme = localStorage.getItem('theme');
+  if (legacyTheme === 'dark') return true;
+  if (legacyTheme === 'light') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+export const DarkModeProvider = ({ children }) => {
+  const [isDark, setIsDark] = useState(readInitialDarkPreference);
 
   useEffect(() => {
-    // Apply dark class to html element
     if (isDark) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-    
-    // Persist to localStorage
+
     localStorage.setItem('darkMode', JSON.stringify(isDark));
+    localStorage.removeItem('theme');
   }, [isDark]);
 
   // Listen for system theme changes
