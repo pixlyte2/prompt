@@ -23,6 +23,10 @@ import {
   Hash,
   Type,
   FileText,
+  Eye,
+  Play,
+  Users,
+  Radio,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
@@ -479,8 +483,313 @@ function ChipButton({ active, onClick, children }) {
   );
 }
 
+/* ─── Competitor Watch ────────────────────────────────────────── */
+
+const COMP_PERIODS = [
+  { value: "24h", label: "Last 24h", ms: 86_400_000 },
+  { value: "7d", label: "Last 7 days", ms: 604_800_000 },
+  { value: "all", label: "All", ms: Infinity },
+];
+
+const COMP_VIEW_FILTERS = [
+  { value: 0, label: "All views" },
+  { value: 25_000, label: "25K+" },
+  { value: 50_000, label: "50K+" },
+  { value: 100_000, label: "1 Lakh+" },
+  { value: 500_000, label: "5 Lakh+" },
+  { value: 1_000_000, label: "10 Lakh+" },
+];
+
+const COMP_SORTS = [
+  { value: "views", label: "Most viewed" },
+  { value: "latest", label: "Latest" },
+];
+
+function parsePublishedAgo(text) {
+  if (!text) return Infinity;
+  const cleaned = text.replace(/^Streamed\s+/i, "").replace(/^Premiered\s+/i, "");
+  const m = cleaned.match(/(\d+)\s*(second|minute|hour|day|week|month|year)/i);
+  if (!m) return Infinity;
+  const n = parseInt(m[1], 10);
+  const unit = m[2].toLowerCase();
+  const multipliers = {
+    second: 1000,
+    minute: 60_000,
+    hour: 3_600_000,
+    day: 86_400_000,
+    week: 604_800_000,
+    month: 2_592_000_000,
+    year: 31_536_000_000,
+  };
+  return n * (multipliers[unit] || Infinity);
+}
+
+function formatViews(n) {
+  if (n == null) return "";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
+
+function CompetitorVideoCard({ video }) {
+  return (
+    <a
+      href={`https://www.youtube.com/watch?v=${video.videoId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex flex-col rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 overflow-hidden hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all"
+    >
+      <div className="relative aspect-video bg-gray-100 dark:bg-gray-700">
+        <img
+          src={video.thumbnail}
+          alt=""
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+        {video.duration && (
+          <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-medium text-white">
+            {video.duration}
+          </span>
+        )}
+        {video.isLive && (
+          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-red-600 text-[10px] font-bold text-white inline-flex items-center gap-1">
+            <Radio size={9} /> LIVE
+          </span>
+        )}
+      </div>
+      <div className="flex-1 p-3">
+        <h4 className="text-xs font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+          {video.title}
+        </h4>
+        <div className="flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400">
+          <span className="font-medium text-gray-600 dark:text-gray-300 truncate max-w-[8rem]">
+            {video.channelName}
+          </span>
+          <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+          <span className="inline-flex items-center gap-0.5">
+            <Eye size={9} /> {video.viewsText || formatViews(video.views)}
+          </span>
+          {video.publishedText && (
+            <>
+              <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+              <span className="inline-flex items-center gap-0.5">
+                <Clock size={9} /> {video.publishedText}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    </a>
+  );
+}
+
+function CompetitorWatch() {
+  const [videos, setVideos] = useState([]);
+  const [channels, setChannels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [period, setPeriod] = useState("24h");
+  const [compSort, setCompSort] = useState("views");
+  const [activeChannel, setActiveChannel] = useState("all");
+  const [compSearch, setCompSearch] = useState("");
+  const [minViews, setMinViews] = useState(25_000);
+
+  const fetchVideos = useCallback(async (silent = false) => {
+    if (silent) setRefreshing(true);
+    else setLoading(true);
+    try {
+      const { data } = await api.get("/competitors/videos");
+      setVideos(data.videos || []);
+      setChannels(data.channels || []);
+    } catch {
+      toast.error("Could not load competitor videos");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchVideos();
+  }, [fetchVideos]);
+
+  const filtered = useMemo(() => {
+    const periodMs = COMP_PERIODS.find((p) => p.value === period)?.ms || Infinity;
+    let list = [...videos];
+
+    if (periodMs !== Infinity) {
+      list = list.filter((v) => {
+        const agoMs = parsePublishedAgo(v.publishedText);
+        return agoMs <= periodMs;
+      });
+    }
+
+    if (activeChannel !== "all") {
+      list = list.filter((v) => v.channelHandle === activeChannel);
+    }
+
+    if (minViews > 0) {
+      list = list.filter((v) => (v.views || 0) >= minViews);
+    }
+
+    if (compSearch.trim()) {
+      const q = compSearch.toLowerCase();
+      list = list.filter((v) => v.title.toLowerCase().includes(q));
+    }
+
+    if (compSort === "views") {
+      list.sort((a, b) => (b.views || 0) - (a.views || 0));
+    } else {
+      list.sort((a, b) => parsePublishedAgo(a.publishedText) - parsePublishedAgo(b.publishedText));
+    }
+
+    return list;
+  }, [videos, period, activeChannel, compSearch, compSort, minViews]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-red-200 dark:border-red-800 border-t-red-600 dark:border-t-red-400 rounded-full animate-spin" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">Scanning competitor channels…</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full min-h-0 overflow-hidden gap-2">
+      {/* Toolbar */}
+      <div className="flex-shrink-0 flex items-center gap-2 flex-wrap">
+        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
+          {COMP_PERIODS.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => setPeriod(p.value)}
+              className={`inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                period === p.value
+                  ? "bg-red-600 text-white"
+                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              }`}
+            >
+              <Clock size={10} />
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative flex-1 min-w-[140px] max-w-xs">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+          <input
+            type="text"
+            value={compSearch}
+            onChange={(e) => setCompSearch(e.target.value)}
+            placeholder="Search videos…"
+            className="w-full pl-8 pr-8 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-400 dark:focus:border-red-600 transition-colors"
+          />
+          {compSearch && (
+            <button
+              type="button"
+              onClick={() => setCompSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1.5 shadow-sm">
+          <ArrowDownWideNarrow size={13} className="text-gray-400 dark:text-gray-500" />
+          <select
+            value={compSort}
+            onChange={(e) => setCompSort(e.target.value)}
+            className="text-[11px] font-medium bg-transparent text-gray-700 dark:text-gray-200 focus:outline-none cursor-pointer"
+          >
+            {COMP_SORTS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+          <span className="text-[11px] text-gray-400 dark:text-gray-500 hidden sm:inline tabular-nums">
+            {filtered.length} video{filtered.length !== 1 ? "s" : ""}
+          </span>
+          <button
+            type="button"
+            onClick={() => fetchVideos(true)}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-50 transition-colors shadow-sm"
+          >
+            <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Channel chips + View filter */}
+      <div className="flex-shrink-0 flex items-center gap-3 overflow-x-auto pb-0.5">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Users size={13} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
+          <ChipButton active={activeChannel === "all"} onClick={() => setActiveChannel("all")}>
+            All Channels
+          </ChipButton>
+          {channels.map((ch) => (
+            <ChipButton
+              key={ch.handle}
+              active={activeChannel === ch.handle}
+              onClick={() => setActiveChannel(ch.handle)}
+            >
+              {ch.name}
+            </ChipButton>
+          ))}
+        </div>
+        <span className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Eye size={13} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
+          {COMP_VIEW_FILTERS.map((vf) => (
+            <ChipButton key={vf.value} active={minViews === vf.value} onClick={() => setMinViews(vf.value)}>
+              {vf.label}
+            </ChipButton>
+          ))}
+        </div>
+      </div>
+
+      {/* Video grid */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Play size={24} className="text-gray-300 dark:text-gray-600 mb-3" />
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-300">No videos found</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              Try changing the time period or channel filter
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {filtered.map((video) => (
+              <CompetitorVideoCard key={`${video.channelHandle}-${video.videoId}`} video={video} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Page ───────────────────────────────────────────────── */
+
+const PAGE_TABS = [
+  { key: "competitors", label: "Competitor Watch", icon: Youtube },
+  { key: "trends", label: "Trending Topics", icon: TrendingUp },
+];
+
 export default function TrendPulse() {
   const navigate = useNavigate();
+  const [activePageTab, setActivePageTab] = useState("competitors");
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -557,155 +866,183 @@ export default function TrendPulse() {
   const activeRegion = REGIONS.find((r) => r.value === region);
 
   return (
-    <AdminLayout title="TrendPulse" titleInfo="Trending topics across India" icon={TrendingUp} contentFit>
+    <AdminLayout title="TrendPulse" titleInfo="Trending topics & competitor analysis" icon={TrendingUp} contentFit>
       <div className="flex flex-col h-full min-h-0 overflow-hidden w-full max-w-[1600px] mx-auto gap-2">
-        {/* ── Toolbar row 1 ── */}
-        <div className="flex-shrink-0 flex items-center gap-2 flex-wrap">
-          <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
-            {REGIONS.map((r) => (
-              <button
-                key={r.value}
-                type="button"
-                onClick={() => setRegion(r.value)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium transition-colors ${
-                  region === r.value
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                }`}
-              >
-                <MapPin size={11} />
-                {r.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative flex-1 min-w-[140px] max-w-xs">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search topics…"
-              className="w-full pl-8 pr-8 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 dark:focus:border-blue-600 transition-colors"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          <div className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1.5 shadow-sm">
-            <ArrowDownWideNarrow size={13} className="text-gray-400 dark:text-gray-500" />
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              className="text-[11px] font-medium bg-transparent text-gray-700 dark:text-gray-200 focus:outline-none cursor-pointer"
-            >
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live · {activeRegion?.short}
-            </span>
-            <span className="text-[11px] text-gray-400 dark:text-gray-500 hidden sm:inline tabular-nums">
-              {processed.length} topic{processed.length !== 1 ? "s" : ""}
-            </span>
+        {/* ── Page Tabs ── */}
+        <div className="flex-shrink-0 flex items-center border-b border-gray-200 dark:border-gray-700">
+          {PAGE_TABS.map(({ key, label, icon: Icon }) => (
             <button
+              key={key}
               type="button"
-              onClick={() => fetchTrends(true)}
-              disabled={loading || refreshing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-50 transition-colors shadow-sm"
+              onClick={() => setActivePageTab(key)}
+              className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold transition-all relative ${
+                activePageTab === key
+                  ? "text-gray-900 dark:text-white"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              }`}
             >
-              <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
-              <span className="hidden sm:inline">Refresh</span>
+              <Icon size={15} />
+              {label}
+              {activePageTab === key && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t" />
+              )}
             </button>
-          </div>
-        </div>
-
-        {/* ── Toolbar row 2: source chips ── */}
-        <div className="flex-shrink-0 flex items-center gap-1.5 overflow-x-auto pb-0.5">
-          <Filter size={13} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
-          {SOURCE_TYPES.map((t) => (
-            <ChipButton key={t.value} active={sourceType === t.value} onClick={() => setSourceType(t.value)}>
-              {t.label}
-            </ChipButton>
           ))}
         </div>
 
-        {/* ── Main ── */}
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-3 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">Loading trends…</p>
-            </div>
-          </div>
-        ) : trends.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
-            <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-              <TrendingUp size={28} className="text-gray-400 dark:text-gray-500" />
-            </div>
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No trends available</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Try refreshing in a moment</p>
-            <button
-              type="button"
-              onClick={() => fetchTrends()}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm"
-            >
-              <RefreshCw size={13} /> Retry
-            </button>
-          </div>
-        ) : (
-          <div className="flex-1 min-h-0 flex gap-3 overflow-hidden">
-            {/* Left: trend list */}
-            <div className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 flex flex-col min-h-0 overflow-hidden">
-              <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5">
-                {processed.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Search size={20} className="text-gray-300 dark:text-gray-600 mb-2" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No topics match your filters</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearch("");
-                        setSourceType("all");
-                      }}
-                      className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      Clear filters
-                    </button>
-                  </div>
-                ) : (
-                  processed.map((trend, idx) => (
-                    <TrendCard
-                      key={trend.id}
-                      trend={trend}
-                      index={idx}
-                      onSelect={setSelected}
-                      isSelected={selected?.id === trend.id}
-                    />
-                  ))
+        {activePageTab === "trends" ? (
+          <>
+            {/* ── Toolbar row 1 ── */}
+            <div className="flex-shrink-0 flex items-center gap-2 flex-wrap">
+              <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
+                {REGIONS.map((r) => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setRegion(r.value)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                      region === r.value
+                        ? "bg-blue-600 text-white"
+                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    <MapPin size={11} />
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative flex-1 min-w-[140px] max-w-xs">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search topics…"
+                  className="w-full pl-8 pr-8 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 dark:focus:border-blue-600 transition-colors"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <X size={14} />
+                  </button>
                 )}
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1.5 shadow-sm">
+                <ArrowDownWideNarrow size={13} className="text-gray-400 dark:text-gray-500" />
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                  className="text-[11px] font-medium bg-transparent text-gray-700 dark:text-gray-200 focus:outline-none cursor-pointer"
+                >
+                  {SORT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+                <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live · {activeRegion?.short}
+                </span>
+                <span className="text-[11px] text-gray-400 dark:text-gray-500 hidden sm:inline tabular-nums">
+                  {processed.length} topic{processed.length !== 1 ? "s" : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => fetchTrends(true)}
+                  disabled={loading || refreshing}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-50 transition-colors shadow-sm"
+                >
+                  <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
               </div>
             </div>
 
-            {/* Right: detail + creator toolkit */}
-            <div className="hidden lg:flex flex-1 min-h-0 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 overflow-hidden">
-              <DetailPanel trend={selected} onUseInChat={useInAIChat} />
+            {/* ── Toolbar row 2: source chips ── */}
+            <div className="flex-shrink-0 flex items-center gap-1.5 overflow-x-auto pb-0.5">
+              <Filter size={13} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
+              {SOURCE_TYPES.map((t) => (
+                <ChipButton key={t.value} active={sourceType === t.value} onClick={() => setSourceType(t.value)}>
+                  {t.label}
+                </ChipButton>
+              ))}
             </div>
-          </div>
+
+            {/* ── Main ── */}
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 border-3 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Loading trends…</p>
+                </div>
+              </div>
+            ) : trends.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+                <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+                  <TrendingUp size={28} className="text-gray-400 dark:text-gray-500" />
+                </div>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No trends available</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Try refreshing in a moment</p>
+                <button
+                  type="button"
+                  onClick={() => fetchTrends()}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm"
+                >
+                  <RefreshCw size={13} /> Retry
+                </button>
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0 flex gap-3 overflow-hidden">
+                {/* Left: trend list */}
+                <div className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 flex flex-col min-h-0 overflow-hidden">
+                  <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5">
+                    {processed.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Search size={20} className="text-gray-300 dark:text-gray-600 mb-2" />
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No topics match your filters</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearch("");
+                            setSourceType("all");
+                          }}
+                          className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          Clear filters
+                        </button>
+                      </div>
+                    ) : (
+                      processed.map((trend, idx) => (
+                        <TrendCard
+                          key={trend.id}
+                          trend={trend}
+                          index={idx}
+                          onSelect={setSelected}
+                          isSelected={selected?.id === trend.id}
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: detail + creator toolkit */}
+                <div className="hidden lg:flex flex-1 min-h-0 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 overflow-hidden">
+                  <DetailPanel trend={selected} onUseInChat={useInAIChat} />
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <CompetitorWatch />
         )}
       </div>
     </AdminLayout>
