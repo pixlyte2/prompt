@@ -43,29 +43,9 @@ function parseViewCount(text) {
   return Math.round(num);
 }
 
-async function scrapeChannel(channel) {
-  const url = `https://www.youtube.com/@${channel.handle}/videos`;
-  const res = await fetch(url, {
-    headers: { "User-Agent": UA, "Accept-Language": "en" },
-  });
-  if (!res.ok) return [];
+const VIDEOS_PER_CHANNEL = 50;
 
-  const html = await res.text();
-  const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});/s);
-  if (!match) return [];
-
-  let data;
-  try {
-    data = JSON.parse(match[1]);
-  } catch {
-    return [];
-  }
-
-  const tabs = data?.contents?.twoColumnBrowseResultsRenderer?.tabs || [];
-  const videosTab = tabs.find((t) => t.tabRenderer?.title === "Videos");
-  const items =
-    videosTab?.tabRenderer?.content?.richGridRenderer?.contents || [];
-
+function extractVideos(items, channel) {
   return items
     .map((item) => {
       const v = item?.richItemRenderer?.content?.videoRenderer;
@@ -94,6 +74,87 @@ async function scrapeChannel(channel) {
       };
     })
     .filter(Boolean);
+}
+
+function getContinuationToken(items) {
+  for (const item of items) {
+    const token =
+      item?.continuationItemRenderer?.continuationEndpoint?.continuationCommand
+        ?.token;
+    if (token) return token;
+  }
+  return null;
+}
+
+async function fetchContinuation(token, apiKey) {
+  const res = await fetch(
+    `https://www.youtube.com/youtubei/v1/browse?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "User-Agent": UA,
+        "Content-Type": "application/json",
+        "Accept-Language": "en",
+      },
+      body: JSON.stringify({
+        context: {
+          client: { clientName: "WEB", clientVersion: "2.20240101.00.00" },
+        },
+        continuation: token,
+      }),
+    },
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  const actions = data?.onResponseReceivedActions || [];
+  for (const action of actions) {
+    const items = action?.appendContinuationItemsAction?.continuationItems;
+    if (items) return items;
+  }
+  return [];
+}
+
+async function scrapeChannel(channel) {
+  const url = `https://www.youtube.com/@${channel.handle}/videos`;
+  const res = await fetch(url, {
+    headers: { "User-Agent": UA, "Accept-Language": "en" },
+  });
+  if (!res.ok) return [];
+
+  const html = await res.text();
+  const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});/s);
+  if (!match) return [];
+
+  let data;
+  try {
+    data = JSON.parse(match[1]);
+  } catch {
+    return [];
+  }
+
+  const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+  const apiKey = apiKeyMatch?.[1] || "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
+
+  const tabs = data?.contents?.twoColumnBrowseResultsRenderer?.tabs || [];
+  const videosTab = tabs.find((t) => t.tabRenderer?.title === "Videos");
+  const items =
+    videosTab?.tabRenderer?.content?.richGridRenderer?.contents || [];
+
+  let videos = extractVideos(items, channel);
+
+  if (videos.length < VIDEOS_PER_CHANNEL) {
+    const token = getContinuationToken(items);
+    if (token) {
+      try {
+        const moreItems = await fetchContinuation(token, apiKey);
+        videos = videos.concat(extractVideos(moreItems, channel));
+      } catch {
+        /* use what we have */
+      }
+    }
+  }
+
+  return videos.slice(0, VIDEOS_PER_CHANNEL);
 }
 
 async function fetchAllCompetitors() {
