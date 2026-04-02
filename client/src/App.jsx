@@ -17,6 +17,7 @@ import Users from "./pages/admin/Users";
 import Dashboard from "./pages/superadmin/Dashboard";
 import PromptTypes from "./pages/admin/PromptTypes";
 import TrendPulse from "./pages/admin/TrendPulse";
+import VideoBoard from "./pages/admin/VideoBoard";
 
 export default function App() {
   return (
@@ -131,6 +132,15 @@ export default function App() {
           element={
             <PrivateRoute allowedRoles={["admin"]}>
               <TrendPulse />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/video-board"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <VideoBoard />
             </PrivateRoute>
           }
         />

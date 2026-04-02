@@ -16,6 +16,8 @@ const aiRoutes = require("./routes/aiRoutes");
 const settingRoutes = require("./routes/settingRoutes");
 const trendsRoutes = require("./routes/trendsRoutes");
 const competitorRoutes = require("./routes/competitorRoutes");
+const competitorTypeRoutes = require("./routes/competitorTypeRoutes");
+const videoTaskRoutes = require("./routes/videoTaskRoutes");
 
 const app = express();
 
@@ -64,6 +66,8 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/settings", settingRoutes);
 app.use("/api/trends", trendsRoutes);
 app.use("/api/competitors", competitorRoutes);
+app.use("/api/competitor-types", competitorTypeRoutes);
+app.use("/api/video-tasks", videoTaskRoutes);
 
 /**
  * 🧪 Health Check

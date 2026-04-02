@@ -27,6 +27,13 @@ import {
   Play,
   Users,
   Radio,
+  Settings,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Save,
+  CalendarPlus,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
@@ -531,74 +538,508 @@ function formatViews(n) {
   return n.toLocaleString();
 }
 
-function CompetitorVideoCard({ video }) {
+function ScheduleVideoModal({ video, channelType, onClose }) {
+  const navigate = useNavigate();
+  const [scheduledDate, setScheduledDate] = useState(
+    new Date(Date.now() + 86_400_000).toISOString().split("T")[0],
+  );
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  if (!video) return null;
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.post("/video-tasks", {
+        videoId: video.videoId,
+        title: video.title,
+        thumbnail: video.thumbnail,
+        channelName: video.channelName,
+        channelHandle: video.channelHandle,
+        channelType,
+        platform: "youtube",
+        url: `https://www.youtube.com/watch?v=${video.videoId}`,
+        views: video.views,
+        viewsText: video.viewsText,
+        duration: video.duration,
+        scheduledDate,
+        notes,
+      });
+      toast.success(
+        (t) => (
+          <span className="flex items-center gap-2">
+            Saved to board
+            <button
+              className="text-blue-600 font-medium underline text-xs"
+              onClick={() => { toast.dismiss(t.id); navigate("/admin/video-board"); }}
+            >
+              View Board
+            </button>
+          </span>
+        ),
+        { duration: 4000 },
+      );
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save task");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <a
-      href={`https://www.youtube.com/watch?v=${video.videoId}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex flex-col rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 overflow-hidden hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all"
-    >
-      <div className="relative aspect-video bg-gray-100 dark:bg-gray-700">
-        <img
-          src={video.thumbnail}
-          alt=""
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-        {video.duration && (
-          <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-medium text-white">
-            {video.duration}
-          </span>
-        )}
-        {video.isLive && (
-          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-red-600 text-[10px] font-bold text-white inline-flex items-center gap-1">
-            <Radio size={9} /> LIVE
-          </span>
-        )}
+    <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">Schedule Video</h3>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{video.title}</p>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Scheduled Date</label>
+            <input
+              type="date"
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Notes (optional)</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Add any notes…"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !scheduledDate}
+            className="ml-auto px-4 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+          >
+            {saving ? <Loader2 size={12} className="animate-spin" /> : <CalendarPlus size={12} />}
+            Save to Board
+          </button>
+        </div>
       </div>
-      <div className="flex-1 p-3">
-        <h4 className="text-xs font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+    </div>
+  );
+}
+
+function CompetitorVideoCard({ video, onSchedule }) {
+  return (
+    <div className="group flex flex-col rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 overflow-hidden hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all">
+      <a
+        href={`https://www.youtube.com/watch?v=${video.videoId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block"
+      >
+        <div className="relative aspect-[16/10] bg-gray-100 dark:bg-gray-700">
+          <img
+            src={video.thumbnail}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+          {video.duration && (
+            <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-medium text-white">
+              {video.duration}
+            </span>
+          )}
+          {video.isLive && (
+            <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-red-600 text-[10px] font-bold text-white inline-flex items-center gap-1">
+              <Radio size={9} /> LIVE
+            </span>
+          )}
+        </div>
+      </a>
+      <div className="flex-1 p-2">
+        <h4 className="text-[10px] font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
           {video.title}
         </h4>
-        <div className="flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400">
-          <span className="font-medium text-gray-600 dark:text-gray-300 truncate max-w-[8rem]">
-            {video.channelName}
-          </span>
-          <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600" />
-          <span className="inline-flex items-center gap-0.5">
-            <Eye size={9} /> {video.viewsText || formatViews(video.views)}
-          </span>
-          {video.publishedText && (
+        <div className="flex flex-col gap-1 text-[10px] text-gray-500 dark:text-gray-400">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-base text-gray-900 dark:text-white inline-flex items-center gap-1">
+              <Eye size={14} /> {video.viewsText || formatViews(video.views)}
+            </span>
+            {onSchedule && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onSchedule(video); }}
+                className="p-1 rounded-md text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                title="Schedule this video"
+              >
+                <CalendarPlus size={14} />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-gray-600 dark:text-gray-300 truncate max-w-[8rem]">
+              {video.channelName}
+            </span>
+            {video.publishedText && (
+              <>
+                <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+                <span className="inline-flex items-center gap-0.5">
+                  <Clock size={9} /> {video.publishedText}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
+  const [types, setTypes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(null);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newTypeVpc, setNewTypeVpc] = useState(30);
+  const [addingType, setAddingType] = useState(false);
+  const [newChannels, setNewChannels] = useState({});
+  const [busy, setBusy] = useState(null);
+
+  const fetchTypes = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get("/competitor-types");
+      setTypes(data);
+      if (data.length && !expanded) setExpanded(data[0]._id);
+    } catch {
+      toast.error("Failed to load types");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) fetchTypes();
+  }, [open, fetchTypes]);
+
+  const handleCreateType = async () => {
+    if (!newTypeName.trim()) return;
+    setBusy("create-type");
+    try {
+      await api.post("/competitor-types", { name: newTypeName.trim(), videosPerChannel: newTypeVpc });
+      setNewTypeName("");
+      setNewTypeVpc(30);
+      setAddingType(false);
+      await fetchTypes();
+      onTypesChanged();
+      toast.success("Type created");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create type");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleUpdateVpc = async (typeId, vpc) => {
+    setBusy(`vpc-${typeId}`);
+    try {
+      await api.put(`/competitor-types/${typeId}`, { videosPerChannel: vpc });
+      setTypes((prev) => prev.map((t) => (t._id === typeId ? { ...t, videosPerChannel: vpc } : t)));
+      onTypesChanged();
+    } catch {
+      toast.error("Failed to update");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleDeleteType = async (typeId) => {
+    if (!confirm("Delete this type and all its channels?")) return;
+    setBusy(`del-${typeId}`);
+    try {
+      await api.delete(`/competitor-types/${typeId}`);
+      setTypes((prev) => prev.filter((t) => t._id !== typeId));
+      onTypesChanged();
+      toast.success("Type deleted");
+    } catch {
+      toast.error("Failed to delete");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleAddChannel = async (typeId) => {
+    const ch = newChannels[typeId];
+    if (!ch?.handle?.trim() || !ch?.name?.trim()) return;
+    setBusy(`add-ch-${typeId}`);
+    try {
+      const { data } = await api.post(`/competitor-types/${typeId}/channels`, {
+        handle: ch.handle.trim().replace(/^@/, ""),
+        name: ch.name.trim(),
+      });
+      setTypes((prev) => prev.map((t) => (t._id === typeId ? data : t)));
+      setNewChannels((prev) => ({ ...prev, [typeId]: { handle: "", name: "" } }));
+      onTypesChanged();
+      toast.success("Channel added");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to add channel");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleRemoveChannel = async (typeId, handle) => {
+    setBusy(`rm-${typeId}-${handle}`);
+    try {
+      const { data } = await api.delete(`/competitor-types/${typeId}/channels/${handle}`);
+      setTypes((prev) => prev.map((t) => (t._id === typeId ? data : t)));
+      onTypesChanged();
+    } catch {
+      toast.error("Failed to remove channel");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div>
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Manage Channel Types</h2>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Add types and YouTube channels to track</p>
+          </div>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 size={20} className="animate-spin text-gray-400" />
+            </div>
+          ) : (
             <>
-              <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600" />
-              <span className="inline-flex items-center gap-0.5">
-                <Clock size={9} /> {video.publishedText}
-              </span>
+              {types.map((type) => {
+                const isOpen = expanded === type._id;
+                const chInput = newChannels[type._id] || { handle: "", name: "" };
+                return (
+                  <div key={type._id} className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setExpanded(isOpen ? null : type._id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      {isOpen ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white flex-1">{type.name}</span>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500">{type.channels.length} channels</span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-4 py-3 space-y-3 border-t border-gray-200 dark:border-gray-700">
+                        {/* Videos per channel */}
+                        <div className="flex items-center gap-3">
+                          <label className="text-[11px] font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Videos per channel:</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={50}
+                            value={type.videosPerChannel}
+                            onChange={(e) => {
+                              const v = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 50);
+                              setTypes((prev) => prev.map((t) => (t._id === type._id ? { ...t, videosPerChannel: v } : t)));
+                            }}
+                            onBlur={(e) => {
+                              const v = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 50);
+                              handleUpdateVpc(type._id, v);
+                            }}
+                            className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                          />
+                          <span className="text-[10px] text-gray-400">(max 50)</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteType(type._id)}
+                            disabled={busy === `del-${type._id}`}
+                            className="ml-auto p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-50"
+                            title="Delete type"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                        {/* Channel list */}
+                        <div className="space-y-1">
+                          {type.channels.map((ch) => (
+                            <div key={ch.handle} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800/40 group">
+                              <Youtube size={12} className="text-red-500 flex-shrink-0" />
+                              <span className="text-xs font-medium text-gray-800 dark:text-gray-200 flex-1 truncate">{ch.name}</span>
+                              <span className="text-[10px] text-gray-400 dark:text-gray-500">@{ch.handle}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveChannel(type._id, ch.handle)}
+                                disabled={busy === `rm-${type._id}-${ch.handle}`}
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-red-500 transition-all disabled:opacity-50"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Add channel */}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            placeholder="@handle"
+                            value={chInput.handle}
+                            onChange={(e) => setNewChannels((prev) => ({ ...prev, [type._id]: { ...chInput, handle: e.target.value } }))}
+                            className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Display name"
+                            value={chInput.name}
+                            onChange={(e) => setNewChannels((prev) => ({ ...prev, [type._id]: { ...chInput, name: e.target.value } }))}
+                            onKeyDown={(e) => e.key === "Enter" && handleAddChannel(type._id)}
+                            className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAddChannel(type._id)}
+                            disabled={busy === `add-ch-${type._id}` || !chInput.handle?.trim() || !chInput.name?.trim()}
+                            className="px-2.5 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors inline-flex items-center gap-1"
+                          >
+                            {busy === `add-ch-${type._id}` ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Add new type */}
+              {addingType ? (
+                <div className="rounded-xl border border-dashed border-blue-300 dark:border-blue-700 p-4 space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Type name (e.g. Social, Govt Schemes)"
+                    value={newTypeName}
+                    onChange={(e) => setNewTypeName(e.target.value)}
+                    autoFocus
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  />
+                  <div className="flex items-center gap-3">
+                    <label className="text-[11px] font-medium text-gray-600 dark:text-gray-400">Videos per channel:</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={newTypeVpc}
+                      onChange={(e) => setNewTypeVpc(Math.min(Math.max(parseInt(e.target.value) || 1, 1), 50))}
+                      className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCreateType}
+                      disabled={busy === "create-type" || !newTypeName.trim()}
+                      className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+                    >
+                      {busy === "create-type" ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                      Create Type
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAddingType(false); setNewTypeName(""); }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingType(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+                >
+                  <Plus size={14} />
+                  Add New Type
+                </button>
+              )}
             </>
           )}
         </div>
       </div>
-    </a>
+    </div>
   );
 }
 
 function CompetitorWatch() {
+  const [types, setTypes] = useState([]);
+  const [activeType, setActiveType] = useState(null);
   const [videos, setVideos] = useState([]);
   const [channels, setChannels] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [typesLoading, setTypesLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [period, setPeriod] = useState("24h");
+  const [period, setPeriod] = useState("all");
   const [compSort, setCompSort] = useState("views");
   const [activeChannel, setActiveChannel] = useState("all");
   const [compSearch, setCompSearch] = useState("");
-  const [minViews, setMinViews] = useState(25_000);
+  const [minViews, setMinViews] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [scheduleVideo, setScheduleVideo] = useState(null);
 
-  const fetchVideos = useCallback(async (silent = false) => {
+  const activeTypeName = useMemo(
+    () => types.find((t) => t._id === activeType)?.name || "",
+    [types, activeType],
+  );
+
+  const [videoRefreshKey, setVideoRefreshKey] = useState(0);
+
+  const fetchTypes = useCallback(async () => {
+    setTypesLoading(true);
+    try {
+      const { data } = await api.get("/competitor-types");
+      setTypes(data);
+      setActiveType((prev) => {
+        if (!prev && data.length) return data[0]._id;
+        if (prev && !data.find((t) => t._id === prev)) return data.length ? data[0]._id : null;
+        return prev;
+      });
+    } catch {
+      toast.error("Could not load channel types");
+    } finally {
+      setTypesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTypes();
+  }, [fetchTypes]);
+
+  const fetchVideos = useCallback(async (typeId, { silent = false, force = false } = {}) => {
+    if (!typeId) return;
     if (silent) setRefreshing(true);
     else setLoading(true);
     try {
-      const { data } = await api.get("/competitors/videos");
+      const params = `typeId=${typeId}${force ? "&force=true" : ""}`;
+      const { data } = await api.get(`/competitors/videos?${params}`);
       setVideos(data.videos || []);
       setChannels(data.channels || []);
     } catch {
@@ -609,9 +1050,21 @@ function CompetitorWatch() {
     }
   }, []);
 
+  const forceRefresh = useRef(false);
+
   useEffect(() => {
-    fetchVideos();
-  }, [fetchVideos]);
+    if (activeType) {
+      setActiveChannel("all");
+      fetchVideos(activeType, { force: forceRefresh.current });
+      forceRefresh.current = false;
+    }
+  }, [activeType, fetchVideos, videoRefreshKey]);
+
+  const handleTypesChanged = useCallback(() => {
+    fetchTypes();
+    forceRefresh.current = true;
+    setVideoRefreshKey((k) => k + 1);
+  }, [fetchTypes]);
 
   const filtered = useMemo(() => {
     const periodMs = COMP_PERIODS.find((p) => p.value === period)?.ms || Infinity;
@@ -646,19 +1099,72 @@ function CompetitorWatch() {
     return list;
   }, [videos, period, activeChannel, compSearch, compSort, minViews]);
 
-  if (loading) {
+  if (typesLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-3 border-red-200 dark:border-red-800 border-t-red-600 dark:border-t-red-400 rounded-full animate-spin" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">Scanning competitor channels…</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading channel types…</p>
         </div>
       </div>
     );
   }
 
+  if (types.length === 0) {
+    return (
+      <>
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+          <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+            <Youtube size={28} className="text-gray-400 dark:text-gray-500" />
+          </div>
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No channel types configured</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Add a type and channels to start tracking competitors</p>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm"
+          >
+            <Settings size={13} /> Configure Types
+          </button>
+        </div>
+        <CompetitorSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} onTypesChanged={handleTypesChanged} />
+      </>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden gap-2">
+      {/* Type selector row */}
+      <div className="flex-shrink-0 flex items-center gap-2 overflow-x-auto pb-0.5">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {types.map((t) => (
+            <button
+              key={t._id}
+              type="button"
+              onClick={() => setActiveType(t._id)}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                activeType === t._id
+                  ? "bg-red-600 text-white shadow-sm"
+                  : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-700 hover:text-red-600 dark:hover:text-red-400"
+              }`}
+            >
+              {t.name}
+              <span className={`text-[9px] font-normal ${activeType === t._id ? "text-red-200" : "text-gray-400 dark:text-gray-500"}`}>
+                {t.channels.length}ch
+              </span>
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          title="Manage channel types"
+        >
+          <Settings size={15} />
+        </button>
+      </div>
+
       {/* Toolbar */}
       <div className="flex-shrink-0 flex items-center gap-2 flex-wrap">
         <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
@@ -720,7 +1226,7 @@ function CompetitorWatch() {
           </span>
           <button
             type="button"
-            onClick={() => fetchVideos(true)}
+            onClick={() => fetchVideos(activeType, { silent: true, force: true })}
             disabled={refreshing}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-50 transition-colors shadow-sm"
           >
@@ -760,7 +1266,14 @@ function CompetitorWatch() {
 
       {/* Video grid */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-3 border-red-200 dark:border-red-800 border-t-red-600 dark:border-t-red-400 rounded-full animate-spin" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">Scanning competitor channels…</p>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Play size={24} className="text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-sm font-medium text-gray-600 dark:text-gray-300">No videos found</p>
@@ -769,13 +1282,22 @@ function CompetitorWatch() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
             {filtered.map((video) => (
-              <CompetitorVideoCard key={`${video.channelHandle}-${video.videoId}`} video={video} />
+              <CompetitorVideoCard key={`${video.channelHandle}-${video.videoId}`} video={video} onSchedule={setScheduleVideo} />
             ))}
           </div>
         )}
       </div>
+
+      <CompetitorSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} onTypesChanged={handleTypesChanged} />
+      {scheduleVideo && (
+        <ScheduleVideoModal
+          video={scheduleVideo}
+          channelType={activeTypeName}
+          onClose={() => setScheduleVideo(null)}
+        />
+      )}
     </div>
   );
 }

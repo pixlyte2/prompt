@@ -119,7 +119,7 @@ export default function AssistantWidget() {
   };
 
   return (
-    <div className="fixed right-4 top-1/2 -translate-y-1/2 z-[100] flex flex-col items-end gap-2 pointer-events-none">
+    <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] flex flex-row items-start gap-2 pointer-events-none">
       {open && (
         <div
           className="pointer-events-auto flex w-[min(calc(100vw-2rem),24rem)] h-[min(calc(100dvh-5.5rem),36rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-2xl shadow-gray-900/20 dark:shadow-black/40"

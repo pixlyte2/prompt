@@ -1,15 +1,34 @@
-const COMPETITORS = [
-  { handle: "PolimerNews", name: "Polimer News" },
-  { handle: "Sunnewstamil", name: "Sun News" },
-  { handle: "NewsTamil24X7TV", name: "News Tamil 24x7" },
-  { handle: "PuthiyaThalaimuraiTV", name: "Puthiya Thalaimurai" },
-];
+const CompetitorType = require("../models/CompetitorType");
 
 const CACHE_TTL = 15 * 60 * 1000;
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-let cache = { data: null, ts: 0 };
+const cacheMap = new Map();
+
+const DEFAULT_SEED = {
+  name: "News",
+  videosPerChannel: 50,
+  channels: [
+    { handle: "PolimerNews", name: "Polimer News" },
+    { handle: "Sunnewstamil", name: "Sun News" },
+    { handle: "NewsTamil24X7TV", name: "News Tamil 24x7" },
+    { handle: "PuthiyaThalaimuraiTV", name: "Puthiya Thalaimurai" },
+  ],
+};
+
+function parseViewCount(text) {
+  if (!text) return 0;
+  const cleaned = text.replace(/,/g, "").replace(/\s*views?\s*/i, "").trim();
+  const m = cleaned.match(/([\d.]+)\s*([KMB])?/i);
+  if (!m) return parseInt(cleaned, 10) || 0;
+  const num = parseFloat(m[1]);
+  const suffix = (m[2] || "").toUpperCase();
+  if (suffix === "K") return Math.round(num * 1_000);
+  if (suffix === "M") return Math.round(num * 1_000_000);
+  if (suffix === "B") return Math.round(num * 1_000_000_000);
+  return Math.round(num);
+}
 
 function parseRelativeTime(text) {
   if (!text) return null;
@@ -29,21 +48,6 @@ function parseRelativeTime(text) {
   };
   return new Date(now - n * (ms[unit] || 0)).toISOString();
 }
-
-function parseViewCount(text) {
-  if (!text) return 0;
-  const cleaned = text.replace(/,/g, "").replace(/\s*views?\s*/i, "").trim();
-  const m = cleaned.match(/([\d.]+)\s*([KMB])?/i);
-  if (!m) return parseInt(cleaned, 10) || 0;
-  const num = parseFloat(m[1]);
-  const suffix = (m[2] || "").toUpperCase();
-  if (suffix === "K") return Math.round(num * 1_000);
-  if (suffix === "M") return Math.round(num * 1_000_000);
-  if (suffix === "B") return Math.round(num * 1_000_000_000);
-  return Math.round(num);
-}
-
-const VIDEOS_PER_CHANNEL = 50;
 
 function extractVideos(items, channel) {
   return items
@@ -114,7 +118,7 @@ async function fetchContinuation(token, apiKey) {
   return [];
 }
 
-async function scrapeChannel(channel) {
+async function scrapeChannel(channel, maxVideos) {
   const url = `https://www.youtube.com/@${channel.handle}/videos`;
   const res = await fetch(url, {
     headers: { "User-Agent": UA, "Accept-Language": "en" },
@@ -133,7 +137,7 @@ async function scrapeChannel(channel) {
   }
 
   const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
-  const apiKey = apiKeyMatch?.[1] || "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
+  const apiKey = apiKeyMatch?.[1];
 
   const tabs = data?.contents?.twoColumnBrowseResultsRenderer?.tabs || [];
   const videosTab = tabs.find((t) => t.tabRenderer?.title === "Videos");
@@ -142,7 +146,7 @@ async function scrapeChannel(channel) {
 
   let videos = extractVideos(items, channel);
 
-  if (videos.length < VIDEOS_PER_CHANNEL) {
+  if (videos.length < maxVideos && apiKey) {
     const token = getContinuationToken(items);
     if (token) {
       try {
@@ -154,28 +158,63 @@ async function scrapeChannel(channel) {
     }
   }
 
-  return videos.slice(0, VIDEOS_PER_CHANNEL);
+  return videos.slice(0, maxVideos);
 }
 
-async function fetchAllCompetitors() {
-  if (cache.data && Date.now() - cache.ts < CACHE_TTL) return cache.data;
+async function seedDefaultType() {
+  const count = await CompetitorType.countDocuments();
+  if (count === 0) {
+    await CompetitorType.create(DEFAULT_SEED);
+  }
+}
 
+async function fetchVideosForType(typeId) {
+  const cached = cacheMap.get(typeId);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached;
+
+  const type = await CompetitorType.findById(typeId).lean();
+  if (!type) return null;
+
+  const maxVideos = type.videosPerChannel || 30;
   const results = await Promise.allSettled(
-    COMPETITORS.map((ch) => scrapeChannel(ch)),
+    type.channels.map((ch) => scrapeChannel(ch, maxVideos)),
   );
 
   const videos = results
     .filter((r) => r.status === "fulfilled")
     .flatMap((r) => r.value);
 
-  cache = { data: videos, ts: Date.now() };
-  return videos;
+  const entry = { videos, channels: type.channels, ts: Date.now() };
+  cacheMap.set(typeId, entry);
+  return entry;
 }
+
+exports.clearCache = (typeId) => {
+  if (typeId) cacheMap.delete(typeId);
+  else cacheMap.clear();
+};
 
 exports.getCompetitorVideos = async (req, res) => {
   try {
-    const videos = await fetchAllCompetitors();
-    res.json({ videos, channels: COMPETITORS, fetchedAt: cache.ts });
+    await seedDefaultType();
+
+    const { typeId, force } = req.query;
+    if (!typeId) {
+      return res.status(400).json({ message: "typeId query parameter is required" });
+    }
+
+    if (force === "true") cacheMap.delete(typeId);
+
+    const result = await fetchVideosForType(typeId);
+    if (!result) {
+      return res.status(404).json({ message: "Competitor type not found" });
+    }
+
+    res.json({
+      videos: result.videos,
+      channels: result.channels,
+      fetchedAt: result.ts,
+    });
   } catch (err) {
     console.error("Competitor scrape error:", err.message);
     res
