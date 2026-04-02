@@ -2,7 +2,7 @@ import { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import AssistantWidget from "../components/AssistantWidget";
-import { BarChart3, Users, FileText, MessageSquare, ShieldCheck, HelpCircle, TrendingUp, LayoutDashboard } from "lucide-react";
+import { BarChart3, Users, FileText, MessageSquare, HelpCircle, TrendingUp, LayoutDashboard } from "lucide-react";
 
 const adminMenu = [
   { label: "Dashboard", path: "/admin", icon: BarChart3 },
@@ -11,7 +11,6 @@ const adminMenu = [
   { label: "AI Chat", path: "/admin/ai-chat", icon: MessageSquare },
   { label: "TrendPulse", path: "/admin/trend-pulse", icon: TrendingUp },
   { label: "Video Board", path: "/admin/video-board", icon: LayoutDashboard },
-  { label: "Content Guard", path: "/admin/content-guard", icon: ShieldCheck },
   { label: "Help", path: "/admin/help", icon: HelpCircle }
 ];
 

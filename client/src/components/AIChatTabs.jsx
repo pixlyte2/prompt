@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { MessageSquare, Settings } from "lucide-react";
+import { MessageSquare, Settings, ShieldCheck } from "lucide-react";
 import AIChatManager from "./AIChatManager";
 import SettingsManager from "./SettingsManager";
+import ContentValidator from "./ContentValidator";
 
 export default function AIChatTabs() {
   const [activeTab, setActiveTab] = useState("chat");
 
   const tabs = [
     { key: "chat", label: "AI Chat", icon: MessageSquare },
+    { key: "content-guard", label: "Content Guard", icon: ShieldCheck },
     { key: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -34,6 +36,7 @@ export default function AIChatTabs() {
       {/* Tab Content */}
       <div className="flex-1 min-h-0">
         {activeTab === "chat" && <AIChatManager />}
+        {activeTab === "content-guard" && <ContentValidator />}
         {activeTab === "settings" && <SettingsManager />}
       </div>
     </div>

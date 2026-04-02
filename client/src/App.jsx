@@ -9,7 +9,7 @@ import SuperAdminLogin from "./auth/SuperAdminLogin";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminPrompts from "./pages/admin/Prompts";
 import AIChat from "./pages/admin/AIChat";
-import ContentGuard from "./pages/admin/ContentGuard";
+
 import Help from "./pages/admin/Help";
 import ContentPrompts from "./pages/content/Prompts";
 import ViewerPrompts from "./pages/viewer/Prompts";
@@ -141,15 +141,6 @@ export default function App() {
           element={
             <PrivateRoute allowedRoles={["admin"]}>
               <VideoBoard />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/admin/content-guard"
-          element={
-            <PrivateRoute allowedRoles={["admin"]}>
-              <ContentGuard />
             </PrivateRoute>
           }
         />
