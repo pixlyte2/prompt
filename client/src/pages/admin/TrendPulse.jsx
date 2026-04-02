@@ -856,19 +856,19 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
                           <input
                             type="number"
                             min={1}
-                            max={50}
+                            max={200}
                             value={type.videosPerChannel}
                             onChange={(e) => {
-                              const v = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 50);
+                              const v = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 200);
                               setTypes((prev) => prev.map((t) => (t._id === type._id ? { ...t, videosPerChannel: v } : t)));
                             }}
                             onBlur={(e) => {
-                              const v = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 50);
+                              const v = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 200);
                               handleUpdateVpc(type._id, v);
                             }}
                             className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                           />
-                          <span className="text-[10px] text-gray-400">(max 50)</span>
+                          <span className="text-[10px] text-gray-400">(max 200)</span>
                           <button
                             type="button"
                             onClick={() => handleDeleteType(type._id)}
@@ -946,9 +946,9 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
                     <input
                       type="number"
                       min={1}
-                      max={50}
+                      max={200}
                       value={newTypeVpc}
-                      onChange={(e) => setNewTypeVpc(Math.min(Math.max(parseInt(e.target.value) || 1, 1), 50))}
+                      onChange={(e) => setNewTypeVpc(Math.min(Math.max(parseInt(e.target.value) || 1, 1), 200))}
                       className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                     />
                   </div>
@@ -1265,12 +1265,21 @@ function CompetitorWatch() {
       </div>
 
       {/* Video grid */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto relative">
+        {refreshing && (
+          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-center py-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-xs font-medium">
+              <Loader2 size={14} className="animate-spin" />
+              Refreshing videos… this may take a moment
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="flex flex-col items-center gap-3">
               <div className="w-10 h-10 border-3 border-red-200 dark:border-red-800 border-t-red-600 dark:border-t-red-400 rounded-full animate-spin" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">Scanning competitor channels…</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Scraping videos from channels…</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 animate-pulse">This may take up to a minute for large channel lists</p>
             </div>
           </div>
         ) : filtered.length === 0 ? (

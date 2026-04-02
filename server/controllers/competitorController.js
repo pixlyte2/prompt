@@ -145,16 +145,17 @@ async function scrapeChannel(channel, maxVideos) {
     videosTab?.tabRenderer?.content?.richGridRenderer?.contents || [];
 
   let videos = extractVideos(items, channel);
+  let contToken = apiKey ? getContinuationToken(items) : null;
 
-  if (videos.length < maxVideos && apiKey) {
-    const token = getContinuationToken(items);
-    if (token) {
-      try {
-        const moreItems = await fetchContinuation(token, apiKey);
-        videos = videos.concat(extractVideos(moreItems, channel));
-      } catch {
-        /* use what we have */
-      }
+  while (videos.length < maxVideos && contToken) {
+    try {
+      const moreItems = await fetchContinuation(contToken, apiKey);
+      const newVideos = extractVideos(moreItems, channel);
+      if (newVideos.length === 0) break;
+      videos = videos.concat(newVideos);
+      contToken = getContinuationToken(moreItems);
+    } catch {
+      break;
     }
   }
 

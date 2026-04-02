@@ -38,7 +38,7 @@ exports.updateType = async (req, res) => {
     const { name, videosPerChannel } = req.body;
     const update = {};
     if (name?.trim()) update.name = name.trim();
-    if (videosPerChannel != null) update.videosPerChannel = Math.min(Math.max(videosPerChannel, 1), 50);
+    if (videosPerChannel != null) update.videosPerChannel = Math.min(Math.max(videosPerChannel, 1), 200);
 
     const type = await CompetitorType.findByIdAndUpdate(req.params.id, update, {
       new: true,
