@@ -8,7 +8,7 @@ const cacheMap = new Map();
 
 const DEFAULT_SEED = {
   name: "News",
-  videosPerChannel: 50,
+  videosPerChannel: 200,
   channels: [
     { handle: "PolimerNews", name: "Polimer News" },
     { handle: "Sunnewstamil", name: "Sun News" },

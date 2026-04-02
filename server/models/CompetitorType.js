@@ -11,7 +11,7 @@ const channelSchema = new mongoose.Schema(
 const competitorTypeSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, unique: true, trim: true },
-    videosPerChannel: { type: Number, default: 30, min: 1, max: 50 },
+    videosPerChannel: { type: Number, default: 30, min: 1, max: 200 },
     channels: [channelSchema],
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
