@@ -8,6 +8,7 @@ router.post("/", protect, ctrl.createType);
 router.put("/:id", protect, ctrl.updateType);
 router.delete("/:id", protect, ctrl.deleteType);
 router.post("/:id/channels", protect, ctrl.addChannel);
+router.put("/:id/channels/:channelHandle", protect, ctrl.updateChannelFormat);
 router.delete("/:id/channels/:channelHandle", protect, ctrl.removeChannel);
 
 module.exports = router;

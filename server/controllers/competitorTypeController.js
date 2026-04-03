@@ -13,14 +13,13 @@ exports.getTypes = async (req, res) => {
 
 exports.createType = async (req, res) => {
   try {
-    const { name, videosPerChannel, videoFormat } = req.body;
+    const { name, videosPerChannel } = req.body;
     if (!name?.trim()) {
       return res.status(400).json({ message: "Type name is required" });
     }
     const type = await CompetitorType.create({
       name: name.trim(),
       videosPerChannel: videosPerChannel || 30,
-      videoFormat: videoFormat || 'long',
       channels: [],
       createdBy: req.user._id,
     });
@@ -36,11 +35,10 @@ exports.createType = async (req, res) => {
 
 exports.updateType = async (req, res) => {
   try {
-    const { name, videosPerChannel, videoFormat } = req.body;
+    const { name, videosPerChannel } = req.body;
     const update = {};
     if (name?.trim()) update.name = name.trim();
     if (videosPerChannel != null) update.videosPerChannel = Math.min(Math.max(videosPerChannel, 1), 200);
-    if (videoFormat) update.videoFormat = videoFormat;
 
     const type = await CompetitorType.findByIdAndUpdate(req.params.id, update, {
       new: true,
@@ -72,7 +70,7 @@ exports.deleteType = async (req, res) => {
 
 exports.addChannel = async (req, res) => {
   try {
-    const { handle, name } = req.body;
+    const { handle, name, videoFormat } = req.body;
     if (!handle?.trim() || !name?.trim()) {
       return res.status(400).json({ message: "Channel handle and name are required" });
     }
@@ -87,7 +85,7 @@ exports.addChannel = async (req, res) => {
       return res.status(409).json({ message: "Channel already exists in this type" });
     }
 
-    type.channels.push({ handle: handle.trim(), name: name.trim() });
+    type.channels.push({ handle: handle.trim(), name: name.trim(), videoFormat: videoFormat || 'long' });
     await type.save();
     clearCache(req.params.id);
     res.json(type);
@@ -116,5 +114,28 @@ exports.removeChannel = async (req, res) => {
   } catch (err) {
     console.error("removeChannel error:", err.message);
     res.status(500).json({ message: "Failed to remove channel" });
+  }
+};
+
+exports.updateChannelFormat = async (req, res) => {
+  try {
+    const { videoFormat } = req.body;
+    const type = await CompetitorType.findById(req.params.id);
+    if (!type) return res.status(404).json({ message: "Type not found" });
+
+    const channel = type.channels.find(
+      (ch) => ch.handle.toLowerCase() === req.params.channelHandle.toLowerCase(),
+    );
+    if (!channel) {
+      return res.status(404).json({ message: "Channel not found" });
+    }
+
+    channel.videoFormat = videoFormat || 'long';
+    await type.save();
+    clearCache(req.params.id);
+    res.json(type);
+  } catch (err) {
+    console.error("updateChannelFormat error:", err.message);
+    res.status(500).json({ message: "Failed to update channel format" });
   }
 };

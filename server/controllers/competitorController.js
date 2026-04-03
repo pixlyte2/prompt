@@ -148,6 +148,11 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
     videosTab?.tabRenderer?.content?.richGridRenderer?.contents || [];
 
   let videos = extractVideos(items, channel);
+
+  if (videos.length === 0 && videoFormat !== "long") {
+    return scrapeChannel(channel, maxVideos, "long");
+  }
+
   let contToken = apiKey ? getContinuationToken(items) : null;
 
   while (videos.length < maxVideos && contToken) {
@@ -180,9 +185,8 @@ async function fetchVideosForType(typeId) {
   if (!type) return null;
 
   const maxVideos = type.videosPerChannel || 30;
-  const videoFormat = type.videoFormat || "long";
   const results = await Promise.allSettled(
-    type.channels.map((ch) => scrapeChannel(ch, maxVideos, videoFormat)),
+    type.channels.map((ch) => scrapeChannel(ch, maxVideos, ch.videoFormat || "long")),
   );
 
   const videos = results
