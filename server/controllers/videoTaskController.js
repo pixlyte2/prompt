@@ -30,7 +30,7 @@ exports.createTask = async (req, res) => {
       title, thumbnail, channelName, channelHandle,
       channelType, views, viewsText, duration,
       platform: platform || "youtube",
-      contentFormat: contentFormat || "",
+      contentFormat: contentFormat || [],
       url: url || "",
       scheduledDate: new Date(scheduledDate),
       notes: notes || "",

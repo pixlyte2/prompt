@@ -17,9 +17,15 @@ const videoTaskSchema = new mongoose.Schema(
       default: "youtube",
     },
     contentFormat: {
-      type: String,
-      enum: ["short", "long", "reel", "post", "article", ""],
-      default: "",
+      type: [String],
+      validate: {
+        validator: function(arr) {
+          const validFormats = ["short", "long"];
+          return arr.every(format => validFormats.includes(format));
+        },
+        message: 'contentFormat must contain only "short" or "long"'
+      },
+      default: [],
     },
     url: { type: String, default: "" },
     scheduledDate: { type: Date, required: true },
