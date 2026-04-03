@@ -460,6 +460,27 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
 
   if (!open) return null;
 
+  // Sort tasks by Assigned to field
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const getAssignedToString = (task) => {
+      if (!task.assignedTo || task.assignedTo.length === 0) return "";
+      if (Array.isArray(task.assignedTo)) {
+        return task.assignedTo.map(a => a.charAt(0).toUpperCase() + a.slice(1)).sort().join(", ");
+      }
+      return task.assignedTo.charAt(0).toUpperCase() + task.assignedTo.slice(1);
+    };
+    
+    const aAssigned = getAssignedToString(a);
+    const bAssigned = getAssignedToString(b);
+    
+    // Empty assignments go to the end
+    if (!aAssigned && !bAssigned) return 0;
+    if (!aAssigned) return 1;
+    if (!bAssigned) return -1;
+    
+    return aAssigned.localeCompare(bAssigned);
+  });
+
   const formatAssignedTo = (assignedTo) => {
     if (!assignedTo || assignedTo.length === 0) return "";
     return Array.isArray(assignedTo) 
@@ -477,7 +498,7 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
 
   const generatePlainTextTable = () => {
     const headers = ["Channel Type", "Assigned to", "Content Format", "Title", "URL"];
-    const rows = tasks.map(task => [
+    const rows = sortedTasks.map(task => [
       task.channelType || '',
       formatAssignedTo(task.assignedTo),
       formatContentFormat(task.contentFormat),
@@ -519,7 +540,7 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
               Preview - {formatDateLabel(dateKey)}
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+              {sortedTasks.length} task{sortedTasks.length !== 1 ? 's' : ''} • Sorted by Assigned to
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -575,7 +596,7 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {tasks.map((task, index) => (
+              {sortedTasks.map((task, index) => (
                 <tr key={task._id} className={index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800/30"}>
                   <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                     <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
