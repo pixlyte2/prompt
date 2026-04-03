@@ -52,9 +52,10 @@ function parseRelativeTime(text) {
 function extractVideos(items, channel) {
   return items
     .map((item) => {
-      const v = item?.richItemRenderer?.content?.videoRenderer;
+      const v = item?.richItemRenderer?.content?.videoRenderer || item?.richItemRenderer?.content?.reelItemRenderer;
       if (!v) return null;
 
+      const title = v.title?.runs?.[0]?.text || v.headline?.simpleText || "";
       const viewText =
         v.viewCountText?.simpleText ||
         v.viewCountText?.runs?.map((r) => r.text).join("") ||
@@ -63,7 +64,7 @@ function extractVideos(items, channel) {
 
       return {
         videoId: v.videoId,
-        title: v.title?.runs?.[0]?.text || "",
+        title: title,
         views: isLive ? 0 : parseViewCount(viewText),
         viewsText: viewText,
         publishedText: v.publishedTimeText?.simpleText || "",
@@ -118,8 +119,9 @@ async function fetchContinuation(token, apiKey) {
   return [];
 }
 
-async function scrapeChannel(channel, maxVideos) {
-  const url = `https://www.youtube.com/@${channel.handle}/videos`;
+async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
+  const endpoint = videoFormat === "short" ? "shorts" : "videos";
+  const url = `https://www.youtube.com/@${channel.handle}/${endpoint}`;
   const res = await fetch(url, {
     headers: { "User-Agent": UA, "Accept-Language": "en" },
   });
@@ -140,7 +142,8 @@ async function scrapeChannel(channel, maxVideos) {
   const apiKey = apiKeyMatch?.[1];
 
   const tabs = data?.contents?.twoColumnBrowseResultsRenderer?.tabs || [];
-  const videosTab = tabs.find((t) => t.tabRenderer?.title === "Videos");
+  const tabName = videoFormat === "short" ? "Shorts" : "Videos";
+  const videosTab = tabs.find((t) => t.tabRenderer?.title === tabName);
   const items =
     videosTab?.tabRenderer?.content?.richGridRenderer?.contents || [];
 
@@ -177,8 +180,9 @@ async function fetchVideosForType(typeId) {
   if (!type) return null;
 
   const maxVideos = type.videosPerChannel || 30;
+  const videoFormat = type.videoFormat || "long";
   const results = await Promise.allSettled(
-    type.channels.map((ch) => scrapeChannel(ch, maxVideos)),
+    type.channels.map((ch) => scrapeChannel(ch, maxVideos, videoFormat)),
   );
 
   const videos = results

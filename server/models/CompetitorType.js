@@ -12,6 +12,7 @@ const competitorTypeSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, unique: true, trim: true },
     videosPerChannel: { type: Number, default: 30, min: 1, max: 200 },
+    videoFormat: { type: String, enum: ['long', 'short'], default: 'long' },
     channels: [channelSchema],
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },

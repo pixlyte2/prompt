@@ -537,6 +537,7 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
   const [expanded, setExpanded] = useState(null);
   const [newTypeName, setNewTypeName] = useState("");
   const [newTypeVpc, setNewTypeVpc] = useState(30);
+  const [newTypeFormat, setNewTypeFormat] = useState("long");
   const [addingType, setAddingType] = useState(false);
   const [newChannels, setNewChannels] = useState({});
   const [busy, setBusy] = useState(null);
@@ -562,9 +563,10 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
     if (!newTypeName.trim()) return;
     setBusy("create-type");
     try {
-      await api.post("/competitor-types", { name: newTypeName.trim(), videosPerChannel: newTypeVpc });
+      await api.post("/competitor-types", { name: newTypeName.trim(), videosPerChannel: newTypeVpc, videoFormat: newTypeFormat });
       setNewTypeName("");
       setNewTypeVpc(30);
+      setNewTypeFormat("long");
       setAddingType(false);
       await fetchTypes();
       onTypesChanged();
@@ -581,6 +583,19 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
     try {
       await api.put(`/competitor-types/${typeId}`, { videosPerChannel: vpc });
       setTypes((prev) => prev.map((t) => (t._id === typeId ? { ...t, videosPerChannel: vpc } : t)));
+      onTypesChanged();
+    } catch {
+      toast.error("Failed to update");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleUpdateFormat = async (typeId, format) => {
+    setBusy(`format-${typeId}`);
+    try {
+      await api.put(`/competitor-types/${typeId}`, { videoFormat: format });
+      setTypes((prev) => prev.map((t) => (t._id === typeId ? { ...t, videoFormat: format } : t)));
       onTypesChanged();
     } catch {
       toast.error("Failed to update");
@@ -696,7 +711,21 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
                             }}
                             className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                           />
-                          <span className="text-[10px] text-gray-400">(max 200)</span>
+                          <span className="text-[10px] text-gray-400 mr-2">(max 200)</span>
+                          
+                          <label className="text-[11px] font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Format:</label>
+                          <select
+                            value={type.videoFormat || "long"}
+                            onChange={(e) => {
+                              const f = e.target.value;
+                              setTypes((prev) => prev.map((t) => (t._id === type._id ? { ...t, videoFormat: f } : t)));
+                              handleUpdateFormat(type._id, f);
+                            }}
+                            className="px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                          >
+                            <option value="long">Long Videos</option>
+                            <option value="short">Shorts</option>
+                          </select>
                           <button
                             type="button"
                             onClick={() => handleDeleteType(type._id)}
@@ -779,6 +808,16 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
                       onChange={(e) => setNewTypeVpc(Math.min(Math.max(parseInt(e.target.value) || 1, 1), 200))}
                       className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                     />
+                    
+                    <label className="text-[11px] font-medium text-gray-600 dark:text-gray-400 ml-2">Format:</label>
+                    <select
+                      value={newTypeFormat}
+                      onChange={(e) => setNewTypeFormat(e.target.value)}
+                      className="px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                    >
+                      <option value="long">Long Videos</option>
+                      <option value="short">Shorts</option>
+                    </select>
                   </div>
                   <div className="flex items-center gap-2">
                     <button

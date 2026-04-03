@@ -13,13 +13,14 @@ exports.getTypes = async (req, res) => {
 
 exports.createType = async (req, res) => {
   try {
-    const { name, videosPerChannel } = req.body;
+    const { name, videosPerChannel, videoFormat } = req.body;
     if (!name?.trim()) {
       return res.status(400).json({ message: "Type name is required" });
     }
     const type = await CompetitorType.create({
       name: name.trim(),
       videosPerChannel: videosPerChannel || 30,
+      videoFormat: videoFormat || 'long',
       channels: [],
       createdBy: req.user._id,
     });
@@ -35,10 +36,11 @@ exports.createType = async (req, res) => {
 
 exports.updateType = async (req, res) => {
   try {
-    const { name, videosPerChannel } = req.body;
+    const { name, videosPerChannel, videoFormat } = req.body;
     const update = {};
     if (name?.trim()) update.name = name.trim();
     if (videosPerChannel != null) update.videosPerChannel = Math.min(Math.max(videosPerChannel, 1), 200);
+    if (videoFormat) update.videoFormat = videoFormat;
 
     const type = await CompetitorType.findByIdAndUpdate(req.params.id, update, {
       new: true,
