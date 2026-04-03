@@ -228,6 +228,6 @@ exports.getCompetitorVideos = async (req, res) => {
     console.error("Competitor scrape error:", err.message);
     res
       .status(502)
-      .json({ message: "Could not fetch competitor videos. Try again later." });
+      .json({ message: "Could not fetch competitor videos. Try again later. " });
   }
 };
