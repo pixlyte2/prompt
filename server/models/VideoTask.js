@@ -27,6 +27,17 @@ const videoTaskSchema = new mongoose.Schema(
       },
       default: [],
     },
+    assignedTo: {
+      type: [String],
+      validate: {
+        validator: function(arr) {
+          const validAssignees = ["pooja", "soundarya"];
+          return arr.every(assignee => validAssignees.includes(assignee));
+        },
+        message: 'assignedTo must contain only "pooja" or "soundarya"'
+      },
+      default: [],
+    },
     url: { type: String, default: "" },
     scheduledDate: { type: Date, required: true },
     notes: { type: String, default: "" },

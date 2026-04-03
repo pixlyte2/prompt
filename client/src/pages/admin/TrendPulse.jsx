@@ -227,6 +227,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
   const [title, setTitle] = useState("");
   const [platform, setPlatform] = useState("youtube");
   const [contentFormat, setContentFormat] = useState([]);
+  const [assignedTo, setAssignedTo] = useState([]);
   const [scheduledDate, setScheduledDate] = useState(
     new Date(Date.now() + 86_400_000).toISOString().split("T")[0],
   );
@@ -246,9 +247,19 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
     { value: "long", label: "Long" },
   ];
 
+  const ASSIGNED_OPTIONS = [
+    { value: "pooja", label: "Pooja" },
+    { value: "soundarya", label: "Soundarya" },
+  ];
+
   const FORMAT_PILL = {
     short: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
     long: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+  };
+
+  const ASSIGNED_PILL = {
+    pooja: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
+    soundarya: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
   };
 
   const PLATFORM_META = {
@@ -262,6 +273,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
     setTitle(video.title || "");
     setPlatform("youtube");
     setContentFormat([]); // Initialize as empty array for multiple selection
+    setAssignedTo([]); // Initialize as empty array for multiple selection
     setInitialized(true);
   }
 
@@ -287,6 +299,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
         channelType,
         platform,
         contentFormat: Array.isArray(contentFormat) ? contentFormat : (contentFormat ? [contentFormat] : []),
+        assignedTo: Array.isArray(assignedTo) ? assignedTo : (assignedTo ? [assignedTo] : []),
         url: videoUrl,
         views: video.views,
         viewsText: video.viewsText,
@@ -417,22 +430,57 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
             <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Select one, both, or none</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Channel Type</label>
-              <div className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300">
-                {channelType}
-              </div>
+          {/* Assigned to */}
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Assigned to</label>
+            <div className="flex gap-1.5">
+              {ASSIGNED_OPTIONS.map((a) => {
+                const isSelected = Array.isArray(assignedTo) ? assignedTo.includes(a.value) : assignedTo === a.value;
+                return (
+                  <button
+                    key={a.value}
+                    type="button"
+                    onClick={() => {
+                      if (Array.isArray(assignedTo)) {
+                        if (isSelected) {
+                          setAssignedTo(assignedTo.filter(assigned => assigned !== a.value));
+                        } else {
+                          setAssignedTo([...assignedTo, a.value]);
+                        }
+                      } else {
+                        // Handle legacy single selection
+                        setAssignedTo(isSelected ? [] : [a.value]);
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                      isSelected
+                        ? `${ASSIGNED_PILL[a.value]} border-current shadow-sm`
+                        : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    {a.label}
+                  </button>
+                );
+              })}
             </div>
-            <div>
-              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Scheduled Date</label>
-              <input
-                type="date"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              />
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Select one, both, or none</p>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Channel Type</label>
+            <div className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300">
+              {channelType}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Scheduled Date</label>
+            <input
+              type="date"
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            />
           </div>
           <div>
             <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Notes (optional)</label>

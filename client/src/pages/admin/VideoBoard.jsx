@@ -180,9 +180,19 @@ const FORMAT_OPTIONS = [
   { value: "long", label: "Long" },
 ];
 
+const ASSIGNED_OPTIONS = [
+  { value: "pooja", label: "Pooja" },
+  { value: "soundarya", label: "Soundarya" },
+];
+
 const FORMAT_PILL = {
   short: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
   long: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+};
+
+const ASSIGNED_PILL = {
+  pooja: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
+  soundarya: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
 };
 
 function exportToCsv(tasks) {
@@ -444,8 +454,193 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
   );
 }
 
+/* ─── Preview Modal ─── */
+function PreviewModal({ open, onClose, tasks, dateKey }) {
+  const [copied, setCopied] = useState(false);
+
+  if (!open) return null;
+
+  const formatAssignedTo = (assignedTo) => {
+    if (!assignedTo || assignedTo.length === 0) return "";
+    return Array.isArray(assignedTo) 
+      ? assignedTo.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(", ")
+      : assignedTo.charAt(0).toUpperCase() + assignedTo.slice(1);
+  };
+
+  const formatContentFormat = (contentFormat) => {
+    if (!contentFormat || contentFormat.length === 0) return "";
+    const formatMap = { short: "Shorts", long: "Long" };
+    return Array.isArray(contentFormat)
+      ? contentFormat.map(f => formatMap[f] || f).join(", ")
+      : formatMap[contentFormat] || contentFormat;
+  };
+
+  const generatePlainTextTable = () => {
+    const headers = ["Channel Type", "Assigned to", "Content Format", "Title", "URL"];
+    const rows = tasks.map(task => [
+      task.channelType || '',
+      formatAssignedTo(task.assignedTo),
+      formatContentFormat(task.contentFormat),
+      task.title || '',
+      getTaskUrl(task) || ''
+    ]);
+    
+    // Create tab-separated values for easy pasting into Google Sheets
+    const tsvContent = [headers.join('\t'), ...rows.map(row => row.join('\t'))].join('\n');
+    return tsvContent;
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(generatePlainTextTable());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = generatePlainTextTable();
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-6xl max-h-[90vh] rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              Preview - {formatDateLabel(dateKey)}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleCopy}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                copied
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
+            >
+              {copied ? (
+                <>
+                  <CheckCircle2 size={16} />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Download size={16} />
+                  Copy
+                </>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-auto max-h-[calc(90vh-120px)]">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-800/50 sticky top-0">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  Channel Type
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  Assigned to
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  Content Format
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  Title
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  URL
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {tasks.map((task, index) => (
+                <tr key={task._id} className={index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800/30"}>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                    <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                      {task.channelType}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                    {formatAssignedTo(task.assignedTo) && (
+                      <div className="flex flex-wrap gap-1">
+                        {(Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo]).map(assignee => (
+                          <span key={assignee} className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                            assignee === 'pooja' ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300' :
+                            assignee === 'soundarya' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
+                            'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                          }`}>
+                            {assignee.charAt(0).toUpperCase() + assignee.slice(1)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                    {formatContentFormat(task.contentFormat) && (
+                      <div className="flex flex-wrap gap-1">
+                        {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).map(format => (
+                          <span key={format} className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                            format === 'short' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+                            format === 'long' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' :
+                            'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                          }`}>
+                            {format === 'short' ? 'Shorts' : format === 'long' ? 'Long' : format}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-xs">
+                    <div className="truncate" title={task.title}>
+                      {task.title}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-xs">
+                    {getTaskUrl(task) && (
+                      <a
+                        href={getTaskUrl(task)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 dark:text-blue-400 hover:underline truncate block"
+                        title={getTaskUrl(task)}
+                      >
+                        {getTaskUrl(task)}
+                      </a>
+                    )}
+                  </td>
+                </tr>
+              ))}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
 /* ─── Date Group ─── */
-function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, defaultOpen }) {
+function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, defaultOpen }) {
   const [open, setOpen] = useState(defaultOpen);
   const cat = getDateCategory(dateKey);
   const completed = tasks.filter((t) => t.status === "completed").length;
@@ -488,6 +683,13 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, defaultOpen }) {
           <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
             {completed}/{total}
           </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onPreview(dateKey, tasks); }}
+            className="inline-flex items-center gap-1 text-[9px] font-semibold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
+            title="Preview tasks"
+          >
+            <Eye size={8} /> Preview
+          </button>
           <div className="hidden sm:flex w-16 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-500" : "bg-blue-500"}`}
@@ -522,6 +724,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
   const [title, setTitle] = useState("");
   const [platform, setPlatform] = useState("youtube");
   const [contentFormat, setContentFormat] = useState([]);
+  const [assignedTo, setAssignedTo] = useState([]);
   const [channelType, setChannelType] = useState(channelTypes[0] || "");
   const [scheduledDate, setScheduledDate] = useState(
     new Date(Date.now() + 86_400_000).toISOString().split("T")[0],
@@ -536,6 +739,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
       setTitle(editTask.title || "");
       setPlatform(editTask.platform || "youtube");
       setContentFormat(Array.isArray(editTask.contentFormat) ? editTask.contentFormat : (editTask.contentFormat ? [editTask.contentFormat] : []));
+      setAssignedTo(Array.isArray(editTask.assignedTo) ? editTask.assignedTo : (editTask.assignedTo ? [editTask.assignedTo] : []));
       setChannelType(editTask.channelType || channelTypes[0] || "");
       setScheduledDate(editTask.scheduledDate ? toDateKey(editTask.scheduledDate) : new Date(Date.now() + 86_400_000).toISOString().split("T")[0]);
       setNotes(editTask.notes || "");
@@ -544,6 +748,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
       setTitle("");
       setPlatform("youtube");
       setContentFormat([]);
+      setAssignedTo([]);
       setChannelType(channelTypes[0] || "");
       setScheduledDate(new Date(Date.now() + 86_400_000).toISOString().split("T")[0]);
       setNotes("");
@@ -571,6 +776,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
         title: title.trim(),
         platform: activePlatform,
         contentFormat: Array.isArray(contentFormat) ? contentFormat : (contentFormat ? [contentFormat] : []),
+        assignedTo: Array.isArray(assignedTo) ? assignedTo : (assignedTo ? [assignedTo] : []),
         url: urlInput.trim(),
         videoId: ytId || "",
         thumbnail: ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : "",
@@ -699,6 +905,42 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
             </div>
             <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Select one, both, or none</p>
           </div>
+          
+          {/* Assigned to */}
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Assigned to</label>
+            <div className="flex gap-1.5">
+              {ASSIGNED_OPTIONS.map((a) => {
+                const isSelected = Array.isArray(assignedTo) ? assignedTo.includes(a.value) : assignedTo === a.value;
+                return (
+                  <button
+                    key={a.value}
+                    type="button"
+                    onClick={() => {
+                      if (Array.isArray(assignedTo)) {
+                        if (isSelected) {
+                          setAssignedTo(assignedTo.filter(assigned => assigned !== a.value));
+                        } else {
+                          setAssignedTo([...assignedTo, a.value]);
+                        }
+                      } else {
+                        // Handle legacy single selection
+                        setAssignedTo(isSelected ? [] : [a.value]);
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                      isSelected
+                        ? `${ASSIGNED_PILL[a.value]} border-current shadow-sm`
+                        : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    {a.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Select one, both, or none</p>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -764,6 +1006,7 @@ export default function VideoBoard() {
   const [showModal, setShowModal] = useState(false);
   const [editTask, setEditTask] = useState(null);
   const [viewMode, setViewMode] = useState("schedule");
+  const [previewModal, setPreviewModal] = useState({ open: false, tasks: [], dateKey: null });
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -818,6 +1061,14 @@ export default function VideoBoard() {
   const handleModalClose = useCallback(() => {
     setShowModal(false);
     setEditTask(null);
+  }, []);
+
+  const handlePreview = useCallback((dateKey, tasks) => {
+    setPreviewModal({ open: true, tasks, dateKey });
+  }, []);
+
+  const handlePreviewClose = useCallback(() => {
+    setPreviewModal({ open: false, tasks: [], dateKey: null });
   }, []);
 
   const filtered = useMemo(() => {
@@ -1023,6 +1274,7 @@ export default function VideoBoard() {
                   onMove={handleMove}
                   onDelete={handleDelete}
                   onEdit={handleEdit}
+                  onPreview={handlePreview}
                   defaultOpen={getDateCategory(g.key) === "overdue" || getDateCategory(g.key) === "today" || g.key === "no-date"}
                 />
               ))
@@ -1050,6 +1302,13 @@ export default function VideoBoard() {
         onSaved={fetchTasks}
         channelTypes={typeNames}
         editTask={editTask}
+      />
+      
+      <PreviewModal
+        open={previewModal.open}
+        onClose={handlePreviewClose}
+        tasks={previewModal.tasks}
+        dateKey={previewModal.dateKey}
       />
     </AdminLayout>
   );

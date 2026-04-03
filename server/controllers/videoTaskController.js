@@ -18,7 +18,7 @@ exports.createTask = async (req, res) => {
     const {
       videoId, title, thumbnail, channelName, channelHandle,
       channelType, views, viewsText, duration, scheduledDate, notes,
-      platform, url, contentFormat,
+      platform, url, contentFormat, assignedTo,
     } = req.body;
 
     if (!title || !scheduledDate || !channelType) {
@@ -31,6 +31,7 @@ exports.createTask = async (req, res) => {
       channelType, views, viewsText, duration,
       platform: platform || "youtube",
       contentFormat: contentFormat || [],
+      assignedTo: assignedTo || [],
       url: url || "",
       scheduledDate: new Date(scheduledDate),
       notes: notes || "",
@@ -47,7 +48,7 @@ exports.updateTask = async (req, res) => {
   try {
     const {
       status, scheduledDate, notes, title, url, videoId,
-      platform, contentFormat, channelType, channelName, channelHandle,
+      platform, contentFormat, assignedTo, channelType, channelName, channelHandle,
       thumbnail, views, viewsText, duration,
     } = req.body;
     const update = {};
@@ -63,6 +64,7 @@ exports.updateTask = async (req, res) => {
     if (videoId !== undefined) update.videoId = videoId;
     if (platform !== undefined) update.platform = platform;
     if (contentFormat !== undefined) update.contentFormat = contentFormat;
+    if (assignedTo !== undefined) update.assignedTo = assignedTo;
     if (channelType !== undefined) update.channelType = channelType;
     if (channelName !== undefined) update.channelName = channelName;
     if (channelHandle !== undefined) update.channelHandle = channelHandle;
