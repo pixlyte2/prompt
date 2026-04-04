@@ -53,7 +53,35 @@ function extractVideos(items, channel) {
   return items
     .map((item) => {
       const v = item?.richItemRenderer?.content?.videoRenderer || item?.richItemRenderer?.content?.reelItemRenderer;
-      if (!v) return null;
+      const s = item?.richItemRenderer?.content?.shortsLockupViewModel;
+
+      if (!v && !s) return null;
+
+      if (s) {
+        const videoId = s.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId;
+        if (!videoId) return null;
+
+        const title = s.overlayMetadata?.primaryText?.content || "";
+        const viewText = s.overlayMetadata?.secondaryText?.content || "";
+        const viewParts = viewText.toLowerCase().includes("watching");
+
+        return {
+          videoId,
+          title,
+          views: viewParts ? 0 : parseViewCount(viewText),
+          viewsText: viewText,
+          publishedText: "",
+          publishedAt: null,
+          duration: "Short",
+          thumbnail:
+            s.thumbnailViewModel?.thumbnailViewModel?.image?.sources?.slice(-1)[0]?.url ||
+            s.onTap?.innertubeCommand?.reelWatchEndpoint?.thumbnail?.thumbnails?.slice(-1)[0]?.url ||
+            `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          channelName: channel.name,
+          channelHandle: channel.handle,
+          isLive: viewParts,
+        };
+      }
 
       const title = v.title?.runs?.[0]?.text || v.headline?.simpleText || "";
       const viewText =
@@ -143,9 +171,14 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
 
   const tabs = data?.contents?.twoColumnBrowseResultsRenderer?.tabs || [];
   const tabName = videoFormat === "short" ? "Shorts" : "Videos";
-  const videosTab = tabs.find((t) => t.tabRenderer?.title === tabName);
-  const items =
-    videosTab?.tabRenderer?.content?.richGridRenderer?.contents || [];
+  
+  // Find the requested tab by exact title or fallback to the one already selected (since we navigated specifically to /shorts or /videos)
+  let activeTab = tabs.find((t) => t.tabRenderer?.title === tabName);
+  if (!activeTab || !activeTab.tabRenderer?.content) {
+    activeTab = tabs.find((t) => t.tabRenderer?.selected);
+  }
+
+  const items = activeTab?.tabRenderer?.content?.richGridRenderer?.contents || [];
 
   let videos = extractVideos(items, channel);
 

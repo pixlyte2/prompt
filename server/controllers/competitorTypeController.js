@@ -101,19 +101,21 @@ exports.removeChannel = async (req, res) => {
     if (!type) return res.status(404).json({ message: "Type not found" });
 
     const before = type.channels.length;
-    type.channels = type.channels.filter(
-      (ch) => ch.handle.toLowerCase() !== req.params.channelHandle.toLowerCase(),
+    const channelToRemove = type.channels.find(
+      (ch) => ch.handle.toLowerCase() === req.params.channelHandle.toLowerCase()
     );
-    if (type.channels.length === before) {
+    
+    if (!channelToRemove) {
       return res.status(404).json({ message: "Channel not found" });
     }
 
+    type.channels.pull(channelToRemove);
     await type.save();
     clearCache(req.params.id);
     res.json(type);
   } catch (err) {
     console.error("removeChannel error:", err.message);
-    res.status(500).json({ message: "Failed to remove channel" });
+    res.status(500).json({ message: "Failed to remove channel: " + err.message });
   }
 };
 

@@ -37,23 +37,23 @@ import api from "../../services/api";
 function FilterChip({ active, onClick, children, count, variant = "default" }) {
   const variants = {
     default: active
-      ? "bg-blue-600 text-white shadow-sm"
-      : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400",
+      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 scale-[1.02] border-transparent"
+      : "bg-white/60 dark:bg-gray-800/50 backdrop-blur-md text-gray-700 dark:text-gray-200 border-gray-200/80 dark:border-gray-700/80 hover:bg-white dark:hover:bg-gray-800 hover:border-blue-400/50 dark:hover:border-blue-500/50 hover:shadow-md hover:-translate-y-0.5",
     success: active
-      ? "bg-emerald-600 text-white shadow-sm"
-      : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-600 hover:text-emerald-600 dark:hover:text-emerald-400",
+      ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25 scale-[1.02] border-transparent"
+      : "bg-white/60 dark:bg-gray-800/50 backdrop-blur-md text-gray-700 dark:text-gray-200 border-gray-200/80 dark:border-gray-700/80 hover:bg-white dark:hover:bg-gray-800 hover:border-emerald-400/50 dark:hover:border-emerald-500/50 hover:shadow-md hover:-translate-y-0.5",
   };
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${variants[variant]}`}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border text-[11px] sm:text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap ${variants[variant]}`}
     >
       {children}
       {count !== undefined && count > 0 && (
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-          active ? "bg-white/20" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors ${
+          active ? "bg-white/25 text-white" : "bg-gray-200/70 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
         }`}>
           {count}
         </span>
@@ -63,32 +63,33 @@ function FilterChip({ active, onClick, children, count, variant = "default" }) {
 }
 
 function FilterSegment({ options, value, onChange, variant = "default" }) {
-  const variants = {
-    default: "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
-    success: "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
-  };
-
   const activeVariants = {
-    default: "bg-blue-600 text-white",
-    success: "bg-emerald-600 text-white",
+    default: "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm",
+    success: "bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm",
   };
 
   return (
-    <div className={`inline-flex rounded-lg border overflow-hidden shadow-sm ${variants[variant]}`}>
+    <div className={`inline-flex rounded-xl p-1 bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50`}>
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`relative flex items-center justify-center px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
             value === option.value
               ? activeVariants[variant]
-              : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
           }`}
         >
           {option.label}
           {option.count !== undefined && option.count > 0 && (
-            <span className="ml-1.5 text-[10px] opacity-75">({option.count})</span>
+            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-md ${
+              value === option.value 
+                ? (variant === 'success' ? "bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300")
+                : "bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
+            }`}>
+              {option.count}
+            </span>
           )}
         </button>
       ))}
@@ -98,22 +99,24 @@ function FilterSegment({ options, value, onChange, variant = "default" }) {
 
 function SearchInput({ value, onChange, placeholder, onClear }) {
   return (
-    <div className="relative flex-1 min-w-[200px] max-w-sm">
-      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+    <div className="relative flex-1 min-w-[200px] max-w-md group">
+      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+        <Search size={16} className="text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
+      </div>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-9 pr-9 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 dark:focus:border-blue-600 transition-colors"
+        className="w-full pl-9 pr-9 py-2 sm:pl-10 sm:pr-10 sm:py-2.5 rounded-lg sm:rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-xs sm:text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 dark:focus:border-blue-500/50 hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 shadow-sm"
       />
       {value && (
         <button
           type="button"
           onClick={onClear}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
         >
-          <X size={14} />
+          <X size={16} />
         </button>
       )}
     </div>
@@ -122,15 +125,18 @@ function SearchInput({ value, onChange, placeholder, onClear }) {
 
 function FilterBar({ children, className = "" }) {
   return (
-    <div className={`bg-gray-50/80 dark:bg-gray-800/40 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/60 p-4 space-y-4 ${className}`}>
-      {children}
+    <div className={`relative overflow-visible rounded-xl sm:rounded-2xl lg:rounded-[2rem] bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 shadow-xl shadow-gray-200/30 dark:shadow-black/30 p-3 sm:p-4 lg:p-5 flex flex-col gap-3 sm:gap-4 lg:gap-5 ${className}`}>
+      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/10 dark:from-gray-800/40 dark:to-gray-900/10 pointer-events-none rounded-xl sm:rounded-2xl lg:rounded-[2rem]" />
+      <div className="relative z-10 flex flex-col gap-3 sm:gap-4 lg:gap-5 w-full">
+        {children}
+      </div>
     </div>
   );
 }
 
 function FilterRow({ children, className = "" }) {
   return (
-    <div className={`flex items-center gap-3 flex-wrap ${className}`}>
+    <div className={`flex items-center gap-2 sm:gap-3 lg:gap-4 flex-wrap w-full ${className}`}>
       {children}
     </div>
   );
@@ -138,24 +144,28 @@ function FilterRow({ children, className = "" }) {
 
 function FilterLabel({ icon: Icon, children }) {
   return (
-    <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 flex-shrink-0">
-      {Icon && <Icon size={14} />}
-      <span>{children}</span>
+    <div className="flex items-center gap-1.5 px-1 sm:px-2 text-xs sm:text-sm font-bold tracking-tight text-gray-700 dark:text-gray-300 flex-shrink-0">
+      {Icon && <Icon size={14} className="text-blue-500 dark:text-blue-400 drop-shadow-sm sm:w-4 sm:h-4 w-3.5 h-3.5" />}
+      <span className="bg-clip-text text-transparent bg-gradient-to-r from-gray-700 to-gray-500 dark:from-gray-100 dark:to-gray-400 whitespace-nowrap">{children}</span>
     </div>
   );
 }
 
 function StatsBadge({ count, label, variant = "default" }) {
   const variants = {
-    default: "bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800/40",
-    success: "bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800/40",
+    default: "bg-blue-50/80 text-blue-700 border-blue-200/60 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/40",
+    success: "bg-emerald-50/80 text-emerald-700 border-emerald-200/60 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/40",
   };
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${variants[variant]}`}>
-      {variant === "success" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-      {count} {label}
-    </span>
+    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border shadow-sm backdrop-blur-md transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 ${variants[variant]}`}>
+      {variant === "success" && <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+      </span>}
+      <span className="text-sm">{count}</span>
+      <span className="opacity-80 font-medium">{label}</span>
+    </div>
   );
 }
 
@@ -284,13 +294,13 @@ function getTaskThumbnail(task) {
 /* ─── Stat Card ─── */
 function StatCard({ icon: Icon, label, count, color, bgColor }) {
   return (
-    <div className={`flex items-center gap-3 rounded-xl px-4 py-3 ${bgColor} border border-transparent min-w-0`}>
-      <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${color}`}>
-        <Icon size={18} />
+    <div className={`flex items-center gap-3 rounded-2xl px-5 py-4 ${bgColor} border border-white/40 dark:border-gray-700/40 shadow-lg shadow-gray-200/20 dark:shadow-black/20 min-w-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl`}>
+      <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${color} shadow-inner`}>
+        <Icon size={22} className="drop-shadow-sm" />
       </div>
-      <div className="min-w-0">
-        <p className="text-xl font-bold text-gray-900 dark:text-white leading-none tabular-nums">{count}</p>
-        <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 mt-0.5 truncate">{label}</p>
+      <div className="min-w-0 flex flex-col justify-center">
+        <p className="text-2xl font-black text-gray-900 dark:text-white leading-none tabular-nums tracking-tight">{count}</p>
+        <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mt-1 truncate uppercase tracking-widest">{label}</p>
       </div>
     </div>
   );
@@ -344,9 +354,11 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
   };
 
   return (
-    <div className="group flex items-center gap-2.5 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700/60 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
+    <div className="group flex items-center gap-3 px-4 py-2.5 bg-white dark:bg-gray-800/80 rounded-xl border border-gray-100 dark:border-gray-700/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:shadow-md hover:-translate-y-px">
       {/* Checkbox */}
-      <StatusCheckbox status={task.status} onClick={handleStatusClick} />
+      <div className="scale-110">
+        <StatusCheckbox status={task.status} onClick={handleStatusClick} />
+      </div>
 
       {/* Thumbnail / Platform icon */}
       {thumb ? (
@@ -354,11 +366,11 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
           href={taskUrl || "#"}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-shrink-0 w-14 h-9 rounded overflow-hidden bg-gray-100 dark:bg-gray-700 relative group/thumb"
+          className="flex-shrink-0 w-16 h-10 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 relative group/thumb shadow-sm"
         >
-          <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+          <img src={thumb} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-110" loading="lazy" />
           <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/30 transition-colors flex items-center justify-center">
-            <ExternalLink size={10} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity" />
+            <ExternalLink size={12} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity scale-75 group-hover/thumb:scale-100" />
           </div>
           {task.duration && (
             <span className="absolute bottom-0 right-0 px-0.5 py-px bg-black/75 text-[7px] font-medium text-white rounded-tl">
@@ -652,7 +664,7 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
                     )}
                   </td>
                 </tr>
-              ))}}
+              ))}
             </tbody>
           </table>
         </div>
@@ -680,40 +692,40 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, defaul
     "bg-gray-50/60 dark:bg-gray-800/30";
 
   return (
-    <div className={`rounded-lg border border-gray-200 dark:border-gray-700 border-l-[3px] ${borderColor} overflow-hidden`}>
+    <div className={`rounded-2xl border border-gray-100 dark:border-gray-700 border-l-[4px] ${borderColor} overflow-hidden shadow-md shadow-gray-200/20 dark:shadow-black/20 bg-white/40 dark:bg-gray-900/40 backdrop-blur-sm transition-all duration-300`}>
       <button
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center gap-3 px-3.5 py-2.5 ${headerBg} transition-colors hover:brightness-95`}
+        className={`w-full flex items-center gap-4 px-4 py-3.5 ${headerBg} backdrop-blur-md transition-colors hover:brightness-95 `}
       >
-        <span className="flex-shrink-0 text-gray-400 dark:text-gray-500 transition-transform" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
-          <ChevronRight size={14} />
+        <span className="flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-300" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
+          <ChevronRight size={16} />
         </span>
 
-        <span className={`text-xs font-bold ${cat === "overdue" ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-200"}`}>
+        <span className={`text-sm font-black ${cat === "overdue" ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : "text-gray-800 dark:text-gray-200"}`}>
           {formatDateLabel(dateKey)}
         </span>
 
-        {cat === "overdue" && <AlertTriangle size={12} className="text-red-500 flex-shrink-0" />}
+        {cat === "overdue" && <AlertTriangle size={14} className="text-red-500 flex-shrink-0 animate-pulse" />}
 
-        <div className="flex items-center gap-1.5 ml-auto">
+        <div className="flex items-center gap-2 ml-auto">
           {inProgress > 0 && (
-            <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-              <PlayCircle size={8} /> {inProgress}
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
+              <PlayCircle size={10} /> {inProgress}
             </span>
           )}
-          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50">
             {completed}/{total}
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); onPreview(dateKey, tasks); }}
-            className="inline-flex items-center gap-1 text-[9px] font-semibold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
+            className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors shadow-sm"
             title="Preview tasks"
           >
-            <Eye size={8} /> Preview
+            <Eye size={10} /> Preview
           </button>
-          <div className="hidden sm:flex w-16 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+          <div className="hidden sm:flex w-20 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden shadow-inner">
             <div
-              className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-500" : "bg-blue-500"}`}
+              className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-blue-500 to-indigo-500"}`}
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -721,7 +733,7 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, defaul
       </button>
 
       {open && (
-        <div className="p-2 space-y-1.5">
+        <div className="p-3 space-y-2 bg-gray-50/50 dark:bg-gray-800/20">
           {tasks.map((t) => (
             <TaskRow key={t._id} task={t} onMove={onMove} onDelete={onDelete} onEdit={onEdit} />
           ))}

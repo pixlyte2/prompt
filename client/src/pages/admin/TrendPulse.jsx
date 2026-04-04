@@ -21,6 +21,7 @@ import {
   Save,
   CalendarPlus,
   Filter,
+  Layers,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
@@ -29,23 +30,23 @@ import api from "../../services/api";
 function FilterChip({ active, onClick, children, count, variant = "default" }) {
   const variants = {
     default: active
-      ? "bg-blue-600 text-white shadow-sm"
-      : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400",
+      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 scale-[1.02] border-transparent"
+      : "bg-white/60 dark:bg-gray-800/50 backdrop-blur-md text-gray-700 dark:text-gray-200 border-gray-200/80 dark:border-gray-700/80 hover:bg-white dark:hover:bg-gray-800 hover:border-blue-400/50 dark:hover:border-blue-500/50 hover:shadow-md hover:-translate-y-0.5",
     red: active
-      ? "bg-red-600 text-white shadow-sm"
-      : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-700 hover:text-red-600 dark:hover:text-red-400",
+      ? "bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-lg shadow-rose-500/25 scale-[1.02] border-transparent"
+      : "bg-white/60 dark:bg-gray-800/50 backdrop-blur-md text-gray-700 dark:text-gray-200 border-gray-200/80 dark:border-gray-700/80 hover:bg-white dark:hover:bg-gray-800 hover:border-rose-400/50 dark:hover:border-rose-500/50 hover:shadow-md hover:-translate-y-0.5",
   };
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${variants[variant]}`}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border text-[11px] sm:text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap ${variants[variant]}`}
     >
       {children}
       {count !== undefined && count > 0 && (
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-          active ? "bg-white/20" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors ${
+          active ? "bg-white/25 text-white" : "bg-gray-200/70 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
         }`}>
           {count}
         </span>
@@ -55,32 +56,33 @@ function FilterChip({ active, onClick, children, count, variant = "default" }) {
 }
 
 function FilterSegment({ options, value, onChange, variant = "default" }) {
-  const variants = {
-    default: "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
-    red: "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800",
-  };
-
   const activeVariants = {
-    default: "bg-blue-600 text-white",
-    red: "bg-red-600 text-white",
+    default: "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm",
+    red: "bg-white dark:bg-gray-700 text-rose-600 dark:text-rose-400 shadow-sm",
   };
 
   return (
-    <div className={`inline-flex rounded-lg border overflow-hidden shadow-sm ${variants[variant]}`}>
+    <div className={`inline-flex rounded-xl p-1 bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50`}>
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`relative flex items-center justify-center px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
             value === option.value
               ? activeVariants[variant]
-              : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
           }`}
         >
           {option.label}
           {option.count !== undefined && option.count > 0 && (
-            <span className="ml-1.5 text-[10px] opacity-75">({option.count})</span>
+            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-md ${
+              value === option.value 
+                ? "bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300" 
+                : "bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
+            }`}>
+              {option.count}
+            </span>
           )}
         </button>
       ))}
@@ -90,22 +92,24 @@ function FilterSegment({ options, value, onChange, variant = "default" }) {
 
 function SearchInput({ value, onChange, placeholder, onClear }) {
   return (
-    <div className="relative flex-1 min-w-[200px] max-w-sm">
-      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+    <div className="relative flex-1 min-w-[200px] max-w-md group">
+      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+        <Search size={16} className="text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
+      </div>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-9 pr-9 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 dark:focus:border-blue-600 transition-colors"
+        className="w-full pl-9 pr-9 py-2 sm:pl-10 sm:pr-10 sm:py-2.5 rounded-lg sm:rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-xs sm:text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 dark:focus:border-blue-500/50 hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 shadow-sm"
       />
       {value && (
         <button
           type="button"
           onClick={onClear}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
         >
-          <X size={14} />
+          <X size={16} />
         </button>
       )}
     </div>
@@ -114,34 +118,42 @@ function SearchInput({ value, onChange, placeholder, onClear }) {
 
 function SortSelect({ value, onChange, options, icon: Icon }) {
   return (
-    <div className="flex items-center gap-2">
-      {Icon && <Icon size={14} className="text-gray-500 dark:text-gray-400" />}
+    <div className="relative group">
+      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none z-10">
+        {Icon && <Icon size={16} className="text-gray-400 group-hover:text-blue-500 transition-colors duration-300" />}
+      </div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
+        className="appearance-none pl-9 pr-9 py-2 sm:pl-10 sm:pr-10 sm:py-2.5 rounded-lg sm:rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 hover:bg-white dark:hover:bg-gray-800 hover:border-blue-400/50 transition-all duration-300 shadow-sm cursor-pointer w-full"
       >
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option key={option.value} value={option.value} className="bg-white dark:bg-gray-800">
             {option.label}
           </option>
         ))}
       </select>
+      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none z-10">
+         <ChevronDown size={14} className="text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+      </div>
     </div>
   );
 }
 
 function FilterBar({ children, className = "" }) {
   return (
-    <div className={`bg-gray-50/80 dark:bg-gray-800/40 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/60 p-4 space-y-4 ${className}`}>
-      {children}
+    <div className={`relative overflow-visible rounded-xl sm:rounded-2xl lg:rounded-3xl bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 shadow-xl shadow-gray-200/30 dark:shadow-black/30 p-2.5 sm:p-3 lg:p-4 flex flex-col gap-2 sm:gap-3 lg:gap-4 ${className}`}>
+      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/10 dark:from-gray-800/40 dark:to-gray-900/10 pointer-events-none rounded-xl sm:rounded-2xl lg:rounded-3xl" />
+      <div className="relative z-10 flex flex-col gap-2.5 sm:gap-3 w-full">
+        {children}
+      </div>
     </div>
   );
 }
 
 function FilterRow({ children, className = "" }) {
   return (
-    <div className={`flex items-center gap-3 flex-wrap ${className}`}>
+    <div className={`flex items-center gap-2 sm:gap-3 flex-wrap md:flex-nowrap w-full ${className}`}>
       {children}
     </div>
   );
@@ -149,24 +161,28 @@ function FilterRow({ children, className = "" }) {
 
 function FilterLabel({ icon: Icon, children }) {
   return (
-    <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 flex-shrink-0">
-      {Icon && <Icon size={14} />}
-      <span>{children}</span>
+    <div className="flex items-center gap-1.5 px-1 sm:px-2 text-xs sm:text-sm font-bold tracking-tight text-gray-700 dark:text-gray-300 flex-shrink-0">
+      {Icon && <Icon size={14} className="text-blue-500 dark:text-blue-400 drop-shadow-sm sm:w-4 sm:h-4 w-3.5 h-3.5" />}
+      <span className="bg-clip-text text-transparent bg-gradient-to-r from-gray-700 to-gray-500 dark:from-gray-100 dark:to-gray-400 whitespace-nowrap">{children}</span>
     </div>
   );
 }
 
 function StatsBadge({ count, label, variant = "default" }) {
   const variants = {
-    default: "bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800/40",
-    success: "bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800/40",
+    default: "bg-blue-50/80 text-blue-700 border-blue-200/60 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/40",
+    success: "bg-emerald-50/80 text-emerald-700 border-emerald-200/60 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/40",
   };
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${variants[variant]}`}>
-      {variant === "success" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-      {count} {label}
-    </span>
+    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border shadow-sm backdrop-blur-md transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 ${variants[variant]}`}>
+      {variant === "success" && <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+      </span>}
+      <span className="text-sm">{count}</span>
+      <span className="opacity-80 font-medium">{label}</span>
+    </div>
   );
 }
 
@@ -514,46 +530,52 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
 
 function CompetitorVideoCard({ video, onSchedule }) {
   return (
-    <div className="group flex flex-col rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 overflow-hidden hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all">
+    <div className="group flex flex-col rounded-2xl border border-white/40 dark:border-gray-700/50 bg-white/60 dark:bg-gray-800/40 backdrop-blur-xl overflow-hidden hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1 transition-all duration-300">
       <a
         href={`https://www.youtube.com/watch?v=${video.videoId}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="block"
+        className="block relative overflow-hidden"
       >
-        <div className="relative aspect-[16/10] bg-gray-100 dark:bg-gray-700">
+        <div className="relative aspect-[16/10] bg-gray-100 dark:bg-gray-800">
           <img
             src={video.thumbnail}
             alt=""
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           {video.duration && (
-            <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-medium text-white">
+            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-semibold tracking-wide text-white shadow-sm border border-white/10">
               {video.duration}
             </span>
           )}
           {video.isLive && (
-            <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-red-600 text-[10px] font-bold text-white inline-flex items-center gap-1">
-              <Radio size={9} /> LIVE
+            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-red-600/90 backdrop-blur-md text-[10px] font-bold text-white inline-flex items-center gap-1.5 shadow-sm border border-red-400/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> LIVE
             </span>
           )}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+             <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/90 transform scale-75 group-hover:scale-100 transition-all duration-300 border border-white/20">
+                <Play size={18} className="ml-0.5" />
+             </div>
+          </div>
         </div>
       </a>
-      <div className="flex-1 p-2">
-        <h4 className="text-[10px] font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+      <div className="flex-1 p-3 flex flex-col">
+        <h4 className="text-xs font-bold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors drop-shadow-sm">
           {video.title}
         </h4>
-        <div className="flex flex-col gap-1 text-[10px] text-gray-500 dark:text-gray-400">
+        <div className="mt-auto flex flex-col gap-2.5 text-[10px] text-gray-500 dark:text-gray-400">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-base text-gray-900 dark:text-white inline-flex items-center gap-1">
-              <Eye size={14} /> {video.viewsText || formatViews(video.views)}
+            <span className="font-extrabold text-[13px] text-gray-900 dark:text-gray-100 inline-flex items-center gap-1.5">
+              <Eye size={14} className="text-blue-500 dark:text-blue-400" /> {video.viewsText || formatViews(video.views)}
             </span>
             {onSchedule && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onSchedule(video); }}
-                className="p-1 rounded-md text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                className="p-1.5 rounded-xl bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:text-white hover:bg-gradient-to-br hover:from-blue-500 hover:to-indigo-600 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
                 title="Schedule this video"
               >
                 <CalendarPlus size={14} />
@@ -561,16 +583,13 @@ function CompetitorVideoCard({ video, onSchedule }) {
             )}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="font-medium text-gray-600 dark:text-gray-300 truncate max-w-[8rem]">
+            <span className="font-semibold text-gray-700 dark:text-gray-300 truncate max-w-[8rem] bg-gray-100/80 dark:bg-gray-700/80 px-2 py-0.5 rounded-lg border border-gray-200/50 dark:border-gray-600/50">
               {video.channelName}
             </span>
             {video.publishedText && (
-              <>
-                <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600" />
-                <span className="inline-flex items-center gap-0.5">
-                  <Clock size={9} /> {video.publishedText}
-                </span>
-              </>
+              <span className="inline-flex items-center gap-1 opacity-80 font-medium ml-auto">
+                <Clock size={10} /> {video.publishedText}
+              </span>
             )}
           </div>
         </div>
@@ -621,6 +640,17 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
       toast.error(err.response?.data?.message || "Failed to create type");
     } finally {
       setBusy(null);
+    }
+  };
+
+  const handleUpdateTypeName = async (typeId, newName) => {
+    if (!newName.trim()) return;
+    try {
+      const { data } = await api.put(`/competitor-types/${typeId}`, { name: newName });
+      setTypes((prev) => prev.map((t) => (t._id === typeId ? { ...t, name: data.name } : t)));
+      onTypesChanged();
+    } catch (err) {
+      toast.error("Failed to update type name");
     }
   };
 
@@ -704,7 +734,7 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-[90%] md:max-w-[50%] max-h-[85vh] flex flex-col rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <div>
@@ -735,8 +765,17 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
                       className="w-full flex items-center gap-3 px-4 py-3 text-left bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     >
                       {isOpen ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white flex-1">{type.name}</span>
-                      <span className="text-[10px] text-gray-400 dark:text-gray-500">{type.channels.length} channels</span>
+                      <input
+                        type="text"
+                        value={type.name}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setTypes((prev) => prev.map((t) => (t._id === type._id ? { ...t, name: e.target.value } : t)))}
+                        onBlur={(e) => handleUpdateTypeName(type._id, e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && e.target.blur()}
+                        className="text-sm font-semibold flex-1 bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 -mx-1 text-gray-900 dark:text-white placeholder-gray-400"
+                        placeholder="Type name (e.g. Social)"
+                      />
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">{type.channels.length} channels</span>
                     </button>
                     {isOpen && (
                       <div className="px-4 py-3 space-y-3 border-t border-gray-200 dark:border-gray-700">
@@ -825,10 +864,10 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
                             type="button"
                             onClick={() => handleAddChannel(type._id)}
                             disabled={busy === `add-ch-${type._id}` || !chInput.handle?.trim() || !chInput.name?.trim()}
-                            className="px-2.5 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors inline-flex items-center gap-1"
+                            className="px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
                           >
-                            {busy === `add-ch-${type._id}` ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
-                            Add
+                            {busy === `add-ch-${type._id}` ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                            Save
                           </button>
                         </div>
                       </div>
@@ -1080,35 +1119,34 @@ function CompetitorWatch() {
       </>
     );
   }
-
+  
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden gap-3">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden gap-2">
       {/* Unified Filter Section */}
-      <FilterBar className="flex-shrink-0">
+      <FilterBar className="flex-shrink-0 p-3">
         {/* Type selector and time period */}
-        <FilterRow>
-          <FilterLabel icon={Youtube}>Channel Types:</FilterLabel>
-          <div className="flex items-center gap-1.5 flex-1 overflow-x-auto">
+        <FilterRow className="gap-3">
+          <FilterLabel icon={Layers}>Category:</FilterLabel>
+          <div className="flex items-center gap-1.5 flex-1 w-full overflow-x-auto no-scrollbar pb-1 -mb-1 px-1">
             {types.map((t) => (
               <FilterChip
                 key={t._id}
                 active={activeType === t._id}
                 onClick={() => setActiveType(t._id)}
-                count={t.channels.length}
-                variant="red"
               >
                 {t.name}
               </FilterChip>
             ))}
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-500 bg-white/50 dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-700 text-[11px] sm:text-xs font-semibold tracking-wide transition-all whitespace-nowrap flex-shrink-0"
+              title="Manage channel types"
+            >
+              <Settings size={13} />
+              Manage Types
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            className="flex-shrink-0 p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            title="Manage channel types"
-          >
-            <Settings size={16} />
-          </button>
         </FilterRow>
 
         {/* Time period and view filters */}
@@ -1125,10 +1163,10 @@ function CompetitorWatch() {
             variant="red"
           />
           
-          <span className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+          <span className="hidden md:block w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0 mx-2" />
           
           <FilterLabel icon={Eye}>Views:</FilterLabel>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar pb-1 -mb-1 px-1">
             {COMP_VIEW_FILTERS.filter((vf) => vf.value === 0 || (viewCounts[vf.value] || 0) > 0).map((vf) => (
               <FilterChip
                 key={vf.value}
@@ -1145,7 +1183,7 @@ function CompetitorWatch() {
         {/* Channels, search and actions */}
         <FilterRow>
           <FilterLabel icon={Users}>Channels:</FilterLabel>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar pb-1 -mb-1 px-1">
             <FilterChip
               active={activeChannel === "all"}
               onClick={() => setActiveChannel("all")}
@@ -1163,13 +1201,6 @@ function CompetitorWatch() {
             ))}
           </div>
           
-          <SearchInput
-            value={compSearch}
-            onChange={setCompSearch}
-            placeholder="Search videos…"
-            onClear={() => setCompSearch("")}
-          />
-          
           <SortSelect
             value={compSort}
             onChange={setCompSort}
@@ -1177,15 +1208,15 @@ function CompetitorWatch() {
             icon={ArrowDownWideNarrow}
           />
           
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-4 ml-auto">
             <StatsBadge count={filtered.length} label={filtered.length === 1 ? "video" : "videos"} />
             <button
               type="button"
               onClick={() => fetchVideos(activeType, { silent: true, force: true })}
               disabled={refreshing}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-50 transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5"
             >
-              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+              <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
               Refresh
             </button>
           </div>
@@ -1193,33 +1224,40 @@ function CompetitorWatch() {
       </FilterBar>
 
       {/* Video grid */}
-      <div className="flex-1 min-h-0 overflow-y-auto relative">
+      <div className="flex-1 min-h-0 overflow-y-auto relative px-2 pb-6">
         {refreshing && (
-          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-center py-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-xs font-medium">
-              <Loader2 size={14} className="animate-spin" />
-              Refreshing videos… this may take a moment
+          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-center py-4 bg-gradient-to-b from-white/90 to-white/0 dark:from-gray-900/90 dark:to-gray-900/0 backdrop-blur-sm pointer-events-none">
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-xl border border-gray-200/50 dark:border-gray-700/50 text-blue-600 dark:text-blue-400 text-sm font-bold tracking-wide">
+              <Loader2 size={16} className="animate-spin" />
+              Refreshing videos…
             </div>
           </div>
         )}
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-3 border-red-200 dark:border-red-800 border-t-red-600 dark:border-t-red-400 rounded-full animate-spin" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">Scraping videos from channels…</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 animate-pulse">This may take up to a minute for large channel lists</p>
+          <div className="flex items-center justify-center py-32">
+            <div className="flex flex-col items-center gap-5">
+              <div className="relative flex items-center justify-center w-16 h-16">
+                 <div className="absolute inset-0 rounded-full border-[4px] border-gray-200/50 dark:border-gray-800/50"></div>
+                 <div className="absolute inset-0 rounded-full border-[4px] border-blue-500 border-t-transparent animate-spin"></div>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-1">Scraping latest videos…</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">This might take a moment, grabbing the freshest data</p>
+              </div>
             </div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Play size={24} className="text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-300">No videos found</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              Try changing the time period or channel filter
+          <div className="flex flex-col items-center justify-center py-32 text-center fade-in">
+             <div className="w-20 h-20 bg-gray-50 dark:bg-gray-800/80 rounded-full flex items-center justify-center mb-6 shadow-md border border-gray-200 dark:border-gray-700 ring-4 ring-gray-50 dark:ring-gray-900/50">
+               <Youtube size={32} className="text-gray-400 dark:text-gray-500" />
+             </div>
+            <p className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">No videos found</p>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-sm">
+              We couldn't find any videos matching your current filters. Try adjusting the time period or search query.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 pt-6">
             {filtered.map((video) => (
               <CompetitorVideoCard key={`${video.channelHandle}-${video.videoId}`} video={video} onSchedule={setScheduleVideo} />
             ))}
