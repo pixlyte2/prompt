@@ -329,9 +329,9 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
             Added to board
             <button
               className="text-blue-600 font-medium underline text-xs"
-              onClick={() => { toast.dismiss(t.id); navigate("/admin/video-board"); }}
+              onClick={() => { toast.dismiss(t.id); navigate("/admin/production-hub"); }}
             >
-              View Board
+              View Hub
             </button>
           </span>
         ),
@@ -562,33 +562,33 @@ function CompetitorVideoCard({ video, onSchedule }) {
           </div>
         </div>
       </a>
-      <div className="flex-1 p-3 flex flex-col">
-        <h4 className="text-xs font-bold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors drop-shadow-sm">
+      <div className="flex-1 p-2 flex flex-col">
+        <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors drop-shadow-sm">
           {video.title}
         </h4>
-        <div className="mt-auto flex flex-col gap-2.5 text-[10px] text-gray-500 dark:text-gray-400">
+        <div className="mt-auto flex flex-col gap-1.5 text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400">
           <div className="flex items-center justify-between">
-            <span className="font-extrabold text-[13px] text-gray-900 dark:text-gray-100 inline-flex items-center gap-1.5">
-              <Eye size={14} className="text-blue-500 dark:text-blue-400" /> {video.viewsText || formatViews(video.views)}
+            <span className="font-extrabold text-[11px] sm:text-[12px] text-gray-900 dark:text-gray-100 inline-flex items-center gap-1">
+              <Eye size={12} className="text-blue-500 dark:text-blue-400" /> {video.viewsText || formatViews(video.views)}
             </span>
             {onSchedule && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onSchedule(video); }}
-                className="p-1.5 rounded-xl bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:text-white hover:bg-gradient-to-br hover:from-blue-500 hover:to-indigo-600 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
+                className="p-1 rounded-lg bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:text-white hover:bg-gradient-to-br hover:from-blue-500 hover:to-indigo-600 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
                 title="Schedule this video"
               >
-                <CalendarPlus size={14} />
+                <CalendarPlus size={12} />
               </button>
             )}
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-gray-700 dark:text-gray-300 truncate max-w-[8rem] bg-gray-100/80 dark:bg-gray-700/80 px-2 py-0.5 rounded-lg border border-gray-200/50 dark:border-gray-600/50">
+          <div className="flex items-center gap-1 mt-0.5">
+            <span className="font-semibold text-gray-700 dark:text-gray-300 truncate max-w-[5rem] sm:max-w-[7rem] bg-gray-100/80 dark:bg-gray-700/80 px-1.5 py-0.5 rounded border border-gray-200/50 dark:border-gray-600/50">
               {video.channelName}
             </span>
             {video.publishedText && (
-              <span className="inline-flex items-center gap-1 opacity-80 font-medium ml-auto">
-                <Clock size={10} /> {video.publishedText}
+              <span className="inline-flex items-center gap-1 opacity-80 font-medium ml-auto whitespace-nowrap">
+                <Clock size={9} /> {video.publishedText}
               </span>
             )}
           </div>
@@ -1257,7 +1257,7 @@ function CompetitorWatch() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 pt-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-3 sm:gap-4 pt-6 text-xs">
             {filtered.map((video) => (
               <CompetitorVideoCard key={`${video.channelHandle}-${video.videoId}`} video={video} onSchedule={setScheduleVideo} />
             ))}
@@ -1277,9 +1277,9 @@ function CompetitorWatch() {
   );
 }
 
-export default function TrendPulse() {
+export default function ViralLens() {
   return (
-    <AdminLayout title="TrendPulse" titleInfo="Competitor video analysis & tracking" icon={Youtube} contentFit>
+    <AdminLayout title="ViralLens" titleInfo="Competitor video analysis & tracking" icon={Youtube} contentFit>
       <div className="flex flex-col h-full min-h-0 overflow-hidden w-full max-w-[1600px] mx-auto">
         <CompetitorWatch />
       </div>

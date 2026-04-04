@@ -16,8 +16,8 @@ import ViewerPrompts from "./pages/viewer/Prompts";
 import Users from "./pages/admin/Users";
 import Dashboard from "./pages/superadmin/Dashboard";
 import PromptTypes from "./pages/admin/PromptTypes";
-import TrendPulse from "./pages/admin/TrendPulse";
-import VideoBoard from "./pages/admin/VideoBoard";
+import ViralLens from "./pages/admin/ViralLens";
+import ProductionHub from "./pages/admin/ProductionHub";
 
 export default function App() {
   return (
@@ -128,19 +128,19 @@ export default function App() {
         />
 
         <Route
-          path="/admin/trend-pulse"
+          path="/admin/viral-lens"
           element={
             <PrivateRoute allowedRoles={["admin"]}>
-              <TrendPulse />
+              <ViralLens />
             </PrivateRoute>
           }
         />
 
         <Route
-          path="/admin/video-board"
+          path="/admin/production-hub"
           element={
             <PrivateRoute allowedRoles={["admin"]}>
-              <VideoBoard />
+              <ProductionHub />
             </PrivateRoute>
           }
         />

@@ -48,7 +48,7 @@ function FilterChip({ active, onClick, children, count, variant = "default" }) {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border text-[11px] sm:text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap ${variants[variant]}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border text-[10px] sm:text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap ${variants[variant]}`}
     >
       {children}
       {count !== undefined && count > 0 && (
@@ -75,7 +75,7 @@ function FilterSegment({ options, value, onChange, variant = "default" }) {
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`relative flex items-center justify-center px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
+          className={`relative flex items-center justify-center px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-300 ${
             value === option.value
               ? activeVariants[variant]
               : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
@@ -100,23 +100,23 @@ function FilterSegment({ options, value, onChange, variant = "default" }) {
 function SearchInput({ value, onChange, placeholder, onClear }) {
   return (
     <div className="relative flex-1 min-w-[200px] max-w-md group">
-      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-        <Search size={16} className="text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <Search size={14} className="text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
       </div>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-9 pr-9 py-2 sm:pl-10 sm:pr-10 sm:py-2.5 rounded-lg sm:rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-xs sm:text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 dark:focus:border-blue-500/50 hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 shadow-sm"
+        className="w-full pl-8 pr-8 py-1.5 sm:pl-9 sm:pr-9 sm:py-2 rounded-lg sm:rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-[11px] sm:text-xs text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 dark:focus:border-blue-500/50 hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 shadow-sm"
       />
       {value && (
         <button
           type="button"
           onClick={onClear}
-          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
+          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
         >
-          <X size={16} />
+          <X size={14} />
         </button>
       )}
     </div>
@@ -125,9 +125,9 @@ function SearchInput({ value, onChange, placeholder, onClear }) {
 
 function FilterBar({ children, className = "" }) {
   return (
-    <div className={`relative overflow-visible rounded-xl sm:rounded-2xl lg:rounded-[2rem] bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 shadow-xl shadow-gray-200/30 dark:shadow-black/30 p-3 sm:p-4 lg:p-5 flex flex-col gap-3 sm:gap-4 lg:gap-5 ${className}`}>
-      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/10 dark:from-gray-800/40 dark:to-gray-900/10 pointer-events-none rounded-xl sm:rounded-2xl lg:rounded-[2rem]" />
-      <div className="relative z-10 flex flex-col gap-3 sm:gap-4 lg:gap-5 w-full">
+    <div className={`relative overflow-visible rounded-xl sm:rounded-2xl lg:rounded-3xl bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 shadow-xl shadow-gray-200/30 dark:shadow-black/30 p-2 sm:p-2.5 flex flex-col gap-2 ${className}`}>
+      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/10 dark:from-gray-800/40 dark:to-gray-900/10 pointer-events-none rounded-xl sm:rounded-2xl lg:rounded-3xl" />
+      <div className="relative z-10 flex flex-col gap-2 w-full">
         {children}
       </div>
     </div>
@@ -136,7 +136,7 @@ function FilterBar({ children, className = "" }) {
 
 function FilterRow({ children, className = "" }) {
   return (
-    <div className={`flex items-center gap-2 sm:gap-3 lg:gap-4 flex-wrap w-full ${className}`}>
+    <div className={`flex items-center gap-1 sm:gap-2 flex-wrap w-full ${className}`}>
       {children}
     </div>
   );
@@ -144,8 +144,8 @@ function FilterRow({ children, className = "" }) {
 
 function FilterLabel({ icon: Icon, children }) {
   return (
-    <div className="flex items-center gap-1.5 px-1 sm:px-2 text-xs sm:text-sm font-bold tracking-tight text-gray-700 dark:text-gray-300 flex-shrink-0">
-      {Icon && <Icon size={14} className="text-blue-500 dark:text-blue-400 drop-shadow-sm sm:w-4 sm:h-4 w-3.5 h-3.5" />}
+    <div className="flex items-center gap-1.5 px-1 sm:px-1.5 text-[11px] sm:text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300 flex-shrink-0">
+      {Icon && <Icon size={12} className="text-blue-500 dark:text-blue-400 drop-shadow-sm sm:w-3.5 sm:h-3.5 w-3 h-3" />}
       <span className="bg-clip-text text-transparent bg-gradient-to-r from-gray-700 to-gray-500 dark:from-gray-100 dark:to-gray-400 whitespace-nowrap">{children}</span>
     </div>
   );
@@ -224,7 +224,7 @@ function exportToCsv(tasks) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `video-board-${toDateKey(new Date())}.csv`;
+  a.download = `production-hub-${toDateKey(new Date())}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -294,13 +294,13 @@ function getTaskThumbnail(task) {
 /* ─── Stat Card ─── */
 function StatCard({ icon: Icon, label, count, color, bgColor }) {
   return (
-    <div className={`flex items-center gap-3 rounded-2xl px-5 py-4 ${bgColor} border border-white/40 dark:border-gray-700/40 shadow-lg shadow-gray-200/20 dark:shadow-black/20 min-w-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl`}>
-      <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${color} shadow-inner`}>
-        <Icon size={22} className="drop-shadow-sm" />
+    <div className={`flex items-center gap-1.5 rounded bg-transparent border-none min-w-0 transition-opacity hover:opacity-80`}>
+      <div className={`flex-shrink-0 w-5 h-5 rounded flex items-center justify-center ${color} ring-1 ring-inset ring-white/10`}>
+        <Icon size={12} />
       </div>
-      <div className="min-w-0 flex flex-col justify-center">
-        <p className="text-2xl font-black text-gray-900 dark:text-white leading-none tabular-nums tracking-tight">{count}</p>
-        <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mt-1 truncate uppercase tracking-widest">{label}</p>
+      <div className="flex items-baseline gap-1 min-w-0">
+        <span className="text-[14px] sm:text-[16px] font-black text-gray-900 dark:text-white tabular-nums leading-none">{count}</span>
+        <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter truncate">{label}</span>
       </div>
     </div>
   );
@@ -341,6 +341,11 @@ function PlatformIcon({ platform, size = 8 }) {
 
 /* ─── Inline Row for a single task ─── */
 function TaskRow({ task, onMove, onDelete, onEdit }) {
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData("taskId", task._id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
   const meta = STATUS_META[task.status] || STATUS_META.todo;
   const platform = task.platform || "youtube";
   const taskUrl = getTaskUrl(task);
@@ -354,9 +359,13 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
   };
 
   return (
-    <div className="group flex items-center gap-3 px-4 py-2.5 bg-white dark:bg-gray-800/80 rounded-xl border border-gray-100 dark:border-gray-700/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:shadow-md hover:-translate-y-px">
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      className="group flex items-center gap-2 px-2 py-0.5 sm:py-1 bg-white dark:bg-gray-800/80 rounded-lg border border-gray-100 dark:border-gray-700/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:shadow-sm cursor-grab active:cursor-grabbing"
+    >
       {/* Checkbox */}
-      <div className="scale-110">
+      <div className="scale-90">
         <StatusCheckbox status={task.status} onClick={handleStatusClick} />
       </div>
 
@@ -366,14 +375,14 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
           href={taskUrl || "#"}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-shrink-0 w-16 h-10 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 relative group/thumb shadow-sm"
+          className="flex-shrink-0 w-12 h-7 sm:w-14 sm:h-8 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 relative group/thumb shadow-sm"
         >
           <img src={thumb} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-110" loading="lazy" />
-          <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/30 transition-colors flex items-center justify-center">
-            <ExternalLink size={12} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity scale-75 group-hover/thumb:scale-100" />
+          <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors flex items-center justify-center">
+            <ExternalLink size={10} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity" />
           </div>
           {task.duration && (
-            <span className="absolute bottom-0 right-0 px-0.5 py-px bg-black/75 text-[7px] font-medium text-white rounded-tl">
+            <span className="absolute bottom-0 right-0 px-0.5 py-px bg-black/75 text-[6px] font-medium text-white rounded-tl">
               {task.duration}
             </span>
           )}
@@ -383,29 +392,29 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
           href={taskUrl || "#"}
           target="_blank"
           rel="noopener noreferrer"
-          className={`flex-shrink-0 w-14 h-9 rounded flex items-center justify-center ${platMeta.bg}`}
+          className={`flex-shrink-0 w-10 h-6 sm:w-12 sm:h-7.5 rounded flex items-center justify-center ${platMeta.bg}`}
         >
-          <PlatformIcon platform={platform} size={18} />
+          <PlatformIcon platform={platform} size={14} />
         </a>
       )}
 
       {/* Title + channel */}
       <div className="flex-1 min-w-0">
-        <p className={`text-xs font-semibold leading-snug truncate ${task.status === "completed" ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}>
+        <p className={`text-[11px] sm:text-xs font-semibold leading-none truncate ${task.status === "completed" ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}>
           {task.title}
         </p>
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <PlatformIcon platform={platform} />
+        <div className="flex items-center gap-1.5 mt-0.5 opacity-80 scale-95 origin-left">
+          <PlatformIcon platform={platform} size={8} />
           {task.channelName && (
-            <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[10rem]">
+            <span className="text-[8px] text-gray-500 dark:text-gray-400 truncate max-w-[8rem]">
               {task.channelName}
             </span>
           )}
           {task.viewsText && (
             <>
               <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
-              <span className="text-[9px] text-gray-500 dark:text-gray-400 inline-flex items-center gap-0.5">
-                <Eye size={8} /> {task.viewsText}
+              <span className="text-[8px] text-gray-500 dark:text-gray-400 inline-flex items-center gap-0.5">
+                <Eye size={7} /> {task.viewsText}
               </span>
             </>
           )}
@@ -419,13 +428,27 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
         </span>
       )}
 
+      {/* Assigned Users — full name! */}
+      {task.assignedTo && task.assignedTo.length > 0 && (
+        <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
+          {task.assignedTo.map((name) => (
+            <span
+              key={name}
+              className={`inline-flex px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tight border border-transparent shadow-sm ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+            >
+              {name}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Channel type pill */}
       <span className="hidden sm:inline-flex text-[9px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 flex-shrink-0">
         {task.channelType}
       </span>
 
       {/* Status text */}
-      <span className={`hidden md:inline-flex items-center gap-1 text-[9px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${meta.pill}`}>
+      <span className={`hidden md:inline-flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${meta.pill}`}>
         {meta.label}
       </span>
 
@@ -673,8 +696,25 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
   );
 }
 /* ─── Date Group ─── */
-function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, defaultOpen }) {
+function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, defaultOpen }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [isOver, setIsOver] = useState(false);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setIsOver(true);
+  };
+
+  const handleDragLeave = () => setIsOver(false);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsOver(false);
+    const taskId = e.dataTransfer.getData("taskId");
+    if (taskId) onDropTask(taskId, dateKey);
+  };
+
   const cat = getDateCategory(dateKey);
   const completed = tasks.filter((t) => t.status === "completed").length;
   const inProgress = tasks.filter((t) => t.status === "in_progress").length;
@@ -692,10 +732,15 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, defaul
     "bg-gray-50/60 dark:bg-gray-800/30";
 
   return (
-    <div className={`rounded-2xl border border-gray-100 dark:border-gray-700 border-l-[4px] ${borderColor} overflow-hidden shadow-md shadow-gray-200/20 dark:shadow-black/20 bg-white/40 dark:bg-gray-900/40 backdrop-blur-sm transition-all duration-300`}>
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`rounded-2xl border border-gray-100 dark:border-gray-700 border-l-[4px] ${borderColor} overflow-hidden shadow-md shadow-gray-200/20 dark:shadow-black/20 bg-white/40 dark:bg-gray-900/40 backdrop-blur-sm transition-all duration-300 ${isOver ? "ring-2 ring-blue-500 ring-inset scale-[1.01] brightness-105" : ""}`}
+    >
       <button
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center gap-4 px-4 py-3.5 ${headerBg} backdrop-blur-md transition-colors hover:brightness-95 `}
+        className={`w-full flex items-center gap-3 px-3 py-1.5 sm:py-2 ${headerBg} backdrop-blur-md transition-colors hover:brightness-95 `}
       >
         <span className="flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-300" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
           <ChevronRight size={16} />
@@ -737,6 +782,11 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, defaul
           {tasks.map((t) => (
             <TaskRow key={t._id} task={t} onMove={onMove} onDelete={onDelete} onEdit={onEdit} />
           ))}
+          {tasks.length === 0 && (
+            <div className="py-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[10px] text-gray-400">
+              No tasks for this date
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1030,10 +1080,25 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
 }
 
 /* ─── Main Board ─── */
-export default function VideoBoard() {
+export default function ProductionHub() {
   const [tasks, setTasks] = useState([]);
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const scrollRef = useCallback((node) => {
+    if (node !== null) {
+      node.addEventListener("dragover", (e) => {
+        const threshold = 60;
+        const rect = node.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        
+        if (y < threshold) {
+          node.scrollTop -= 15;
+        } else if (y > rect.height - threshold) {
+          node.scrollTop += 15;
+        }
+      });
+    }
+  }, []);
   const [activeType, setActiveType] = useState("all");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -1095,6 +1160,23 @@ export default function VideoBoard() {
     setShowModal(false);
     setEditTask(null);
   }, []);
+
+  const handleDropTask = useCallback(async (taskId, newDate) => {
+    // If newDate is null (no-date group), we might handle it as clearing the date
+    const dateVal = newDate === "no-date" ? null : newDate;
+    
+    setTasks((prev) =>
+      prev.map((t) => (t._id === taskId ? { ...t, scheduledDate: dateVal } : t))
+    );
+
+    try {
+      await api.put(`/video-tasks/${taskId}`, { scheduledDate: dateVal });
+      toast.success(`Moved to ${newDate === "no-date" ? "Backlog" : formatDateLabel(newDate).split('—')[0].trim()}`);
+    } catch {
+      toast.error("Failed to move task");
+      fetchTasks();
+    }
+  }, [fetchTasks]);
 
   const handlePreview = useCallback((dateKey, tasks) => {
     setPreviewModal({ open: true, tasks, dateKey });
@@ -1168,102 +1250,114 @@ export default function VideoBoard() {
   const typeNames = useMemo(() => types.map((t) => t.name), [types]);
 
   return (
-    <AdminLayout title="Video Board" titleInfo="Track & manage scheduled content" icon={LayoutDashboard} contentFit>
-      <div className="flex flex-col h-full min-h-0 overflow-hidden w-full max-w-[1400px] mx-auto gap-3">
+    <AdminLayout title="Production Hub" titleInfo="Track & manage scheduled content" icon={LayoutDashboard} contentFit>
+      <div className="flex flex-col h-full min-h-0 overflow-hidden w-full max-w-[1400px] mx-auto gap-1.5 sm:gap-2">
 
-        {/* Stats */}
+        {/* Stats & Search Ribbon */}
         {!loading && tasks.length > 0 && (
-          <div className="flex-shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            <StatCard icon={AlertTriangle} label="Overdue" count={stats.overdue} color="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400" bgColor="bg-red-50/50 dark:bg-red-950/20 border-red-200/50 dark:border-red-800/30" />
-            <StatCard icon={Calendar} label="Today" count={stats.today} color="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" bgColor="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/50 dark:border-blue-800/30" />
-            <StatCard icon={TrendingUp} label="This Week" count={stats.thisWeek} color="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" bgColor="bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-800/30" />
-            <StatCard icon={ListChecks} label="Backlog" count={stats.backlog} color="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300" bgColor="bg-gray-50/50 dark:bg-gray-800/30 border-gray-200/50 dark:border-gray-700/30" />
-            <StatCard icon={CheckCircle2} label="Completed" count={stats.completed} color="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" bgColor="bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/30" />
-          </div>
-        )}
-
-        {/* Unified Filter Section */}
-        <FilterBar className="flex-shrink-0">
-          {/* View mode and channel type filters */}
-          <FilterRow>
-            <FilterLabel icon={Filter}>View:</FilterLabel>
-            <FilterSegment
-              options={[
-                { value: "schedule", label: "Schedule", count: stats.backlog },
-                { value: "completed", label: "Completed", count: stats.completed }
-              ]}
-              value={viewMode}
-              onChange={setViewMode}
-              variant="success"
-            />
-            
-            <span className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
-            
-            <FilterLabel icon={LayoutDashboard}>Channel Types:</FilterLabel>
-            <div className="flex items-center gap-1.5 flex-1 overflow-x-auto">
-              <FilterChip
-                active={activeType === "all"}
-                onClick={() => setActiveType("all")}
-                count={tasks.length}
-              >
-                All
-              </FilterChip>
-              {uniqueTypes.map((ct) => {
-                const count = tasks.filter(t => t.channelType === ct).length;
-                return (
-                  <FilterChip
-                    key={ct}
-                    active={activeType === ct}
-                    onClick={() => setActiveType(ct)}
-                    count={count}
-                  >
-                    {ct}
-                  </FilterChip>
-                );
-              })}
+          <div className="flex-shrink-0 flex items-center justify-between gap-4 px-3 py-1.5 bg-gray-50/50 dark:bg-gray-800/30 rounded-lg border border-gray-100/50 dark:border-gray-700/50">
+            <div className="flex items-center gap-4 sm:gap-6">
+              <StatCard icon={AlertTriangle} label="Overdue" count={stats.overdue} color="text-red-500" />
+              <StatCard icon={Calendar} label="Today" count={stats.today} color="text-blue-500" />
+              <StatCard icon={TrendingUp} label="Week" count={stats.thisWeek} color="text-amber-500" />
+              <StatCard icon={ListChecks} label="Backlog" count={stats.backlog} color="text-gray-500" />
+              <StatCard icon={CheckCircle2} label="Done" count={stats.completed} color="text-emerald-500" />
             </div>
-          </FilterRow>
-          
-          {/* Search and actions */}
-          <FilterRow>
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Search tasks, channels, notes…"
-              onClear={() => setSearch("")}
-            />
-            
-            <div className="flex items-center gap-3 ml-auto">
-              <StatsBadge count={filtered.length} label={filtered.length === 1 ? "task" : "tasks"} />
-              
-              <button
-                onClick={() => { setEditTask(null); setShowModal(true); }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm"
-              >
-                <Plus size={14} />
-                Add Content
-              </button>
-              
-              {filtered.length > 0 && (
-                <button
-                  onClick={() => exportToCsv(filtered)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors shadow-sm"
-                >
-                  <Download size={14} />
-                  Export
-                </button>
-              )}
-              
+
+            <div className="hidden sm:flex items-center gap-2 flex-grow max-w-sm ml-auto">
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="Search..."
+                onClear={() => setSearch("")}
+              />
               <button
                 onClick={fetchTasks}
                 disabled={loading}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-50 transition-colors shadow-sm"
+                className="p-1 rounded text-gray-500 hover:text-blue-600 transition-colors"
+                title="Refresh"
               >
                 <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-                Refresh
               </button>
             </div>
-          </FilterRow>
+          </div>
+        )}
+
+        {/* Search for mobile only — visible in filter bar */}
+        <div className="sm:hidden -mb-1 px-1">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search tasks..."
+            onClear={() => setSearch("")}
+          />
+        </div>
+
+        {/* Unified Filter Section */}
+        <FilterBar className="flex-shrink-0 p-1.5 sm:p-2">
+          {/* View mode, types, search and actions all on one row when possible */}
+          <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <FilterLabel icon={Filter}>View:</FilterLabel>
+              <FilterSegment
+                options={[
+                  { value: "schedule", label: "Schedule", count: stats.backlog },
+                  { value: "completed", label: "Completed", count: stats.completed }
+                ]}
+                value={viewMode}
+                onChange={setViewMode}
+                variant="success"
+              />
+            </div>
+            
+            <span className="hidden lg:block w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
+            
+            <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
+              <FilterLabel icon={LayoutDashboard}>Types:</FilterLabel>
+              <div className="flex items-center gap-1 flex-1 overflow-x-auto no-scrollbar pb-0.5 -mb-0.5 px-0.5">
+                <FilterChip
+                  active={activeType === "all"}
+                  onClick={() => setActiveType("all")}
+                  count={tasks.length}
+                >
+                  All
+                </FilterChip>
+                {uniqueTypes.map((ct) => {
+                  const count = tasks.filter(t => t.channelType === ct).length;
+                  return (
+                    <FilterChip
+                      key={ct}
+                      active={activeType === ct}
+                      onClick={() => setActiveType(ct)}
+                      count={count}
+                    >
+                      {ct}
+                    </FilterChip>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 mt-1 md:mt-0 ml-auto">
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <button
+                  onClick={() => { setEditTask(null); setShowModal(true); }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm active:scale-95"
+                >
+                  <Plus size={12} />
+                  Add
+                </button>
+                
+                <button
+                  onClick={() => exportToCsv(filtered)}
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors"
+                  title="Export CSV"
+                >
+                  <Download size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
         </FilterBar>
 
         {/* Content */}
@@ -1281,7 +1375,7 @@ export default function VideoBoard() {
             </div>
             <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No tasks yet</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs">
-              Schedule content from TrendPulse or add manually
+              Schedule content from ViralLens or add manually
             </p>
             <button
               onClick={() => { setEditTask(null); setShowModal(true); }}
@@ -1291,7 +1385,7 @@ export default function VideoBoard() {
             </button>
           </div>
         ) : viewMode === "schedule" ? (
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
             {dateGroups.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <CheckCircle2 size={32} className="text-emerald-400 mb-3" />
@@ -1308,6 +1402,7 @@ export default function VideoBoard() {
                   onDelete={handleDelete}
                   onEdit={handleEdit}
                   onPreview={handlePreview}
+                  onDropTask={handleDropTask}
                   defaultOpen={getDateCategory(g.key) === "overdue" || getDateCategory(g.key) === "today" || g.key === "no-date"}
                 />
               ))

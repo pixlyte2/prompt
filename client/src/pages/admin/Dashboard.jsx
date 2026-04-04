@@ -58,6 +58,15 @@ function previewResultText(result) {
   return plain.length > PREVIEW_LEN ? `${plain.substring(0, PREVIEW_LEN)}…` : plain;
 }
 
+function getTaskUrl(task) {
+  if (task.url) return task.url;
+  if (task.videoId && (task.platform === "youtube" || !task.platform)) {
+    return `https://www.youtube.com/watch?v=${task.videoId}`;
+  }
+  return null;
+}
+
+
 const badgeClass = {
   blue: "text-[10px] font-medium px-1.5 py-0.5 rounded truncate bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200 max-w-[7rem]",
   violet: "text-[10px] font-medium px-1.5 py-0.5 rounded truncate bg-violet-50 text-violet-700 dark:bg-violet-900/50 dark:text-violet-200 max-w-[7rem]",
@@ -148,21 +157,17 @@ function StatSegment({ index, label, icon: Icon, path, bar, iconBg, fg, value, o
     <button
       type="button"
       onClick={() => onNavigate(path)}
-      className={`group relative flex items-center gap-2.5 sm:gap-3 px-3 py-2.5 sm:px-4 sm:py-3 text-left transition-colors hover:bg-gray-50/95 dark:hover:bg-gray-700/35 active:bg-gray-100/80 dark:active:bg-gray-700/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${segmentDividerClass(index)}`}
+      className={`group relative flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-1.5 text-left transition-all duration-300 hover:bg-white/40 dark:hover:bg-gray-700/40 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${segmentDividerClass(index)}`}
     >
-      <span className={`absolute left-0 top-2 bottom-2 w-0.5 rounded-full ${bar} opacity-90`} aria-hidden />
-      <div className={`ml-1 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
-        <Icon size={16} className={fg} aria-hidden />
+      <div className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md ${iconBg} shadow-sm transition-transform duration-300 group-hover:scale-110`}>
+        <Icon size={12} className={fg} aria-hidden />
       </div>
       <div className="min-w-0 flex-1 text-left">
-        <p className="text-lg sm:text-xl font-semibold tabular-nums leading-none text-gray-900 dark:text-white">{value}</p>
-        <p className="text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5 truncate">{label}</p>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-base sm:text-lg font-black tabular-nums leading-none text-gray-900 dark:text-white tracking-tight">{value}</span>
+          <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest truncate">{label}</span>
+        </div>
       </div>
-      <ChevronRight
-        size={16}
-        className="flex-shrink-0 text-gray-300 dark:text-gray-600 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-500 dark:group-hover:text-blue-400"
-        aria-hidden
-      />
     </button>
   );
 }
@@ -184,6 +189,19 @@ export default function Dashboard() {
   const [historyModal, setHistoryModal] = useState(false);
   const [historyItemId, setHistoryItemId] = useState(null);
   const [historyRev, setHistoryRev] = useState(0);
+  const [todayTasks, setTodayTasks] = useState([]);
+
+  const loadTodayTasks = useCallback(async () => {
+    try {
+      const { data } = await api.get("/video-tasks");
+      const dt = new Date();
+      const today = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+      const todayList = data.filter(t => t.scheduledDate && t.scheduledDate.startsWith(today));
+      setTodayTasks(todayList);
+    } catch (err) {
+      console.error("Failed to load today's tasks", err);
+    }
+  }, []);
 
   useEffect(() => {
     const onStorage = (e) => {
@@ -219,7 +237,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadStats();
-  }, [loadStats]);
+    loadTodayTasks();
+  }, [loadStats, loadTodayTasks]);
+
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
@@ -265,11 +285,12 @@ export default function Dashboard() {
             <StatsSkeleton />
           ) : (
             <motion.div
-              initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              layout
+              initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
             >
-              <div className="rounded-xl border border-gray-200/90 dark:border-gray-700/90 bg-white dark:bg-gray-800/50 shadow-sm overflow-hidden ring-1 ring-black/[0.03] dark:ring-white/[0.04]">
+              <div className="rounded-2xl border border-white/60 dark:border-gray-700/60 bg-white/40 dark:bg-gray-800/40 backdrop-blur-xl shadow-xl shadow-gray-200/20 dark:shadow-black/20 overflow-hidden ring-1 ring-black/[0.03] dark:ring-white/[0.05]">
                 <div className="grid grid-cols-2 sm:grid-cols-4 sm:flex sm:flex-row">
                   {statItems.map(({ key, label, icon, path, bar, iconBg, fg }, index) => (
                     <StatSegment
@@ -293,8 +314,8 @@ export default function Dashboard() {
 
         {/* ── Activity — fills all remaining viewport ── */}
         <section className="flex-1 min-h-0 flex flex-col overflow-hidden" aria-labelledby="dash-activity">
-          <div className="flex items-center justify-between mb-1.5 flex-shrink-0">
-            <h2 id="dash-activity" className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <div className="flex items-center justify-between mb-1 flex-shrink-0">
+            <h2 id="dash-activity" className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Recent Activity
             </h2>
             {history.length > 0 && (
@@ -339,7 +360,83 @@ export default function Dashboard() {
               </button>
             </div>
           ) : (
-            <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
+            <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
+              {/* Assigned to Today Breakdown & Details */}
+              <div className="flex-shrink-0 flex flex-col gap-2.5 mb-3 px-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">Live: Today's Assignments</span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[240px] overflow-hidden">
+                  {["Pooja", "Soundarya"].map(name => {
+                    const myTasks = todayTasks.filter(t => {
+                      if (!t.assignedTo) return false;
+                      const assignees = Array.isArray(t.assignedTo) ? t.assignedTo : [t.assignedTo];
+                      return assignees.some(a => a.toLowerCase() === name.toLowerCase());
+                    });
+                    const count = myTasks.length;
+                    if (count === 0) return null;
+                    const isPooja = name === "Pooja";
+                    const colorClasses = isPooja 
+                      ? "bg-gradient-to-br from-pink-50/80 to-rose-50/30 border-pink-100/60 text-pink-700 dark:from-pink-950/20 dark:to-rose-950/10 dark:border-pink-900/40 dark:text-pink-300" 
+                      : "bg-gradient-to-br from-purple-50/80 to-indigo-50/30 border-purple-100/60 text-purple-700 dark:from-purple-950/20 dark:to-indigo-950/10 dark:border-purple-900/40 dark:text-purple-300";
+                    
+                    const dotClass = isPooja ? "bg-pink-500" : "bg-purple-500";
+                    
+                    return (
+                      <motion.div 
+                        initial={{ opacity: 0, x: isPooja ? -10 : 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        key={name} 
+                        className={`flex flex-col h-full min-w-0 rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm transition-all hover:shadow-md hover:scale-[1.01] ${colorClasses}`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-black uppercase tracking-widest">{name}</span>
+                          <span className="text-[11px] font-black tabular-nums bg-white/70 dark:bg-black/40 px-2.5 py-0.5 rounded-full ring-1 ring-inset ring-white/20 shadow-inner">{count}</span>
+                        </div>
+                        <div className="flex-1 overflow-y-auto no-scrollbar space-y-1.5 pt-1">
+                          {myTasks.map(task => {
+                            const taskUrl = getTaskUrl(task);
+                            const format = task.contentFormat || "";
+                            const fStr = format.toString().toLowerCase();
+                            const isShort = fStr.includes("short");
+                            const isLong = fStr.includes("long");
+                            
+                            const formatLabel = isShort ? "Short" : isLong ? "Long" : "";
+                            const formatColors = isShort 
+                              ? "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800" 
+                              : "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-800";
+                            
+                            return (
+                              <div key={task._id} className="flex items-center gap-2 group/task rounded-xl px-2.5 py-1.5 transition-all hover:bg-white/60 dark:hover:bg-black/30">
+                                <span className={`w-2 h-2 rounded-full ${dotClass} flex-shrink-0 shadow-sm ring-2 ring-white dark:ring-gray-900`} />
+                                
+                                <a 
+                                  href={taskUrl || "#"} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="flex-1 min-w-0 flex items-center justify-between gap-3 group/link"
+                                >
+                                  <p className="text-[11px] font-bold leading-tight truncate opacity-90 group-hover:opacity-100 group-hover/link:text-blue-600 dark:group-hover/link:text-blue-400 group-hover/link:translate-x-0.5 transition-all">
+                                    {task.title}
+                                  </p>
+                                  {formatLabel && (
+                                    <span className={`flex-shrink-0 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter border shadow-sm ${formatColors}`}>
+                                      {formatLabel}
+                                    </span>
+                                  )}
+                                </a>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Last-session banner */}
               <button
                 type="button"
@@ -377,8 +474,8 @@ export default function Dashboard() {
                       Inputs
                     </span>
                   </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-0.5">
-                    {history.map((item) => (
+                  <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-0.5">
+                    {history.slice(0, 2).map((item) => (
                       <RecentHistoryRow
                         key={item.id}
                         item={item}
@@ -400,8 +497,8 @@ export default function Dashboard() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-0.5">
-                    {history.map((item) => (
+                  <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-0.5">
+                    {history.slice(0, 2).map((item) => (
                       <RecentHistoryRow
                         key={`gen-${item.id}`}
                         item={item}
