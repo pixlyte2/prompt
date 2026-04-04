@@ -421,14 +421,26 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
         </div>
       </div>
 
-      {/* Content format pill — always visible */}
+      {/* Content format pills */}
       {task.contentFormat && (
-        <span className={`inline-flex text-[9px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${FORMAT_PILL[task.contentFormat] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}>
-          {FORMAT_OPTIONS.find((f) => f.value === task.contentFormat)?.label || task.contentFormat}
-        </span>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).map(fmt => (
+            <span
+              key={fmt}
+              className={`inline-flex text-[8px] font-black uppercase tracking-tight px-1.5 py-0.5 rounded-full shadow-sm border border-transparent ${FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+            >
+              {FORMAT_OPTIONS.find((f) => f.value === fmt)?.label || fmt}
+            </span>
+          ))}
+        </div>
       )}
 
-      {/* Assigned Users — full name! */}
+      {/* Channel type pill */}
+      <span className="hidden sm:inline-flex text-[8px] font-black uppercase tracking-tight px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 flex-shrink-0 shadow-sm">
+        {task.channelType}
+      </span>
+
+      {/* Assigned Users — now at the end! */}
       {task.assignedTo && task.assignedTo.length > 0 && (
         <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
           {task.assignedTo.map((name) => (
@@ -442,13 +454,8 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
         </div>
       )}
 
-      {/* Channel type pill */}
-      <span className="hidden sm:inline-flex text-[9px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 flex-shrink-0">
-        {task.channelType}
-      </span>
-
       {/* Status text */}
-      <span className={`hidden md:inline-flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${meta.pill}`}>
+      <span className={`hidden md:inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-full flex-shrink-0 shadow-sm border border-transparent ${meta.pill}`}>
         {meta.label}
       </span>
 
@@ -1225,7 +1232,12 @@ export default function ProductionHub() {
       map[key].push(t);
     });
     Object.values(map).forEach((arr) =>
-      arr.sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status)),
+      arr.sort((a, b) => {
+        const aAss = (a.assignedTo && a.assignedTo.length > 0) ? a.assignedTo[0].toLowerCase() : "zzzz";
+        const bAss = (b.assignedTo && b.assignedTo.length > 0) ? b.assignedTo[0].toLowerCase() : "zzzz";
+        if (aAss !== bAss) return aAss.localeCompare(bAss);
+        return STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
+      })
     );
     return Object.keys(map)
       .sort((a, b) => {
@@ -1375,7 +1387,7 @@ export default function ProductionHub() {
             </div>
             <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No tasks yet</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs">
-              Schedule content from ViralLens or add manually
+              Schedule content from Trending Hub or add manually
             </p>
             <button
               onClick={() => { setEditTask(null); setShowModal(true); }}

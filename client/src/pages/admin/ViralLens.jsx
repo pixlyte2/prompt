@@ -1279,7 +1279,7 @@ function CompetitorWatch() {
 
 export default function ViralLens() {
   return (
-    <AdminLayout title="ViralLens" titleInfo="Competitor video analysis & tracking" icon={Youtube} contentFit>
+    <AdminLayout title="Trending Hub" titleInfo="Competitor video analysis & tracking" icon={Youtube} contentFit>
       <div className="flex flex-col h-full min-h-0 overflow-hidden w-full max-w-[1600px] mx-auto">
         <CompetitorWatch />
       </div>

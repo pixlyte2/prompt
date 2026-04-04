@@ -418,7 +418,7 @@ export default function Dashboard() {
                                   rel="noopener noreferrer"
                                   className="flex-1 min-w-0 flex items-center justify-between gap-3 group/link"
                                 >
-                                  <p className="text-[11px] font-bold leading-tight truncate opacity-90 group-hover:opacity-100 group-hover/link:text-blue-600 dark:group-hover/link:text-blue-400 group-hover/link:translate-x-0.5 transition-all">
+                                  <p className={`text-[11px] font-bold leading-tight truncate transition-all group-hover/link:translate-x-0.5 ${task.status === "completed" ? "line-through text-gray-400 dark:text-gray-500 opacity-60" : "text-gray-900 dark:text-white opacity-90 group-hover:opacity-100 group-hover/link:text-blue-600 dark:group-hover/link:text-blue-400"}`}>
                                     {task.title}
                                   </p>
                                   {formatLabel && (
