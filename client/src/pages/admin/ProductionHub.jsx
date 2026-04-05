@@ -731,7 +731,7 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
 
   const assignmentSummary = useMemo(() => {
     const summary = {};
-    const unassigned = { short: 0, long: 0 };
+    const unassigned = { short: 0, long: 0, count: 0 };
     let hasUnassigned = false;
 
     tasks.forEach(t => {
@@ -804,18 +804,29 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
           <div className="flex flex-wrap items-center gap-2.5">
             {Object.entries(assignmentSummary).map(([name, counts]) => {
               const isUn = name === "Unassigned";
-              const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : "bg-purple-400");
+              const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "soundarya" ? "bg-purple-400" : "bg-blue-400"));
+              const textColor = isUn ? "text-amber-600 dark:text-amber-400" : (ASSIGNED_PILL[name.toLowerCase()]?.split(' ').pop() || "text-gray-700 dark:text-gray-300");
               
               return (
-                <div key={name} className="group/pill inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/80 dark:bg-gray-800/80 border border-white dark:border-gray-700 shadow-sm backdrop-blur-md transition-all hover:shadow-md hover:-translate-y-px">
-                  <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-[0_0_8px_rgba(0,0,0,0.1)] transition-transform group-hover/pill:scale-110`} />
-                  <div className="flex items-baseline gap-1.5">
-                    <span className={`text-[11px] font-black uppercase tracking-wider whitespace-nowrap ${isUn ? "text-amber-600 dark:text-amber-400" : (ASSIGNED_PILL[name.toLowerCase()]?.split(' ').pop() || "text-gray-700 dark:text-gray-300")}`}>
+                <div key={name} className="flex items-center gap-1 bg-white/60 dark:bg-gray-800/60 pl-2 pr-1 py-0.5 rounded-xl border border-white/50 dark:border-gray-700/50 shadow-sm backdrop-blur-md group/assignment transition-all hover:bg-white dark:hover:bg-gray-800 hover:shadow-md hover:-translate-y-px">
+                  <div className="flex items-center gap-1.5 mr-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-[0_0_8px_rgba(0,0,0,0.1)] group-hover/assignment:scale-110 transition-transform`} />
+                    <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${textColor}`}>
                       {name}
                     </span>
-                    <span className="text-[10px] font-bold text-gray-500/80 dark:text-gray-400/80 lowercase italic leading-none">
-                      ({counts.count > 0 && `${counts.count} `}{(counts.long > 0 || counts.short > 0) && '— '}{counts.long > 0 && `long ${counts.long}`}{counts.long > 0 && counts.short > 0 && ' • '}{counts.short > 0 && `short ${counts.short}`})
-                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-0.5">
+                    {counts.long > 0 && (
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.long} shadow-sm border border-transparent`} title="Long Format">
+                        {counts.long}L
+                      </span>
+                    )}
+                    {counts.short > 0 && (
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.short} shadow-sm border border-transparent`} title="Shorts">
+                        {counts.short}S
+                      </span>
+                    )}
                   </div>
                 </div>
               );
