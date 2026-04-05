@@ -373,7 +373,10 @@ export default function Dashboard() {
                   const assignees = Array.isArray(t.assignedTo) ? t.assignedTo : [t.assignedTo];
                   return assignees.some(a => a.toLowerCase() === name.toLowerCase());
                 });
-                const count = myTasks.length;
+                const count = myTasks.reduce((sum, t) => {
+                  const fmts = Array.isArray(t.contentFormat) ? t.contentFormat : [t.contentFormat].filter(Boolean);
+                  return sum + fmts.length;
+                }, 0);
                 if (count === 0) return null;
                 const isPooja = name === "Pooja";
                 
