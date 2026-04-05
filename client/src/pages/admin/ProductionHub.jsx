@@ -501,6 +501,42 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
 function PreviewModal({ open, onClose, tasks, dateKey }) {
   const [copied, setCopied] = useState(false);
 
+  const assignmentSummary = useMemo(() => {
+    const summary = {};
+    const unassigned = { short: 0, long: 0, count: 0 };
+    let hasUnassigned = false;
+
+    tasks.forEach(t => {
+      const assignees = Array.isArray(t.assignedTo) ? t.assignedTo : [t.assignedTo].filter(Boolean);
+      const formats = Array.isArray(t.contentFormat) ? t.contentFormat : [t.contentFormat].filter(Boolean);
+      
+      if (assignees.length === 0) {
+        hasUnassigned = true;
+        unassigned.count = (unassigned.count || 0) + 1;
+        formats.forEach(f => {
+          const fl = f.toLowerCase();
+          if (fl.includes('short')) unassigned.short++;
+          else if (fl.includes('long')) unassigned.long++;
+        });
+      } else {
+        assignees.forEach(name => {
+          if (!summary[name]) summary[name] = { short: 0, long: 0, count: 0 };
+          summary[name].count++;
+          formats.forEach(f => {
+            const fl = f.toLowerCase();
+            if (fl.includes('short')) summary[name].short++;
+            else if (fl.includes('long')) summary[name].long++;
+          });
+        });
+      }
+    });
+
+    if (hasUnassigned && unassigned.count > 0) {
+      summary["Unassigned"] = unassigned;
+    }
+    return summary;
+  }, [tasks]);
+
   if (!open) return null;
 
   // Sort tasks by Assigned to field
@@ -577,14 +613,55 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-6xl max-h-[90vh] rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-              Preview - {formatDateLabel(dateKey)}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {sortedTasks.length} task{sortedTasks.length !== 1 ? 's' : ''} • Sorted by Assigned to
-            </p>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 gap-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                Preview - {formatDateLabel(dateKey)}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {sortedTasks.length} task{sortedTasks.length !== 1 ? 's' : ''} • Sorted by Assigned to
+              </p>
+            </div>
+
+            {/* Assignment Summary Pills */}
+            <div className="flex flex-wrap items-center gap-2">
+              {Object.entries(assignmentSummary).map(([name, counts]) => {
+                const isUn = name === "Unassigned";
+                const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "soundarya" ? "bg-purple-400" : "bg-blue-400"));
+                const textColor = isUn ? "text-amber-600 dark:text-amber-400" : (ASSIGNED_PILL[name.toLowerCase()]?.split(' ').pop() || "text-gray-700 dark:text-gray-300");
+                const totalSum = (counts.long || 0) + (counts.short || 0);
+
+                return (
+                  <div key={name} className="flex items-center gap-1 bg-gray-50 dark:bg-gray-800/40 pl-2 pr-1 py-0.5 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm group/assignment transition-all">
+                    <div className="flex items-center gap-1.5 mr-1">
+                      <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-sm`} />
+                      <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${textColor}`}>
+                        {name}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-0.5">
+                      {totalSum > 0 && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-black bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700 shadow-sm mr-1">
+                          {totalSum}
+                        </span>
+                      )}
+                      {counts.long > 0 && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.long} shadow-sm border border-transparent`}>
+                          {counts.long}L
+                        </span>
+                      )}
+                      {counts.short > 0 && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.short} shadow-sm border border-transparent`}>
+                          {counts.short}S
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -806,6 +883,7 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
               const isUn = name === "Unassigned";
               const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "soundarya" ? "bg-purple-400" : "bg-blue-400"));
               const textColor = isUn ? "text-amber-600 dark:text-amber-400" : (ASSIGNED_PILL[name.toLowerCase()]?.split(' ').pop() || "text-gray-700 dark:text-gray-300");
+              const totalSum = (counts.long || 0) + (counts.short || 0);
               
               return (
                 <div key={name} className="flex items-center gap-1 bg-white/60 dark:bg-gray-800/60 pl-2 pr-1 py-0.5 rounded-xl border border-white/50 dark:border-gray-700/50 shadow-sm backdrop-blur-md group/assignment transition-all hover:bg-white dark:hover:bg-gray-800 hover:shadow-md hover:-translate-y-px">
@@ -817,6 +895,11 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
                   </div>
                   
                   <div className="flex items-center gap-0.5">
+                    {totalSum > 0 && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-black bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 shadow-sm border border-transparent mr-1" title="Total (L+S)">
+                        {totalSum}
+                      </span>
+                    )}
                     {counts.long > 0 && (
                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.long} shadow-sm border border-transparent`} title="Long Format">
                         {counts.long}L
