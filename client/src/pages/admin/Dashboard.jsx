@@ -361,14 +361,27 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
-              {/* Assigned to Today Breakdown & Details */}
-              <div className="flex-shrink-0 flex flex-col gap-2.5 mb-3 px-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">Live: Today's Assignments</span>
+              {/* Delivery Monitor — Premium Assignments Widget */}
+              <div className="flex-shrink-0 flex flex-col gap-3 mb-4">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                    </div>
+                    <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                      Delivery Monitor
+                      <span className="h-3 w-px bg-gray-300 dark:bg-gray-700 mx-1" />
+                      <span className="opacity-60">Pipeline Overview</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30">
+                    <Zap size={10} className="text-emerald-500" />
+                    <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">Live</span>
+                  </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[240px] overflow-hidden">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[155px] overflow-hidden">
                   {["Pooja", "Soundarya"].map(name => {
                     const myTasks = todayTasks.filter(t => {
                       if (!t.assignedTo) return false;
@@ -378,24 +391,37 @@ export default function Dashboard() {
                     const count = myTasks.length;
                     if (count === 0) return null;
                     const isPooja = name === "Pooja";
-                    const colorClasses = isPooja 
-                      ? "bg-gradient-to-br from-pink-50/80 to-rose-50/30 border-pink-100/60 text-pink-700 dark:from-pink-950/20 dark:to-rose-950/10 dark:border-pink-900/40 dark:text-pink-300" 
-                      : "bg-gradient-to-br from-purple-50/80 to-indigo-50/30 border-purple-100/60 text-purple-700 dark:from-purple-950/20 dark:to-indigo-950/10 dark:border-purple-900/40 dark:text-purple-300";
                     
-                    const dotClass = isPooja ? "bg-pink-500" : "bg-purple-500";
+                    // Premium mesh-style color schemes
+                    const colorClasses = isPooja 
+                      ? "bg-white/80 dark:bg-gray-900/80 border-pink-100/60 dark:border-pink-900/40 shadow-pink-100/20 dark:shadow-pink-900/10" 
+                      : "bg-white/80 dark:bg-gray-900/80 border-purple-100/60 dark:border-purple-900/40 shadow-purple-100/20 dark:shadow-purple-900/10";
+                    
+                    const dotClass = isPooja ? "bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.4)]" : "bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]";
+                    const textColor = isPooja ? "text-pink-600 dark:text-pink-400" : "text-purple-600 dark:text-purple-400";
                     
                     return (
                       <motion.div 
-                        initial={{ opacity: 0, x: isPooja ? -10 : 10 }}
-                        animate={{ opacity: 1, x: 0 }}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                         key={name} 
-                        className={`flex flex-col h-full min-w-0 rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm transition-all hover:shadow-md hover:scale-[1.01] ${colorClasses}`}
+                        className={`flex flex-col h-full min-w-0 rounded-xl border px-3 py-2 shadow-lg backdrop-blur-xl transition-all hover:shadow-xl hover:-translate-y-0.5 group/monitor relative overflow-hidden ${colorClasses}`}
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[11px] font-black uppercase tracking-widest">{name}</span>
-                          <span className="text-[11px] font-black tabular-nums bg-white/70 dark:bg-black/40 px-2.5 py-0.5 rounded-full ring-1 ring-inset ring-white/20 shadow-inner">{count}</span>
+                        {/* Decorative mesh background element */}
+                        <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-3xl opacity-20 pointer-events-none ${isPooja ? "bg-pink-400" : "bg-purple-400"}`} />
+                        
+                        <div className="flex items-center justify-between mb-2 relative z-10">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${dotClass} animate-pulse`} />
+                            <span className={`text-[12px] font-black uppercase tracking-wider ${textColor}`}>{name}</span>
+                          </div>
+                          <span className="text-[11px] font-black tabular-nums bg-gray-100 dark:bg-black/40 px-2.5 py-0.5 rounded-full ring-1 ring-inset ring-black/[0.05] dark:ring-white/[0.05] shadow-inner text-gray-700 dark:text-gray-300">
+                            {count}
+                          </span>
                         </div>
-                        <div className="flex-1 overflow-y-auto no-scrollbar space-y-1.5 pt-1">
+                        
+                        <div className="flex-1 overflow-y-auto no-scrollbar space-y-1 relative z-10">
                           {myTasks.map(task => {
                             const taskUrl = getTaskUrl(task);
                             const format = task.contentFormat || "";
@@ -405,12 +431,14 @@ export default function Dashboard() {
                             
                             const formatLabel = isShort ? "Short" : isLong ? "Long" : "";
                             const formatColors = isShort 
-                              ? "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800" 
-                              : "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-800";
+                              ? "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800/50" 
+                              : "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800/50";
+                            
+                            const isDone = task.status === "completed";
                             
                             return (
-                              <div key={task._id} className="flex items-center gap-2 group/task rounded-xl px-2.5 py-1.5 transition-all hover:bg-white/60 dark:hover:bg-black/30">
-                                <span className={`w-2 h-2 rounded-full ${dotClass} flex-shrink-0 shadow-sm ring-2 ring-white dark:ring-gray-900`} />
+                              <div key={task._id} className="flex items-center gap-2 group/task rounded-lg px-2 py-1 transition-all hover:bg-gray-50/80 dark:hover:bg-black/40 border border-transparent hover:border-black/[0.02] dark:hover:border-white/[0.02] hover:shadow-sm">
+                                <Activity size={12} className={`flex-shrink-0 ${isDone ? "text-gray-300" : textColor} opacity-40 group-hover/task:opacity-100 transition-opacity`} />
                                 
                                 <a 
                                   href={taskUrl || "#"} 
@@ -418,11 +446,11 @@ export default function Dashboard() {
                                   rel="noopener noreferrer"
                                   className="flex-1 min-w-0 flex items-center justify-between gap-3 group/link"
                                 >
-                                  <p className={`text-[11px] font-bold leading-tight truncate transition-all group-hover/link:translate-x-0.5 ${task.status === "completed" ? "line-through text-gray-400 dark:text-gray-500 opacity-60" : "text-gray-900 dark:text-white opacity-90 group-hover:opacity-100 group-hover/link:text-blue-600 dark:group-hover/link:text-blue-400"}`}>
+                                  <p className={`text-[11px] font-bold leading-tight truncate transition-all group-hover/link:translate-x-0.5 ${isDone ? "line-through text-gray-400 dark:text-gray-500 opacity-60" : "text-gray-900 dark:text-white opacity-85 group-hover:opacity-100"}`}>
                                     {task.title}
                                   </p>
                                   {formatLabel && (
-                                    <span className={`flex-shrink-0 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter border shadow-sm ${formatColors}`}>
+                                    <span className={`flex-shrink-0 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter border shadow-sm transition-transform group-hover/link:scale-105 ${formatColors}`}>
                                       {formatLabel}
                                     </span>
                                   )}

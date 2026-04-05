@@ -230,13 +230,14 @@ function exportToCsv(tasks) {
 }
 
 function toDateKey(d) {
-  if (!d) return "";
+  if (!d || d === "null" || d === "undefined") return "";
   const dt = new Date(d);
+  if (isNaN(dt.getTime())) return "";
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
 function formatDateLabel(key) {
-  if (!key) return "No date";
+  if (!key || key === "no-date") return "Backlog";
   const d = new Date(key + "T00:00:00");
   const today = new Date();
   const todayKey = toDateKey(today);
@@ -254,7 +255,7 @@ function formatDateLabel(key) {
 }
 
 function getDateCategory(key) {
-  if (!key) return "none";
+  if (!key || key === "no-date") return "backlog";
   const today = toDateKey(new Date());
   if (key < today) return "overdue";
   if (key === today) return "today";
@@ -703,7 +704,7 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
   );
 }
 /* ─── Date Group ─── */
-function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, defaultOpen }) {
+function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, defaultOpen, variant }) {
   const [open, setOpen] = useState(defaultOpen);
   const [isOver, setIsOver] = useState(false);
 
@@ -728,14 +729,56 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
   const total = tasks.length;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
+  const assignmentSummary = useMemo(() => {
+    const summary = {};
+    const unassigned = { short: 0, long: 0 };
+    let hasUnassigned = false;
+
+    tasks.forEach(t => {
+      const assignees = Array.isArray(t.assignedTo) ? t.assignedTo : [t.assignedTo].filter(Boolean);
+      const formats = Array.isArray(t.contentFormat) ? t.contentFormat : [t.contentFormat].filter(Boolean);
+      
+      if (assignees.length === 0) {
+        hasUnassigned = true;
+        unassigned.count = (unassigned.count || 0) + 1;
+        formats.forEach(f => {
+          const fl = f.toLowerCase();
+          if (fl.includes('short')) unassigned.short++;
+          else if (fl.includes('long')) unassigned.long++;
+        });
+      } else {
+        assignees.forEach(name => {
+          if (!summary[name]) summary[name] = { short: 0, long: 0, count: 0 };
+          summary[name].count++;
+          formats.forEach(f => {
+            const fl = f.toLowerCase();
+            if (fl.includes('short')) summary[name].short++;
+            else if (fl.includes('long')) summary[name].long++;
+          });
+        });
+      }
+    });
+
+    if (hasUnassigned && unassigned.count > 0) {
+      summary["Unassigned"] = unassigned;
+    }
+    return summary;
+  }, [tasks]);
+
+  const isHistory = variant === "completed";
+
   const borderColor =
-    cat === "overdue" ? "border-l-red-500" :
+    !isHistory && cat === "overdue" ? "border-l-red-500" :
     cat === "today" ? "border-l-blue-500" :
+    cat === "backlog" ? "border-l-gray-400 border-l-[3px] border-dashed" :
+    isHistory ? "border-l-emerald-500/50" :
     "border-l-gray-300 dark:border-l-gray-600";
 
   const headerBg =
-    cat === "overdue" ? "bg-red-50/60 dark:bg-red-950/10" :
+    !isHistory && cat === "overdue" ? "bg-red-50/60 dark:bg-red-950/10" :
     cat === "today" ? "bg-blue-50/60 dark:bg-blue-950/10" :
+    cat === "backlog" ? "bg-gray-100/40 dark:bg-gray-800/10" :
+    isHistory ? "bg-emerald-50/30 dark:bg-emerald-950/5" :
     "bg-gray-50/60 dark:bg-gray-800/30";
 
   return (
@@ -753,9 +796,32 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
           <ChevronRight size={16} />
         </span>
 
-        <span className={`text-sm font-black ${cat === "overdue" ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : "text-gray-800 dark:text-gray-200"}`}>
-          {formatDateLabel(dateKey)}
-        </span>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 overflow-hidden">
+          <span className={`text-sm font-black whitespace-nowrap ${(!isHistory && cat === "overdue") ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : isHistory ? "text-emerald-700 dark:text-emerald-400" : cat === "backlog" ? "text-gray-500 dark:text-gray-400 italic" : "text-gray-800 dark:text-gray-200"}`}>
+            {formatDateLabel(dateKey)}
+          </span>
+          
+          <div className="flex flex-wrap items-center gap-2.5">
+            {Object.entries(assignmentSummary).map(([name, counts]) => {
+              const isUn = name === "Unassigned";
+              const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : "bg-purple-400");
+              
+              return (
+                <div key={name} className="group/pill inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/80 dark:bg-gray-800/80 border border-white dark:border-gray-700 shadow-sm backdrop-blur-md transition-all hover:shadow-md hover:-translate-y-px">
+                  <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-[0_0_8px_rgba(0,0,0,0.1)] transition-transform group-hover/pill:scale-110`} />
+                  <div className="flex items-baseline gap-1.5">
+                    <span className={`text-[11px] font-black uppercase tracking-wider whitespace-nowrap ${isUn ? "text-amber-600 dark:text-amber-400" : (ASSIGNED_PILL[name.toLowerCase()]?.split(' ').pop() || "text-gray-700 dark:text-gray-300")}`}>
+                      {name}
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-500/80 dark:text-gray-400/80 lowercase italic leading-none">
+                      ({counts.count > 0 && `${counts.count} `}{(counts.long > 0 || counts.short > 0) && '— '}{counts.long > 0 && `long ${counts.long}`}{counts.long > 0 && counts.short > 0 && ' • '}{counts.short > 0 && `short ${counts.short}`})
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {cat === "overdue" && <AlertTriangle size={14} className="text-red-500 flex-shrink-0 animate-pulse" />}
 
@@ -816,9 +882,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
   const [contentFormat, setContentFormat] = useState([]);
   const [assignedTo, setAssignedTo] = useState([]);
   const [channelType, setChannelType] = useState(channelTypes[0] || "");
-  const [scheduledDate, setScheduledDate] = useState(
-    new Date(Date.now() + 86_400_000).toISOString().split("T")[0],
-  );
+  const [scheduledDate, setScheduledDate] = useState(null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
@@ -831,7 +895,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
       setContentFormat(Array.isArray(editTask.contentFormat) ? editTask.contentFormat : (editTask.contentFormat ? [editTask.contentFormat] : []));
       setAssignedTo(Array.isArray(editTask.assignedTo) ? editTask.assignedTo : (editTask.assignedTo ? [editTask.assignedTo] : []));
       setChannelType(editTask.channelType || channelTypes[0] || "");
-      setScheduledDate(editTask.scheduledDate ? toDateKey(editTask.scheduledDate) : new Date(Date.now() + 86_400_000).toISOString().split("T")[0]);
+      setScheduledDate(editTask.scheduledDate ? toDateKey(editTask.scheduledDate) : null);
       setNotes(editTask.notes || "");
     } else {
       setUrlInput("");
@@ -840,7 +904,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
       setContentFormat([]);
       setAssignedTo([]);
       setChannelType(channelTypes[0] || "");
-      setScheduledDate(new Date(Date.now() + 86_400_000).toISOString().split("T")[0]);
+      setScheduledDate(null);
       setNotes("");
     }
     setInitialized(true);
@@ -856,7 +920,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
   const activePlatform = autoPlatform || platform;
   const ytId = activePlatform === "youtube" ? extractYoutubeId(urlInput) : null;
   const isValidUrl = urlInput.trim().length > 0;
-  const canSave = isValidUrl && title.trim() && channelType && scheduledDate;
+  const canSave = isValidUrl && title.trim() && channelType;
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -871,7 +935,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
         videoId: ytId || "",
         thumbnail: ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : "",
         channelType,
-        scheduledDate,
+        scheduledDate: scheduledDate || null,
         notes,
       };
       if (isEdit) {
@@ -1047,12 +1111,31 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Scheduled Date</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Scheduled Date</label>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[9px] font-black uppercase tracking-tighter transition-colors ${!scheduledDate ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}`}>Backlog</span>
+                  <button
+                    type="button"
+                    onClick={() => setScheduledDate(scheduledDate ? null : new Date(Date.now() + 86_400_000).toISOString().split("T")[0])}
+                    className={`relative inline-flex h-[18px] w-[32px] flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${!scheduledDate ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" : "bg-gray-200 dark:bg-gray-700"}`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-[14px] w-[14px] transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${!scheduledDate ? "translate-x-[14px]" : "translate-x-0"}`}
+                    />
+                  </button>
+                </div>
+              </div>
               <input
                 type="date"
-                value={scheduledDate}
+                value={scheduledDate || ""}
                 onChange={(e) => setScheduledDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className={`w-full px-3 py-2 rounded-lg border transition-all text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                  !scheduledDate 
+                    ? "bg-gray-50/50 dark:bg-gray-800/50 text-gray-400 border-gray-100 dark:border-gray-800 opacity-60" 
+                    : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700"
+                }`}
               />
             </div>
           </div>
@@ -1077,8 +1160,8 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
             disabled={saving || !canSave}
             className="ml-auto px-4 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
           >
-            {saving ? <Loader2 size={12} className="animate-spin" /> : isEdit ? <Pencil size={12} /> : <Plus size={12} />}
-            {isEdit ? "Save Changes" : "Add to Board"}
+            {saving ? <Loader2 size={12} className="animate-spin" /> : (isEdit ? <Pencil size={12} /> : (scheduledDate ? <Plus size={12} /> : <ListChecks size={12} />))}
+            {isEdit ? "Update Content" : (scheduledDate ? "Schedule Task" : "Add to Backlog")}
           </button>
         </div>
       </div>
@@ -1219,11 +1302,13 @@ export default function ProductionHub() {
       const k = t.scheduledDate ? toDateKey(t.scheduledDate) : "";
       return k >= todayKey && k <= weekEndKey;
     });
+    const unscheduled = active.filter((t) => !t.scheduledDate || toDateKey(t.scheduledDate) === "");
+    const scheduled = active.length - unscheduled.length;
     const completed = filtered.filter((t) => t.status === "completed");
-    return { overdue: overdue.length, today: today.length, thisWeek: thisWeek.length, backlog: active.length, completed: completed.length };
+    return { overdue: overdue.length, today: today.length, thisWeek: thisWeek.length, active: active.length, backlog: unscheduled.length, scheduled, completed: completed.length };
   }, [filtered]);
 
-  const dateGroups = useMemo(() => {
+  const scheduleDateGroups = useMemo(() => {
     const active = filtered.filter((t) => t.status !== "completed");
     const map = {};
     active.forEach((t) => {
@@ -1245,13 +1330,43 @@ export default function ProductionHub() {
         if (b === "no-date") return -1;
         return a.localeCompare(b);
       })
-      .map((key) => ({ key, tasks: map[key] }));
+      .map((key) => ({ key: key === "no-date" ? null : key, tasks: map[key] }));
   }, [filtered]);
 
-  const completedTasks = useMemo(() => {
-    return filtered
-      .filter((t) => t.status === "completed")
-      .sort((a, b) => new Date(b.completedAt || b.updatedAt) - new Date(a.completedAt || a.updatedAt));
+  const backlogGroups = useMemo(() => {
+    const list = filtered.filter((t) => t.status !== "completed" && (!t.scheduledDate || toDateKey(t.scheduledDate) === ""));
+    list.sort((a, b) => {
+      const aAss = (a.assignedTo && a.assignedTo.length > 0) ? a.assignedTo[0].toLowerCase() : "zzzz";
+      const bAss = (b.assignedTo && b.assignedTo.length > 0) ? b.assignedTo[0].toLowerCase() : "zzzz";
+      if (aAss !== bAss) return aAss.localeCompare(bAss);
+      return STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
+    });
+    return [{ key: null, tasks: list }];
+  }, [filtered]);
+
+  const completedDateGroups = useMemo(() => {
+    const list = filtered.filter((t) => t.status === "completed");
+    const map = {};
+    list.forEach((t) => {
+      const key = t.scheduledDate ? toDateKey(t.scheduledDate) : "no-date";
+      if (!map[key]) map[key] = [];
+      map[key].push(t);
+    });
+    Object.values(map).forEach((arr) =>
+      arr.sort((a, b) => {
+        const aAss = (a.assignedTo && a.assignedTo.length > 0) ? a.assignedTo[0].toLowerCase() : "zzzz";
+        const bAss = (b.assignedTo && b.assignedTo.length > 0) ? b.assignedTo[0].toLowerCase() : "zzzz";
+        if (aAss !== bAss) return aAss.localeCompare(bAss);
+        return new Date(b.completedAt || b.updatedAt) - new Date(a.completedAt || a.updatedAt);
+      })
+    );
+    return Object.keys(map)
+      .sort((a, b) => {
+        if (a === "no-date") return 1;
+        if (b === "no-date") return -1;
+        return b.localeCompare(a); // DESC sorting for history
+      })
+      .map((key) => ({ key, tasks: map[key] }));
   }, [filtered]);
 
   const uniqueTypes = useMemo(() => {
@@ -1313,8 +1428,9 @@ export default function ProductionHub() {
               <FilterLabel icon={Filter}>View:</FilterLabel>
               <FilterSegment
                 options={[
-                  { value: "schedule", label: "Schedule", count: stats.backlog },
-                  { value: "completed", label: "Completed", count: stats.completed }
+                  { value: "schedule", label: "Schedule", count: stats.scheduled },
+                  { value: "completed", label: "Completed", count: stats.completed },
+                  { value: "backlog", label: "Backlog", count: stats.backlog }
                 ]}
                 value={viewMode}
                 onChange={setViewMode}
@@ -1398,14 +1514,60 @@ export default function ProductionHub() {
           </div>
         ) : viewMode === "schedule" ? (
           <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-            {dateGroups.length === 0 ? (
+            {scheduleDateGroups.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <CheckCircle2 size={32} className="text-emerald-400 mb-3" />
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">All caught up!</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">No pending tasks. Switch to Completed to review.</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">No scheduled tasks!</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Check the Backlog for unscheduled work.</p>
               </div>
             ) : (
-              dateGroups.map((g) => (
+              scheduleDateGroups.map((g) => (
+                <DateGroup
+                  key={g.key}
+                  dateKey={g.key}
+                  tasks={g.tasks}
+                  onMove={handleMove}
+                  onDelete={handleDelete}
+                  onEdit={handleEdit}
+                  onPreview={handlePreview}
+                  onDropTask={handleDropTask}
+                  defaultOpen={getDateCategory(g.key) === "overdue" || getDateCategory(g.key) === "today"}
+                />
+              ))
+            )}
+          </div>
+        ) : viewMode === "backlog" ? (
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+             {backlogGroups[0].tasks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <ListChecks size={32} className="text-gray-300 mb-3" />
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Backlog is empty</p>
+              </div>
+            ) : (
+              backlogGroups.map((g) => (
+                <DateGroup
+                  key={g.key}
+                  dateKey={null}
+                  tasks={g.tasks}
+                  onMove={handleMove}
+                  onDelete={handleDelete}
+                  onEdit={handleEdit}
+                  onPreview={handlePreview}
+                  onDropTask={handleDropTask}
+                  defaultOpen={true}
+                />
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
+            {completedDateGroups.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Circle size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">No completed tasks yet</p>
+              </div>
+            ) : (
+              completedDateGroups.map((g) => (
                 <DateGroup
                   key={g.key}
                   dateKey={g.key === "no-date" ? null : g.key}
@@ -1415,21 +1577,9 @@ export default function ProductionHub() {
                   onEdit={handleEdit}
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
-                  defaultOpen={getDateCategory(g.key) === "overdue" || getDateCategory(g.key) === "today" || g.key === "no-date"}
+                  defaultOpen={false}
+                  variant="completed"
                 />
-              ))
-            )}
-          </div>
-        ) : (
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
-            {completedTasks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Circle size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">No completed tasks yet</p>
-              </div>
-            ) : (
-              completedTasks.map((t) => (
-                <TaskRow key={t._id} task={t} onMove={handleMove} onDelete={handleDelete} onEdit={handleEdit} />
               ))
             )}
           </div>
