@@ -1520,8 +1520,8 @@ export default function ProductionHub() {
   const typeNames = useMemo(() => types.map((t) => t.name), [types]);
 
   return (
-    <AdminLayout title="Production Hub" titleInfo="Track & manage scheduled content" icon={LayoutDashboard} contentFit>
-      <div className="flex flex-col h-full min-h-0 overflow-hidden w-full max-w-[1400px] mx-auto gap-1.5 sm:gap-2">
+    <AdminLayout title="Production Hub" titleInfo="Track & manage scheduled content" icon={LayoutDashboard} contentFit noPadding>
+      <div className="flex flex-col h-full min-h-0 overflow-hidden w-full gap-1.5 sm:gap-2 px-3 sm:px-4 pt-2 pb-4">
 
         {/* Stats & Search Ribbon */}
         {!loading && tasks.length > 0 && (

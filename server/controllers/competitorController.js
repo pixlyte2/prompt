@@ -30,6 +30,15 @@ function parseViewCount(text) {
   return Math.round(num);
 }
 
+function parseDuration(text) {
+  if (!text || text.toLowerCase().includes("short") || text.toLowerCase().includes("live")) return 0;
+  const parts = text.split(":").map(Number);
+  if (parts.some(isNaN)) return 0;
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return parts[0] || 0;
+}
+
 function parseRelativeTime(text) {
   if (!text) return null;
   const now = Date.now();
@@ -182,6 +191,14 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
 
   let videos = extractVideos(items, channel);
 
+  // Filter for 'Long' format: only videos less than 9 minutes (540 seconds)
+  if (videoFormat === "long") {
+    videos = videos.filter((v) => {
+      const sec = parseDuration(v.duration);
+      return sec > 0 && sec < 540;
+    });
+  }
+
   if (videos.length === 0 && videoFormat !== "long") {
     return scrapeChannel(channel, maxVideos, "long");
   }
@@ -191,8 +208,16 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
   while (videos.length < maxVideos && contToken) {
     try {
       const moreItems = await fetchContinuation(contToken, apiKey);
-      const newVideos = extractVideos(moreItems, channel);
+      let newVideos = extractVideos(moreItems, channel);
       if (newVideos.length === 0) break;
+
+      if (videoFormat === "long") {
+        newVideos = newVideos.filter((v) => {
+          const sec = parseDuration(v.duration);
+          return sec > 0 && sec < 540;
+        });
+      }
+
       videos = videos.concat(newVideos);
       contToken = getContinuationToken(moreItems);
     } catch {
