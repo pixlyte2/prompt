@@ -537,6 +537,20 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
     return summary;
   }, [tasks]);
 
+  const dailySummary = useMemo(() => {
+    let long = 0;
+    let short = 0;
+    tasks.forEach(t => {
+      const formats = Array.isArray(t.contentFormat) ? t.contentFormat : [t.contentFormat].filter(Boolean);
+      formats.forEach(f => {
+        const fl = f.toLowerCase();
+        if (fl.includes('short')) short++;
+        else if (fl.includes('long')) long++;
+      });
+    });
+    return { long, short, total: long + short };
+  }, [tasks]);
+
   if (!open) return null;
 
   // Sort tasks by Assigned to field
@@ -615,13 +629,21 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 gap-4">
           <div className="flex flex-col md:flex-row md:items-center gap-6">
-            <div>
+            <div className="flex items-center gap-4">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                 Preview - {formatDateLabel(dateKey)}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                {sortedTasks.length} task{sortedTasks.length !== 1 ? 's' : ''} • Sorted by Assigned to
-              </p>
+              
+              {dailySummary.total > 0 && (
+                <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700/50 shadow-sm">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">{dailySummary.total} Daily Target</span>
+                  <div className="w-px h-3.5 bg-gray-200 dark:bg-gray-700" />
+                  <div className="flex items-center gap-2.5">
+                    {dailySummary.long > 0 && <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">{dailySummary.long} Long</span>}
+                    {dailySummary.short > 0 && <span className="text-[11px] font-bold text-orange-600 dark:text-orange-400">{dailySummary.short} Shorts</span>}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Assignment Summary Pills */}
@@ -842,6 +864,20 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
     return summary;
   }, [tasks]);
 
+  const dailySummary = useMemo(() => {
+    let long = 0;
+    let short = 0;
+    tasks.forEach(t => {
+      const formats = Array.isArray(t.contentFormat) ? t.contentFormat : [t.contentFormat].filter(Boolean);
+      formats.forEach(f => {
+        const fl = f.toLowerCase();
+        if (fl.includes('short')) short++;
+        else if (fl.includes('long')) long++;
+      });
+    });
+    return { long, short, total: long + short };
+  }, [tasks]);
+
   const isHistory = variant === "completed";
 
   const borderColor =
@@ -874,9 +910,22 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
         </span>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 overflow-hidden">
-          <span className={`text-sm font-black whitespace-nowrap ${(!isHistory && cat === "overdue") ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : isHistory ? "text-emerald-700 dark:text-emerald-400" : cat === "backlog" ? "text-gray-500 dark:text-gray-400 italic" : "text-gray-800 dark:text-gray-200"}`}>
-            {formatDateLabel(dateKey)}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className={`text-sm font-black whitespace-nowrap ${(!isHistory && cat === "overdue") ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : isHistory ? "text-emerald-700 dark:text-emerald-400" : cat === "backlog" ? "text-gray-500 dark:text-gray-400 italic" : "text-gray-800 dark:text-gray-200"}`}>
+              {formatDateLabel(dateKey)}
+            </span>
+            
+            {dailySummary.total > 0 && (
+              <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700/50 shadow-sm">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">{dailySummary.total} Tasks</span>
+                <div className="w-px h-3 bg-gray-200 dark:bg-gray-700 mx-1" />
+                <div className="flex items-center gap-1.5">
+                  {dailySummary.long > 0 && <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{dailySummary.long}L</span>}
+                  {dailySummary.short > 0 && <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400">{dailySummary.short}S</span>}
+                </div>
+              </div>
+            )}
+          </div>
           
           <div className="flex flex-wrap items-center gap-2.5">
             {Object.entries(assignmentSummary).map(([name, counts]) => {
