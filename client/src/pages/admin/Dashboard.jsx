@@ -73,6 +73,11 @@ const badgeClass = {
   amber: "text-[10px] font-medium px-1.5 py-0.5 rounded truncate bg-amber-50 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 max-w-[7rem]",
 };
 
+const FORMAT_PILL = {
+  short: "bg-orange-100 text-orange-700 border-orange-200/50 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800/50",
+  long: "bg-indigo-100 text-indigo-700 border-indigo-200/50 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800/50",
+};
+
 const HistoryBadges = memo(function HistoryBadges({ item }) {
   const ch = item.channel || item.title?.split(" - ")[0];
   const pt = item.promptType || item.title?.split(" - ")[1];
@@ -404,16 +409,6 @@ export default function Dashboard() {
                     <div className="flex-1 overflow-y-auto no-scrollbar space-y-1 relative z-10">
                       {myTasks.map(task => {
                         const taskUrl = getTaskUrl(task);
-                        const format = task.contentFormat || "";
-                        const fStr = format.toString().toLowerCase();
-                        const isShort = fStr.includes("short");
-                        const isLong = fStr.includes("long");
-                        
-                        const formatLabel = isShort ? "Short" : isLong ? "Long" : "";
-                        const formatColors = isShort 
-                          ? "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800/50" 
-                          : "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800/50";
-                        
                         const isDone = task.status === "completed";
                         
                         return (
@@ -429,11 +424,20 @@ export default function Dashboard() {
                               <p className={`text-[11px] font-bold leading-tight truncate transition-all group-hover/link:translate-x-0.5 ${isDone ? "line-through text-gray-400 dark:text-gray-500 opacity-60" : "text-gray-900 dark:text-white opacity-85 group-hover:opacity-100"}`}>
                                 {task.title}
                               </p>
-                              {formatLabel && (
-                                <span className={`flex-shrink-0 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter border shadow-sm transition-transform group-hover/link:scale-105 ${formatColors}`}>
-                                  {formatLabel}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).filter(Boolean).map(fmt => {
+                                  const isShort = fmt.toLowerCase().includes("short");
+                                  const isLong = fmt.toLowerCase().includes("long");
+                                  const label = isShort ? "Short" : isLong ? "Long" : fmt;
+                                  const colorClass = isShort ? FORMAT_PILL.short : isLong ? FORMAT_PILL.long : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+                                  
+                                  return (
+                                    <span key={fmt} className={`flex-shrink-0 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter border shadow-sm transition-transform group-hover/link:scale-105 ${colorClass}`}>
+                                      {label}
+                                    </span>
+                                  );
+                                })}
+                              </div>
                             </a>
                           </div>
                         );
