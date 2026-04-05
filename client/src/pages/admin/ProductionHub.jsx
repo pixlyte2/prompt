@@ -1028,9 +1028,11 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
   const [scheduledDate, setScheduledDate] = useState(null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
   const [initialized, setInitialized] = useState(false);
 
   if (open && !initialized) {
+    setError(null);
     if (editTask) {
       setUrlInput(editTask.url || (editTask.videoId ? `https://www.youtube.com/watch?v=${editTask.videoId}` : ""));
       setTitle(editTask.title || "");
@@ -1068,6 +1070,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
+    setError(null);
     try {
       const payload = {
         title: title.trim(),
@@ -1096,7 +1099,9 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
       onSaved();
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.message || (isEdit ? "Failed to update" : "Failed to add"));
+      const msg = err.response?.data?.message || (isEdit ? "Failed to update" : "Failed to add");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -1293,19 +1298,27 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
             />
           </div>
         </div>
-        <div className="flex items-center gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !canSave}
-            className="ml-auto px-4 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
-          >
-            {saving ? <Loader2 size={12} className="animate-spin" /> : (isEdit ? <Pencil size={12} /> : (scheduledDate ? <Plus size={12} /> : <ListChecks size={12} />))}
-            {isEdit ? "Update Content" : (scheduledDate ? "Schedule Task" : "Add to Backlog")}
-          </button>
+        <div className="flex flex-col gap-3 px-5 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          {error && (
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30">
+              <AlertTriangle size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-[11px] font-medium text-red-700 dark:text-red-400 leading-tight">{error}</p>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !canSave}
+              className="ml-auto px-4 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+            >
+              {saving ? <Loader2 size={12} className="animate-spin" /> : (isEdit ? <Pencil size={12} /> : (scheduledDate ? <Plus size={12} /> : <ListChecks size={12} />))}
+              {isEdit ? "Update Content" : (scheduledDate ? "Schedule Task" : "Add to Backlog")}
+            </button>
+          </div>
         </div>
       </div>
     </div>

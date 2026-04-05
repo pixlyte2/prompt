@@ -25,6 +25,22 @@ exports.createTask = async (req, res) => {
       return res.status(400).json({ message: "title, channelType and scheduledDate are required" });
     }
 
+    if (url && url.trim()) {
+      const existingTask = await VideoTask.findOne({ url: url.trim() });
+      if (existingTask) {
+        const statusMap = {
+          todo: "Pending",
+          in_progress: "In Progress",
+          completed: "Completed",
+        };
+        const statusLabel = statusMap[existingTask.status] || existingTask.status;
+        const dateStr = existingTask.scheduledDate ? new Date(existingTask.scheduledDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Backlog";
+        return res.status(400).json({
+          message: `Duplicate URL! This is already saved as '${statusLabel}' (Date: ${dateStr}).`,
+        });
+      }
+    }
+
     const task = await VideoTask.create({
       videoId: videoId || "",
       title, thumbnail, channelName, channelHandle,
@@ -51,6 +67,26 @@ exports.updateTask = async (req, res) => {
       platform, contentFormat, assignedTo, channelType, channelName, channelHandle,
       thumbnail, views, viewsText, duration,
     } = req.body;
+
+    if (url && url.trim()) {
+      const existingTask = await VideoTask.findOne({
+        url: url.trim(),
+        _id: { $ne: req.params.id },
+      });
+      if (existingTask) {
+        const statusMap = {
+          todo: "Pending",
+          in_progress: "In Progress",
+          completed: "Completed",
+        };
+        const statusLabel = statusMap[existingTask.status] || existingTask.status;
+        const dateStr = existingTask.scheduledDate ? new Date(existingTask.scheduledDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Backlog";
+        return res.status(400).json({
+          message: `Duplicate URL! This is already saved as '${statusLabel}' (Date: ${dateStr}).`,
+        });
+      }
+    }
+
     const update = {};
     if (status) {
       update.status = status;
