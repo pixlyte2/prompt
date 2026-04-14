@@ -1,4 +1,4 @@
-import { HelpCircle, Users, Layers, Tag, FileText, MessageSquare, Copy, Eye } from "lucide-react";
+import { HelpCircle, Users, Layers, Tag, FileText, MessageSquare, Copy, Eye, LayoutDashboard, TrendingUp, Zap, MousePointer2 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 
 export default function Help() {
@@ -9,62 +9,62 @@ export default function Help() {
       color: "text-gray-600",
       items: [
         "View system statistics and quick actions",
-        "Access recent prompts with preview and copy",
+        "Delivery Monitor: Real-time pipeline tracking and task assignments",
+        "Resume last session banner for AI Chat",
         "Navigate to different sections quickly"
       ]
     },
     {
-      title: "Users",
+      title: "Production Hub",
+      icon: LayoutDashboard,
+      color: "text-blue-500",
+      items: [
+        "Schedule management for video tasks and scripts",
+        "Backlog system for unscheduled priorities",
+        "Multi-assignee and multi-format (Long/Short) support",
+        "Daily workload summaries and pill-based tracking"
+      ]
+    },
+    {
+      title: "Trending Hub",
+      icon: TrendingUp,
+      color: "text-pink-500",
+      items: [
+        "Viral Lens: Monitor competitors and trending topics",
+        "Pulse tracking: Identify high-performing content patterns",
+        "Integration with Production Hub for scheduling ideas"
+      ]
+    },
+    {
+      title: "Users & Access",
       icon: Users,
       color: "text-blue-600",
       items: [
-        "Create new users with name, email, and password",
-        "Assign roles: Viewer or Content Manager",
-        "Delete users when needed"
+        "Manage team members and credentials",
+        "Role-based access (Admin, Content Manager, Viewer)",
+        "Secure credential management"
       ]
     },
     {
-      title: "Channels",
-      icon: Layers,
-      color: "text-purple-600",
-      items: [
-        "Create channels to organize content",
-        "Edit channel names",
-        "Delete unused channels"
-      ]
-    },
-    {
-      title: "Prompt Types",
-      icon: Tag,
-      color: "text-orange-600",
-      items: [
-        "Create prompt types under specific channels",
-        "Edit type names",
-        "Delete prompt types"
-      ]
-    },
-    {
-      title: "Prompts",
+      title: "Library Management",
       icon: FileText,
       color: "text-indigo-600",
       items: [
-        "Create prompts with channel, type, and AI model",
-        "Preview prompts with eye icon",
-        "Copy prompts to clipboard",
-        "Edit and delete prompts",
-        "Export selected prompts as JSON",
-        "Search and filter by channel/type"
+        "Organize prompts by Channels and Types",
+        "Preview with Eye icon before use",
+        "Export prompts for external backup (JSON)",
+        "Advanced filtering by model and category"
       ]
     },
     {
-      title: "AI Chat",
+      title: "AI Production",
       icon: MessageSquare,
       color: "text-emerald-600",
       items: [
-        "Select a prompt from dropdown",
-        "Add source material (YouTube URL, script, etc.)",
-        "Chat with AI using selected prompt context",
-        "Press Enter to send, Shift+Enter for new line"
+        "Context-aware AI Chat with prompt memory",
+        "Source material processing (URL/Script parsing)",
+        "Shift+Enter for multi-line, Enter for instant send",
+        "Copy/paste results directly to Production Hub"
       ]
     }
   ];
@@ -109,19 +109,19 @@ export default function Help() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-700 dark:text-gray-300">
             <div className="flex items-start gap-2">
               <span className="text-cyan-600 dark:text-cyan-400">✓</span>
-              <span>Use <Eye className="inline w-4 h-4" /> icon to preview prompts before copying</span>
+              <span>Use <MousePointer2 className="inline w-4 h-4" /> Sidebar Toggle to maximize workspace</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-cyan-600 dark:text-cyan-400">✓</span>
-              <span>Recent prompts are cached for quick access</span>
+              <span>Pills in Production Hub indicate Long/Short content counts</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-cyan-600 dark:text-cyan-400">✓</span>
-              <span>Clear cache button refreshes all data</span>
+              <span>Dark Mode preference and Sidebar state persist across pages</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-cyan-600 dark:text-cyan-400">✓</span>
-              <span>Export prompts as JSON for backup</span>
+              <span>Click <Zap className="inline w-4 h-4" /> in Hub to view real-time delivery status</span>
             </div>
           </div>
         </div>

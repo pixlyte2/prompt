@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { toast } from "react-hot-toast";
 import {
   LayoutDashboard,
@@ -8,6 +8,7 @@ import {
   Eye,
   Trash2,
   ChevronRight,
+  ChevronDown,
   ExternalLink,
   FileText,
   Loader2,
@@ -48,11 +49,11 @@ function FilterChip({ active, onClick, children, count, variant = "default" }) {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border text-[10px] sm:text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap ${variants[variant]}`}
+      className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border text-[10px] sm:text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap ${variants[variant]}`}
     >
       {children}
       {count !== undefined && count > 0 && (
-        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors ${
+        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${
           active ? "bg-white/25 text-white" : "bg-gray-200/70 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
         }`}>
           {count}
@@ -75,7 +76,7 @@ function FilterSegment({ options, value, onChange, variant = "default" }) {
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`relative flex items-center justify-center px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-300 ${
+          className={`relative flex items-center justify-center px-2.5 py-1 sm:px-3.5 sm:py-1.5 text-[10px] sm:text-xs font-semibold rounded-lg transition-all duration-300 ${
             value === option.value
               ? activeVariants[variant]
               : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
@@ -83,7 +84,7 @@ function FilterSegment({ options, value, onChange, variant = "default" }) {
         >
           {option.label}
           {option.count !== undefined && option.count > 0 && (
-            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-md ${
+            <span className={`ml-1 text-[9px] px-1 py-0.2 small rounded-md ${
               value === option.value 
                 ? (variant === 'success' ? "bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" : "bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300")
                 : "bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
@@ -108,7 +109,7 @@ function SearchInput({ value, onChange, placeholder, onClear }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-8 pr-8 py-1.5 sm:pl-9 sm:pr-9 sm:py-2 rounded-lg sm:rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-[11px] sm:text-xs text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 dark:focus:border-blue-500/50 hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 shadow-sm"
+        className="w-full pl-7 pr-7 py-1 rounded-lg sm:rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-[10px] sm:text-xs text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 dark:focus:border-blue-500/50 hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 shadow-sm"
       />
       {value && (
         <button
@@ -125,7 +126,7 @@ function SearchInput({ value, onChange, placeholder, onClear }) {
 
 function FilterBar({ children, className = "" }) {
   return (
-    <div className={`relative overflow-visible rounded-xl sm:rounded-2xl lg:rounded-3xl bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 shadow-xl shadow-gray-200/30 dark:shadow-black/30 p-2 sm:p-2.5 flex flex-col gap-2 ${className}`}>
+    <div className={`relative overflow-visible rounded-xl sm:rounded-2xl lg:rounded-3xl bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 shadow-xl shadow-gray-200/30 dark:shadow-black/30 p-1.5 sm:p-2 flex flex-col gap-1.5 ${className}`}>
       <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/10 dark:from-gray-800/40 dark:to-gray-900/10 pointer-events-none rounded-xl sm:rounded-2xl lg:rounded-3xl" />
       <div className="relative z-10 flex flex-col gap-2 w-full">
         {children}
@@ -296,12 +297,12 @@ function getTaskThumbnail(task) {
 function StatCard({ icon: Icon, label, count, color, bgColor }) {
   return (
     <div className={`flex items-center gap-1.5 rounded bg-transparent border-none min-w-0 transition-opacity hover:opacity-80`}>
-      <div className={`flex-shrink-0 w-5 h-5 rounded flex items-center justify-center ${color} ring-1 ring-inset ring-white/10`}>
-        <Icon size={12} />
+      <div className={`flex-shrink-0 w-4.5 h-4.5 rounded flex items-center justify-center ${color} ring-1 ring-inset ring-white/10`}>
+        <Icon size={11} />
       </div>
       <div className="flex items-baseline gap-1 min-w-0">
-        <span className="text-[14px] sm:text-[16px] font-black text-gray-900 dark:text-white tabular-nums leading-none">{count}</span>
-        <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter truncate">{label}</span>
+        <span className="text-[13px] sm:text-[15px] font-black text-gray-900 dark:text-white tabular-nums leading-none">{count}</span>
+        <span className="text-[8px] sm:text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter truncate">{label}</span>
       </div>
     </div>
   );
@@ -363,7 +364,7 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
     <div
       draggable
       onDragStart={handleDragStart}
-      className="group flex items-center gap-2 px-2 py-0.5 sm:py-1 bg-white dark:bg-gray-800/80 rounded-lg border border-gray-100 dark:border-gray-700/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:shadow-sm cursor-grab active:cursor-grabbing"
+      className="group flex items-center gap-1.5 px-2 py-0.5 sm:py-0.5 bg-white dark:bg-gray-800/80 rounded-lg border border-gray-100 dark:border-gray-700/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:shadow-sm cursor-grab active:cursor-grabbing"
     >
       {/* Checkbox */}
       <div className="scale-90">
@@ -401,20 +402,20 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
 
       {/* Title + channel */}
       <div className="flex-1 min-w-0">
-        <p className={`text-[11px] sm:text-xs font-semibold leading-none truncate ${task.status === "completed" ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}>
+        <p className={`text-[10px] sm:text-[11px] font-semibold leading-tight truncate ${task.status === "completed" ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}>
           {task.title}
         </p>
-        <div className="flex items-center gap-1.5 mt-0.5 opacity-80 scale-95 origin-left">
-          <PlatformIcon platform={platform} size={8} />
+        <div className="flex items-center gap-1 mt-0.5 opacity-80 scale-95 origin-left">
+          <PlatformIcon platform={platform} size={7} />
           {task.channelName && (
-            <span className="text-[8px] text-gray-500 dark:text-gray-400 truncate max-w-[8rem]">
+            <span className="text-[7.5px] text-gray-500 dark:text-gray-400 truncate max-w-[8rem]">
               {task.channelName}
             </span>
           )}
           {task.viewsText && (
             <>
               <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
-              <span className="text-[8px] text-gray-500 dark:text-gray-400 inline-flex items-center gap-0.5">
+              <span className="text-[7.5px] text-gray-500 dark:text-gray-400 inline-flex items-center gap-0.5">
                 <Eye size={7} /> {task.viewsText}
               </span>
             </>
@@ -424,11 +425,11 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
 
       {/* Content format pills */}
       {task.contentFormat && (
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-0.5 flex-shrink-0">
           {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).map(fmt => (
             <span
               key={fmt}
-              className={`inline-flex text-[8px] font-black uppercase tracking-tight px-1.5 py-0.5 rounded-full shadow-sm border border-transparent ${FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+              className={`inline-flex text-[7px] font-black uppercase tracking-tighter px-1 py-0.5 rounded-full shadow-sm border border-transparent ${FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
             >
               {FORMAT_OPTIONS.find((f) => f.value === fmt)?.label || fmt}
             </span>
@@ -437,17 +438,17 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
       )}
 
       {/* Channel type pill */}
-      <span className="hidden sm:inline-flex text-[8px] font-black uppercase tracking-tight px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 flex-shrink-0 shadow-sm">
+      <span className="hidden sm:inline-flex text-[7.5px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 flex-shrink-0 shadow-sm">
         {task.channelType}
       </span>
 
       {/* Assigned Users — now at the end! */}
       {task.assignedTo && task.assignedTo.length > 0 && (
-        <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
+        <div className="hidden sm:flex items-center gap-0.5 flex-shrink-0">
           {task.assignedTo.map((name) => (
             <span
               key={name}
-              className={`inline-flex px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tight border border-transparent shadow-sm ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+              className={`inline-flex px-1.5 py-0.5 rounded-full text-[7.5px] font-black uppercase tracking-tighter border border-transparent shadow-sm ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
             >
               {name}
             </span>
@@ -456,7 +457,7 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
       )}
 
       {/* Status text */}
-      <span className={`hidden md:inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-full flex-shrink-0 shadow-sm border border-transparent ${meta.pill}`}>
+      <span className={`hidden md:inline-flex items-center gap-1 text-[7.5px] font-black uppercase tracking-tighter px-1 py-0.5 rounded-full flex-shrink-0 shadow-sm border border-transparent ${meta.pill}`}>
         {meta.label}
       </span>
 
@@ -903,10 +904,10 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
     >
       <button
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center gap-3 px-3 py-1.5 sm:py-2 ${headerBg} backdrop-blur-md transition-colors hover:brightness-95 `}
+        className={`w-full flex items-center gap-2 px-3 py-1 sm:py-1.5 ${headerBg} backdrop-blur-md transition-colors hover:brightness-95 `}
       >
         <span className="flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-300" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
-          <ChevronRight size={16} />
+          <ChevronRight size={14} />
         </span>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 overflow-hidden">
@@ -1351,6 +1352,18 @@ export default function ProductionHub() {
   const [editTask, setEditTask] = useState(null);
   const [viewMode, setViewMode] = useState("schedule");
   const [previewModal, setPreviewModal] = useState({ open: false, tasks: [], dateKey: null });
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const typeDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(event.target)) {
+        setShowTypeDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -1539,7 +1552,7 @@ export default function ProductionHub() {
         {/* Stats & Search Ribbon */}
         {!loading && tasks.length > 0 && (
           <div className="flex-shrink-0 flex items-center justify-between gap-4 px-3 py-1.5 bg-gray-50/50 dark:bg-gray-800/30 rounded-lg border border-gray-100/50 dark:border-gray-700/50">
-            <div className="flex items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-3 sm:gap-4 md:gap-6 ml-1">
               <StatCard icon={AlertTriangle} label="Overdue" count={stats.overdue} color="text-red-500" />
               <StatCard icon={Calendar} label="Today" count={stats.today} color="text-blue-500" />
               <StatCard icon={TrendingUp} label="Week" count={stats.thisWeek} color="text-amber-500" />
@@ -1551,16 +1564,16 @@ export default function ProductionHub() {
               <SearchInput
                 value={search}
                 onChange={setSearch}
-                placeholder="Search..."
+                placeholder="Search board..."
                 onClear={() => setSearch("")}
               />
               <button
                 onClick={fetchTasks}
                 disabled={loading}
-                className="p-1 rounded text-gray-500 hover:text-blue-600 transition-colors"
-                title="Refresh"
+                className="p-1.5 rounded-lg bg-white/50 dark:bg-gray-700/50 border border-gray-200/50 dark:border-gray-600/50 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
+                title="Refresh board"
               >
-                <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+                <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
               </button>
             </div>
           </div>
@@ -1577,7 +1590,7 @@ export default function ProductionHub() {
         </div>
 
         {/* Unified Filter Section */}
-        <FilterBar className="flex-shrink-0 p-1.5 sm:p-2">
+        <FilterBar className="flex-shrink-0 p-1.5 sm:p-2 z-30">
           {/* View mode, types, search and actions all on one row when possible */}
           <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -1596,46 +1609,73 @@ export default function ProductionHub() {
             
             <span className="hidden lg:block w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
             
-            <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-              <FilterLabel icon={LayoutDashboard}>Types:</FilterLabel>
-              <div className="flex items-center gap-1 flex-1 overflow-x-auto no-scrollbar pb-0.5 -mb-0.5 px-0.5">
-                <FilterChip
-                  active={activeType === "all"}
-                  onClick={() => setActiveType("all")}
-                  count={tasks.length}
-                >
-                  All
-                </FilterChip>
-                {uniqueTypes.map((ct) => {
-                  const count = tasks.filter(t => t.channelType === ct).length;
-                  return (
-                    <FilterChip
-                      key={ct}
-                      active={activeType === ct}
-                      onClick={() => setActiveType(ct)}
-                      count={count}
-                    >
-                      {ct}
-                    </FilterChip>
-                  );
-                })}
-              </div>
+            <div className="flex items-center gap-2 flex-shrink-0 relative" ref={typeDropdownRef}>
+              <FilterLabel icon={LayoutDashboard}>Type:</FilterLabel>
+              <button
+                onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-lg border text-[10px] sm:text-xs font-bold transition-all ${
+                  activeType !== "all"
+                    ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+                    : "bg-white/60 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800"
+                }`}
+              >
+                <span className="truncate max-w-[80px] sm:max-w-[120px]">
+                  {activeType === "all" ? "All Categories" : activeType}
+                </span>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${showTypeDropdown ? "rotate-180" : ""}`} />
+              </button>
+
+              {showTypeDropdown && (
+                <div className="absolute top-full left-0 mt-1.5 w-48 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl z-[100] py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                  <button
+                    onClick={() => { setActiveType("all"); setShowTypeDropdown(false); }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold transition-colors ${
+                      activeType === "all" 
+                        ? "bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" 
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    }`}
+                  >
+                    All Categories
+                    <span className="text-[9px] opacity-60 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{tasks.length}</span>
+                  </button>
+                  <div className="h-px bg-gray-100 dark:bg-gray-700 my-1" />
+                  <div className="max-h-60 overflow-y-auto no-scrollbar">
+                    {uniqueTypes.map((ct) => {
+                      const count = tasks.filter(t => t.channelType === ct).length;
+                      return (
+                        <button
+                          key={ct}
+                          onClick={() => { setActiveType(ct); setShowTypeDropdown(false); }}
+                          className={`w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold transition-colors ${
+                            activeType === ct 
+                              ? "bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" 
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                          }`}
+                        >
+                          {ct}
+                          <span className="text-[9px] opacity-60 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 mt-1 md:mt-0 ml-auto">
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 <button
                   onClick={() => { setEditTask(null); setShowModal(true); }}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm active:scale-95"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md shadow-blue-500/20 active:scale-95 border border-white/10"
                 >
-                  <Plus size={12} />
-                  Add
+                  <Plus size={14} className="drop-shadow-sm" />
+                  <span>Add Content</span>
                 </button>
                 
                 <button
                   onClick={() => exportToCsv(filtered)}
-                  className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors"
-                  title="Export CSV"
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 bg-white/80 dark:bg-gray-800/80 border border-gray-200/60 dark:border-gray-700/60 transition-all hover:border-blue-300 dark:hover:border-blue-700 shadow-sm active:scale-95"
+                  title="Export to CSV"
                 >
                   <Download size={14} />
                 </button>

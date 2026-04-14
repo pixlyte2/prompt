@@ -10,5 +10,6 @@ router.delete("/:id", protect, ctrl.deleteType);
 router.post("/:id/channels", protect, ctrl.addChannel);
 router.put("/:id/channels/:channelHandle", protect, ctrl.updateChannelFormat);
 router.delete("/:id/channels/:channelHandle", protect, ctrl.removeChannel);
+router.post("/reorder", protect, ctrl.reorderTypes);
 
 module.exports = router;

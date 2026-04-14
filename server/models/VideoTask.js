@@ -39,7 +39,7 @@ const videoTaskSchema = new mongoose.Schema(
       default: [],
     },
     url: { type: String, default: "" },
-    scheduledDate: { type: Date, required: true },
+    scheduledDate: { type: Date, required: false },
     notes: { type: String, default: "" },
     status: {
       type: String,

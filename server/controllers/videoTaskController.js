@@ -21,8 +21,8 @@ exports.createTask = async (req, res) => {
       platform, url, contentFormat, assignedTo,
     } = req.body;
 
-    if (!title || !scheduledDate || !channelType) {
-      return res.status(400).json({ message: "title, channelType and scheduledDate are required" });
+    if (!title || !channelType) {
+      return res.status(400).json({ message: "title and channelType are required" });
     }
 
     if (url && url.trim()) {
@@ -49,7 +49,7 @@ exports.createTask = async (req, res) => {
       contentFormat: contentFormat || [],
       assignedTo: assignedTo || [],
       url: url || "",
-      scheduledDate: new Date(scheduledDate),
+      scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
       notes: notes || "",
       createdBy: req.user._id,
     });
@@ -93,7 +93,9 @@ exports.updateTask = async (req, res) => {
       if (status === "completed") update.completedAt = new Date();
       else update.completedAt = null;
     }
-    if (scheduledDate) update.scheduledDate = new Date(scheduledDate);
+    if (scheduledDate !== undefined) {
+      update.scheduledDate = scheduledDate ? new Date(scheduledDate) : null;
+    }
     if (notes !== undefined) update.notes = notes;
     if (title !== undefined) update.title = title;
     if (url !== undefined) update.url = url;

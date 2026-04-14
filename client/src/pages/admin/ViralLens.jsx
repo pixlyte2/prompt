@@ -18,6 +18,8 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  ArrowUp,
+  ArrowDown,
   Save,
   CalendarPlus,
   Filter,
@@ -42,11 +44,11 @@ function FilterChip({ active, onClick, children, count, variant = "default" }) {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border text-[11px] sm:text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap ${variants[variant]}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border text-[10px] sm:text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap ${variants[variant]}`}
     >
       {children}
       {count !== undefined && count > 0 && (
-        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors ${
+        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${
           active ? "bg-white/25 text-white" : "bg-gray-200/70 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
         }`}>
           {count}
@@ -69,7 +71,7 @@ function FilterSegment({ options, value, onChange, variant = "default" }) {
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`relative flex items-center justify-center px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
+          className={`relative flex items-center justify-center px-2.5 py-1 sm:px-3.5 sm:py-1.5 text-[10px] sm:text-xs font-semibold rounded-lg transition-all duration-300 ${
             value === option.value
               ? activeVariants[variant]
               : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
@@ -77,7 +79,7 @@ function FilterSegment({ options, value, onChange, variant = "default" }) {
         >
           {option.label}
           {option.count !== undefined && option.count > 0 && (
-            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-md ${
+            <span className={`ml-1 text-[9px] px-1 py-0.2 small rounded-md ${
               value === option.value 
                 ? "bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300" 
                 : "bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
@@ -102,7 +104,7 @@ function SearchInput({ value, onChange, placeholder, onClear }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-9 pr-9 py-2 sm:pl-10 sm:pr-10 sm:py-2.5 rounded-lg sm:rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-xs sm:text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 dark:focus:border-blue-500/50 hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 shadow-sm"
+        className="w-full pl-8 pr-8 py-1.5 sm:pl-9 sm:pr-9 sm:py-2 rounded-lg sm:rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-[10px] sm:text-xs text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 dark:focus:border-blue-500/50 hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 shadow-sm"
       />
       {value && (
         <button
@@ -126,7 +128,7 @@ function SortSelect({ value, onChange, options, icon: Icon }) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none pl-9 pr-9 py-2 sm:pl-10 sm:pr-10 sm:py-2.5 rounded-lg sm:rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 hover:bg-white dark:hover:bg-gray-800 hover:border-blue-400/50 transition-all duration-300 shadow-sm cursor-pointer w-full"
+        className="appearance-none pl-8 pr-8 py-1.5 sm:pl-9 sm:pr-9 sm:py-2 rounded-lg sm:rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md text-[10px] sm:text-xs font-semibold text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 hover:bg-white dark:hover:bg-gray-800 hover:border-blue-400/50 transition-all duration-300 shadow-sm cursor-pointer w-full"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value} className="bg-white dark:bg-gray-800">
@@ -143,7 +145,7 @@ function SortSelect({ value, onChange, options, icon: Icon }) {
 
 function FilterBar({ children, className = "" }) {
   return (
-    <div className={`relative overflow-visible rounded-xl sm:rounded-2xl lg:rounded-3xl bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 shadow-xl shadow-gray-200/30 dark:shadow-black/30 p-2.5 sm:p-3 lg:p-4 flex flex-col gap-2 sm:gap-3 lg:gap-4 ${className}`}>
+    <div className={`relative overflow-visible rounded-xl sm:rounded-2xl lg:rounded-3xl bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 shadow-xl shadow-gray-200/30 dark:shadow-black/30 p-2 sm:p-2.5 lg:p-3 flex flex-col gap-1.5 sm:gap-2.5 lg:gap-3 ${className}`}>
       <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/10 dark:from-gray-800/40 dark:to-gray-900/10 pointer-events-none rounded-xl sm:rounded-2xl lg:rounded-3xl" />
       <div className="relative z-10 flex flex-col gap-2.5 sm:gap-3 w-full">
         {children}
@@ -154,7 +156,7 @@ function FilterBar({ children, className = "" }) {
 
 function FilterRow({ children, className = "" }) {
   return (
-    <div className={`flex items-center gap-2 sm:gap-3 flex-wrap md:flex-nowrap w-full ${className}`}>
+    <div className={`flex items-center gap-1.5 sm:gap-2 flex-wrap md:flex-nowrap w-full ${className}`}>
       {children}
     </div>
   );
@@ -162,12 +164,13 @@ function FilterRow({ children, className = "" }) {
 
 function FilterLabel({ icon: Icon, children }) {
   return (
-    <div className="flex items-center gap-1.5 px-1 sm:px-2 text-xs sm:text-sm font-bold tracking-tight text-gray-700 dark:text-gray-300 flex-shrink-0">
-      {Icon && <Icon size={14} className="text-blue-500 dark:text-blue-400 drop-shadow-sm sm:w-4 sm:h-4 w-3.5 h-3.5" />}
+    <div className="flex items-center gap-1 sm:gap-1.5 px-0.5 sm:px-1 text-[10px] sm:text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300 flex-shrink-0">
+      {Icon && <Icon size={13} className="text-blue-500 dark:text-blue-400 drop-shadow-sm" />}
       <span className="bg-clip-text text-transparent bg-gradient-to-r from-gray-700 to-gray-500 dark:from-gray-100 dark:to-gray-400 whitespace-nowrap">{children}</span>
     </div>
   );
 }
+
 
 function StatsBadge({ count, label, variant = "default" }) {
   const variants = {
@@ -176,13 +179,13 @@ function StatsBadge({ count, label, variant = "default" }) {
   };
 
   return (
-    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border shadow-sm backdrop-blur-md transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 ${variants[variant]}`}>
-      {variant === "success" && <span className="relative flex h-2 w-2">
+    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold border shadow-sm backdrop-blur-md transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 ${variants[variant]}`}>
+      {variant === "success" && <span className="relative flex h-1.5 w-1.5">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
       </span>}
-      <span className="text-sm">{count}</span>
-      <span className="opacity-80 font-medium">{label}</span>
+      <span className="text-[11px]">{count}</span>
+      <span className="opacity-80 font-medium uppercase tracking-tighter">{label}</span>
     </div>
   );
 }
@@ -577,13 +580,13 @@ function CompetitorVideoCard({ video, onSchedule }) {
         </div>
       </a>
       <div className="flex-1 p-2 flex flex-col">
-        <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors drop-shadow-sm">
+        <h4 className="text-[10px] sm:text-[11px] font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors drop-shadow-sm">
           {video.title}
         </h4>
-        <div className="mt-auto flex flex-col gap-1.5 text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400">
+        <div className="mt-auto flex flex-col gap-1 text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400">
           <div className="flex items-center justify-between">
-            <span className="font-extrabold text-[11px] sm:text-[12px] text-gray-900 dark:text-gray-100 inline-flex items-center gap-1">
-              <Eye size={12} className="text-blue-500 dark:text-blue-400" /> {video.viewsText || formatViews(video.views)}
+            <span className="font-extrabold text-[10px] sm:text-[11px] text-gray-900 dark:text-gray-100 inline-flex items-center gap-1">
+              <Eye size={10} className="text-blue-500 dark:text-blue-400" /> {video.viewsText || formatViews(video.views)}
             </span>
             {onSchedule && (
               <button
@@ -736,8 +739,30 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
       const { data } = await api.delete(`/competitor-types/${typeId}/channels/${handle}`);
       setTypes((prev) => prev.map((t) => (t._id === typeId ? data : t)));
       onTypesChanged();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleMoveType = async (index, direction) => {
+    const newTypes = [...types];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newTypes.length) return;
+
+    // Swap elements
+    [newTypes[index], newTypes[targetIndex]] = [newTypes[targetIndex], newTypes[index]];
+
+    // Prepare for backend
+    const reordered = newTypes.map((t, idx) => ({ id: t._id, sortOrder: idx }));
+    
+    setBusy(`move-${newTypes[index]._id}`);
+    try {
+      await api.post("/competitor-types/reorder", { order: reordered });
+      setTypes(newTypes);
+      onTypesChanged();
+      toast.success("Order updated");
     } catch {
-      toast.error("Failed to remove channel");
+      toast.error("Failed to update order");
     } finally {
       setBusy(null);
     }
@@ -773,24 +798,45 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
                 const chInput = newChannels[type._id] || { handle: "", name: "", videoFormat: "long" };
                 return (
                   <div key={type._id} className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setExpanded(isOpen ? null : type._id)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      {isOpen ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
-                      <input
-                        type="text"
-                        value={type.name}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => setTypes((prev) => prev.map((t) => (t._id === type._id ? { ...t, name: e.target.value } : t)))}
-                        onBlur={(e) => handleUpdateTypeName(type._id, e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && e.target.blur()}
-                        className="text-sm font-semibold flex-1 bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 -mx-1 text-gray-900 dark:text-white placeholder-gray-400"
-                        placeholder="Type name (e.g. Social)"
-                      />
-                      <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">{type.channels.length} channels</span>
-                    </button>
+                    <div className="w-full flex items-center gap-1.5 px-4 py-2.5 bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(isOpen ? null : type._id)}
+                        className="flex items-center gap-1.5 flex-1 text-left"
+                      >
+                        {isOpen ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+                        <input
+                          type="text"
+                          value={type.name}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => setTypes((prev) => prev.map((t) => (t._id === type._id ? { ...t, name: e.target.value } : t)))}
+                          onBlur={(e) => handleUpdateTypeName(type._id, e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && e.target.blur()}
+                          className="text-xs font-semibold flex-1 bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 -mx-1 text-gray-900 dark:text-white placeholder-gray-400"
+                          placeholder="Type name"
+                        />
+                      </button>
+                      
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveType(types.findIndex(t => t._id === type._id), "up")}
+                          disabled={types.findIndex(t => t._id === type._id) === 0 || busy != null}
+                          className="p-1 rounded text-gray-400 hover:text-blue-500 hover:bg-white dark:hover:bg-gray-700 disabled:opacity-30 transition-all"
+                        >
+                          <ArrowUp size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveType(types.findIndex(t => t._id === type._id), "down")}
+                          disabled={types.findIndex(t => t._id === type._id) === types.length - 1 || busy != null}
+                          className="p-1 rounded text-gray-400 hover:text-blue-500 hover:bg-white dark:hover:bg-gray-700 disabled:opacity-30 transition-all"
+                        >
+                          <ArrowDown size={13} />
+                        </button>
+                        <span className="text-[9px] text-gray-400 dark:text-gray-500 ml-1 font-medium">{type.channels.length} ch</span>
+                      </div>
+                    </div>
                     {isOpen && (
                       <div className="px-4 py-3 space-y-3 border-t border-gray-200 dark:border-gray-700">
                         {/* Videos per channel */}
@@ -964,6 +1010,25 @@ function CompetitorWatch() {
   const [minViews, setMinViews] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scheduleVideo, setScheduleVideo] = useState(null);
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
+  const [showViewDropdown, setShowViewDropdown] = useState(false);
+  const [showChannelDropdown, setShowChannelDropdown] = useState(false);
+  const typeDropdownRef = useRef(null);
+  const periodDropdownRef = useRef(null);
+  const viewDropdownRef = useRef(null);
+  const channelDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(event.target)) setShowTypeDropdown(false);
+      if (periodDropdownRef.current && !periodDropdownRef.current.contains(event.target)) setShowPeriodDropdown(false);
+      if (viewDropdownRef.current && !viewDropdownRef.current.contains(event.target)) setShowViewDropdown(false);
+      if (channelDropdownRef.current && !channelDropdownRef.current.contains(event.target)) setShowChannelDropdown(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const activeTypeName = useMemo(
     () => types.find((t) => t._id === activeType)?.name || "",
@@ -1135,106 +1200,202 @@ function CompetitorWatch() {
   }
   
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden gap-2">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden gap-1.5 px-3 pt-2 pb-4">
       {/* Unified Filter Section */}
-      <FilterBar className="flex-shrink-0 p-3">
-        {/* Type selector and time period */}
-        <FilterRow className="gap-3">
-          <FilterLabel icon={Layers}>Category:</FilterLabel>
-          <div className="flex items-center gap-1.5 flex-1 w-full overflow-x-auto no-scrollbar pb-1 -mb-1 px-1">
-            {types.map((t) => (
-              <FilterChip
-                key={t._id}
-                active={activeType === t._id}
-                onClick={() => setActiveType(t._id)}
+      <FilterBar className="flex-shrink-0 p-1.5 sm:p-2 z-30">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-2 w-full">
+          {/* Main Selectors Row */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+             <div className="flex items-center gap-1.5 relative" ref={typeDropdownRef}>
+              <FilterLabel icon={Layers}>Type:</FilterLabel>
+              <button
+                onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-lg border text-[10px] sm:text-xs font-bold transition-all ${
+                  activeType 
+                    ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+                    : "bg-white/60 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800"
+                }`}
               >
-                {t.name}
-              </FilterChip>
-            ))}
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-500 bg-white/50 dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-700 text-[11px] sm:text-xs font-semibold tracking-wide transition-all whitespace-nowrap flex-shrink-0"
-              title="Manage channel types"
-            >
-              <Settings size={13} />
-              Manage Types
-            </button>
-          </div>
-        </FilterRow>
+                <span className="truncate max-w-[80px] sm:max-w-[120px]">
+                  {types.find(t => t._id === activeType)?.name || "Select Category"}
+                </span>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${showTypeDropdown ? "rotate-180" : ""}`} />
+              </button>
 
-        {/* Time period and view filters */}
-        <FilterRow>
-          <FilterLabel icon={Clock}>Time Period:</FilterLabel>
-          <FilterSegment
-            options={COMP_PERIODS.filter((p) => p.value === "all" || (periodCounts[p.value] || 0) > 0).map((p) => ({
-              value: p.value,
-              label: p.label,
-              count: p.value !== "all" && (periodCounts[p.value] || 0) > 0 ? periodCounts[p.value] : undefined
-            }))}
-            value={period}
-            onChange={setPeriod}
-            variant="red"
-          />
-          
-          <span className="hidden md:block w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0 mx-2" />
-          
-          <FilterLabel icon={Eye}>Views:</FilterLabel>
-          <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar pb-1 -mb-1 px-1">
-            {COMP_VIEW_FILTERS.filter((vf) => vf.value === 0 || (viewCounts[vf.value] || 0) > 0).map((vf) => (
-              <FilterChip
-                key={vf.value}
-                active={minViews === vf.value}
-                onClick={() => setMinViews(vf.value)}
-                count={viewCounts[vf.value]}
-              >
-                {vf.label}
-              </FilterChip>
-            ))}
-          </div>
-        </FilterRow>
+              {showTypeDropdown && (
+                <div className="absolute top-full left-0 mt-1.5 w-52 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl z-[100] py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Categories</div>
+                  <div className="max-h-60 overflow-y-auto no-scrollbar">
+                    {types.map((t) => (
+                      <button
+                        key={t._id}
+                        onClick={() => { setActiveType(t._id); setShowTypeDropdown(false); }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold transition-colors ${
+                          activeType === t._id 
+                            ? "bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" 
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                        }`}
+                      >
+                        {t.name}
+                        <span className="text-[9px] opacity-60 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{t.channels.length} ch</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="h-px bg-gray-100 dark:bg-gray-700 my-1" />
+                  <button
+                    onClick={() => { setSettingsOpen(true); setShowTypeDropdown(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
+                  >
+                    <Settings size={12} /> Manage Categories
+                  </button>
+                </div>
+              )}
+            </div>
 
-        {/* Channels, search and actions */}
-        <FilterRow>
-          <FilterLabel icon={Users}>Channels:</FilterLabel>
-          <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar pb-1 -mb-1 px-1">
-            <FilterChip
-              active={activeChannel === "all"}
-              onClick={() => setActiveChannel("all")}
-            >
-              All Channels
-            </FilterChip>
-            {channels.map((ch) => (
-              <FilterChip
-                key={ch.handle}
-                active={activeChannel === ch.handle}
-                onClick={() => setActiveChannel(ch.handle)}
+            <div className="flex items-center gap-1.5 relative" ref={periodDropdownRef}>
+              <FilterLabel icon={Clock}>Time:</FilterLabel>
+              <button
+                onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
+                className="flex items-center gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 text-[10px] sm:text-xs font-bold transition-all"
               >
-                {ch.name}
-              </FilterChip>
-            ))}
+                <span className="truncate">
+                  {COMP_PERIODS.find(p => p.value === period)?.label}
+                </span>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${showPeriodDropdown ? "rotate-180" : ""}`} />
+              </button>
+
+              {showPeriodDropdown && (
+                <div className="absolute top-full left-0 mt-1.5 w-40 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl z-[100] py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                  {COMP_PERIODS.map((p) => {
+                    const count = p.value !== "all" ? periodCounts[p.value] : null;
+                    return (
+                      <button
+                        key={p.value}
+                        onClick={() => { setPeriod(p.value); setShowPeriodDropdown(false); }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold transition-colors ${
+                          period === p.value 
+                            ? "bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400" 
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                        }`}
+                      >
+                        {p.label}
+                        {count > 0 && <span className="text-[9px] opacity-60 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{count}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 relative" ref={viewDropdownRef}>
+              <FilterLabel icon={Eye}>Views:</FilterLabel>
+              <button
+                onClick={() => setShowViewDropdown(!showViewDropdown)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-lg border text-[10px] sm:text-xs font-bold transition-all ${
+                  minViews > 0
+                    ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 shadow-sm"
+                    : "bg-white/60 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800"
+                }`}
+              >
+                <span className="truncate">
+                  {COMP_VIEW_FILTERS.find(vf => vf.value === minViews)?.label}
+                </span>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${showViewDropdown ? "rotate-180" : ""}`} />
+              </button>
+
+              {showViewDropdown && (
+                <div className="absolute top-full left-0 mt-1.5 w-48 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl z-[100] py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                  {COMP_VIEW_FILTERS.map((vf) => (
+                    <button
+                      key={vf.value}
+                      onClick={() => { setMinViews(vf.value); setShowViewDropdown(false); }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold transition-colors ${
+                        minViews === vf.value 
+                          ? "bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400" 
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      }`}
+                    >
+                      {vf.label}
+                      {vf.value !== 0 && viewCounts[vf.value] > 0 && (
+                        <span className="text-[9px] opacity-60 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{viewCounts[vf.value]}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          
-          <SortSelect
-            value={compSort}
-            onChange={setCompSort}
-            options={COMP_SORTS}
-            icon={ArrowDownWideNarrow}
-          />
-          
-          <div className="flex items-center gap-4 ml-auto">
-            <StatsBadge count={filtered.length} label={filtered.length === 1 ? "video" : "videos"} />
-            <button
-              type="button"
-              onClick={() => fetchVideos(activeType, { silent: true, force: true })}
-              disabled={refreshing}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5"
-            >
-              <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-              Refresh
-            </button>
+
+          <span className="hidden lg:block w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1" />
+
+          {/* Search and Secondary Selectors */}
+          <div className="flex items-center gap-2 flex-grow min-w-0">
+             <div className="flex items-center gap-1.5 relative flex-1 max-w-sm" ref={channelDropdownRef}>
+              <button
+                onClick={() => setShowChannelDropdown(!showChannelDropdown)}
+                className="w-full flex items-center justify-between px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 text-[10px] sm:text-xs font-bold transition-all hover:bg-white dark:hover:bg-gray-800"
+              >
+                <div className="flex items-center gap-1.5 truncate">
+                  <Users size={12} className="text-gray-400" />
+                  <span className="truncate">
+                    {activeChannel === "all" ? "All Channels" : channels.find(c => c.handle === activeChannel)?.name}
+                  </span>
+                </div>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${showChannelDropdown ? "rotate-180" : ""}`} />
+              </button>
+
+              {showChannelDropdown && (
+                <div className="absolute top-full left-0 mt-1.5 w-full min-w-[200px] rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl z-[100] py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                  <button
+                    onClick={() => { setActiveChannel("all"); setShowChannelDropdown(false); }}
+                    className={`w-full flex items-center px-3 py-2 text-[11px] font-semibold transition-colors ${
+                      activeChannel === "all" 
+                        ? "bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" 
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    }`}
+                  >
+                    All Channels
+                  </button>
+                  <div className="max-h-60 overflow-y-auto no-scrollbar">
+                    {channels.map((ch) => (
+                      <button
+                        key={ch.handle}
+                        onClick={() => { setActiveChannel(ch.handle); setShowChannelDropdown(false); }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold transition-colors ${
+                          activeChannel === ch.handle 
+                            ? "bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" 
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                        }`}
+                      >
+                        {ch.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <SortSelect
+              value={compSort}
+              onChange={setCompSort}
+              options={COMP_SORTS}
+              icon={ArrowDownWideNarrow}
+            />
+
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fetchVideos(activeType, { silent: true, force: true })}
+                disabled={refreshing}
+                className="p-1.5 rounded-lg bg-white/60 dark:bg-gray-700/60 border border-gray-200/50 dark:border-gray-600/50 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
+                title="Refresh board"
+              >
+                <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+              </button>
+              <StatsBadge count={filtered.length} label={filtered.length === 1 ? "video" : "videos"} />
+            </div>
           </div>
-        </FilterRow>
+        </div>
       </FilterBar>
 
       {/* Video grid */}

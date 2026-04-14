@@ -9,6 +9,17 @@ const viewerMenu = [
 
 export default function ViewerLayout({ title, titleInfo, icon, children, onCacheClear, noPadding }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("SIDEBAR_COLLAPSED") === "true";
+  });
+
+  const handleToggleCollapse = () => {
+    setSidebarCollapsed((prev) => {
+      const newVal = !prev;
+      localStorage.setItem("SIDEBAR_COLLAPSED", String(newVal));
+      return newVal;
+    });
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
@@ -16,9 +27,15 @@ export default function ViewerLayout({ title, titleInfo, icon, children, onCache
         menu={viewerMenu}
         mobileOpen={mobileNavOpen}
         onCloseMobile={() => setMobileNavOpen(false)}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleCollapse}
       />
 
-      <div className="flex-1 flex flex-col ml-0 md:ml-64 min-w-0">
+      <div
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
+          sidebarCollapsed ? "md:ml-20" : "md:ml-64"
+        }`}
+      >
         <Topbar
           title={title}
           titleInfo={titleInfo}

@@ -3,7 +3,7 @@ const { clearCache } = require("./competitorController");
 
 exports.getTypes = async (req, res) => {
   try {
-    const types = await CompetitorType.find().sort("name").lean();
+    const types = await CompetitorType.find().sort({ sortOrder: 1, name: 1 }).lean();
     res.json(types);
   } catch (err) {
     console.error("getTypes error:", err.message);
@@ -139,5 +139,28 @@ exports.updateChannelFormat = async (req, res) => {
   } catch (err) {
     console.error("updateChannelFormat error:", err.message);
     res.status(500).json({ message: "Failed to update channel format" });
+  }
+};
+
+exports.reorderTypes = async (req, res) => {
+  try {
+    const { order } = req.body; // Array of { id: string, sortOrder: number }
+    if (!Array.isArray(order)) {
+      return res.status(400).json({ message: "Invalid order data" });
+    }
+
+    const bulkOps = order.map((item) => ({
+      updateOne: {
+        filter: { _id: item.id },
+        update: { $set: { sortOrder: item.sortOrder } },
+      },
+    }));
+
+    await CompetitorType.bulkWrite(bulkOps);
+    const types = await CompetitorType.find().sort({ sortOrder: 1, name: 1 }).lean();
+    res.json(types);
+  } catch (err) {
+    console.error("reorderTypes error:", err.message);
+    res.status(500).json({ message: "Failed to reorder types" });
   }
 };
