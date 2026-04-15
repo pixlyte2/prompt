@@ -1592,8 +1592,8 @@ export default function ProductionHub() {
         {/* Unified Filter Section */}
         <FilterBar className="flex-shrink-0 p-1.5 sm:p-2 z-30">
           {/* View mode, types, search and actions all on one row when possible */}
-          <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
-            <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full">
+            <div className="flex items-center gap-2">
               <FilterLabel icon={Filter}>View:</FilterLabel>
               <FilterSegment
                 options={[
@@ -1609,51 +1609,51 @@ export default function ProductionHub() {
             
             <span className="hidden lg:block w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
             
-            <div className="flex items-center gap-2 flex-shrink-0 relative" ref={typeDropdownRef}>
+            <div className="flex items-center gap-2 relative" ref={typeDropdownRef}>
               <FilterLabel icon={LayoutDashboard}>Type:</FilterLabel>
               <button
                 onClick={() => setShowTypeDropdown(!showTypeDropdown)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-lg border text-[10px] sm:text-xs font-bold transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold transition-all ${
                   activeType !== "all"
-                    ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+                    ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 shadow-sm"
                     : "bg-white/60 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800"
                 }`}
               >
-                <span className="truncate max-w-[80px] sm:max-w-[120px]">
+                <span className="truncate max-w-[100px] sm:max-w-[140px]">
                   {activeType === "all" ? "All Categories" : activeType}
                 </span>
-                <ChevronDown size={14} className={`transition-transform duration-200 ${showTypeDropdown ? "rotate-180" : ""}`} />
+                <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${showTypeDropdown ? "rotate-180" : ""}`} />
               </button>
 
               {showTypeDropdown && (
-                <div className="absolute top-full left-0 mt-1.5 w-48 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl z-[100] py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="absolute top-full left-0 mt-2 w-56 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 shadow-2xl z-[100] py-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                   <button
                     onClick={() => { setActiveType("all"); setShowTypeDropdown(false); }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold transition-colors ${
+                    className={`w-full flex items-center justify-between px-4 py-2 text-[11px] font-bold transition-colors ${
                       activeType === "all" 
                         ? "bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" 
                         : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                     }`}
                   >
                     All Categories
-                    <span className="text-[9px] opacity-60 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{tasks.length}</span>
+                    <span className="text-[10px] opacity-60 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full font-black uppercase">{tasks.length}</span>
                   </button>
-                  <div className="h-px bg-gray-100 dark:bg-gray-700 my-1" />
-                  <div className="max-h-60 overflow-y-auto no-scrollbar">
+                  <div className="h-px bg-gray-100 dark:bg-gray-700 my-1.5" />
+                  <div className="max-h-64 overflow-y-auto custom-scrollbar">
                     {uniqueTypes.map((ct) => {
                       const count = tasks.filter(t => t.channelType === ct).length;
                       return (
                         <button
                           key={ct}
                           onClick={() => { setActiveType(ct); setShowTypeDropdown(false); }}
-                          className={`w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold transition-colors ${
+                          className={`w-full flex items-center justify-between px-4 py-2 text-[11px] font-bold transition-colors ${
                             activeType === ct 
                               ? "bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" 
                               : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                           }`}
                         >
-                          {ct}
-                          <span className="text-[9px] opacity-60 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{count}</span>
+                          <span className="truncate">{ct}</span>
+                          <span className="text-[10px] opacity-60 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full font-black uppercase">{count}</span>
                         </button>
                       );
                     })}
@@ -1662,24 +1662,22 @@ export default function ProductionHub() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 mt-1 md:mt-0 ml-auto">
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button
-                  onClick={() => { setEditTask(null); setShowModal(true); }}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md shadow-blue-500/20 active:scale-95 border border-white/10"
-                >
-                  <Plus size={14} className="drop-shadow-sm" />
-                  <span>Add Content</span>
-                </button>
-                
-                <button
-                  onClick={() => exportToCsv(filtered)}
-                  className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 bg-white/80 dark:bg-gray-800/80 border border-gray-200/60 dark:border-gray-700/60 transition-all hover:border-blue-300 dark:hover:border-blue-700 shadow-sm active:scale-95"
-                  title="Export to CSV"
-                >
-                  <Download size={14} />
-                </button>
-              </div>
+            <div className="flex items-center gap-2 md:ml-auto">
+              <button
+                onClick={() => { setEditTask(null); setShowModal(true); }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-tight text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 active:scale-95 border border-white/10"
+              >
+                <Plus size={16} className="drop-shadow-sm" />
+                <span>Add Content</span>
+              </button>
+              
+              <button
+                onClick={() => exportToCsv(filtered)}
+                className="p-2 rounded-xl text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 bg-white/80 dark:bg-gray-800/80 border border-gray-200/60 dark:border-gray-700/60 transition-all hover:border-blue-300 dark:hover:border-blue-700 shadow-sm active:scale-95"
+                title="Export to CSV"
+              >
+                <Download size={16} />
+              </button>
             </div>
           </div>
         </FilterBar>

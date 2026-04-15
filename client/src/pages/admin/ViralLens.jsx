@@ -1000,7 +1000,7 @@ function CompetitorWatch() {
   const [activeType, setActiveType] = useState(null);
   const [videos, setVideos] = useState([]);
   const [channels, setChannels] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [typesLoading, setTypesLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState("all");
@@ -1042,11 +1042,7 @@ function CompetitorWatch() {
     try {
       const { data } = await api.get("/competitor-types");
       setTypes(data);
-      setActiveType((prev) => {
-        if (!prev && data.length) return data[0]._id;
-        if (prev && !data.find((t) => t._id === prev)) return data.length ? data[0]._id : null;
-        return prev;
-      });
+      // Removed auto-selection of first type to allow "Select Category" default
     } catch {
       toast.error("Could not load channel types");
     } finally {
@@ -1206,47 +1202,50 @@ function CompetitorWatch() {
         <div className="flex flex-col lg:flex-row lg:items-center gap-2 w-full">
           {/* Main Selectors Row */}
           <div className="flex items-center gap-2 flex-shrink-0">
-             <div className="flex items-center gap-1.5 relative" ref={typeDropdownRef}>
+             <div className="flex items-center gap-2 relative" ref={typeDropdownRef}>
               <FilterLabel icon={Layers}>Type:</FilterLabel>
               <button
                 onClick={() => setShowTypeDropdown(!showTypeDropdown)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-lg border text-[10px] sm:text-xs font-bold transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 sm:py-2 rounded-xl border transition-all ${
                   activeType 
-                    ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+                    ? "bg-blue-50 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 shadow-sm"
                     : "bg-white/60 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800"
                 }`}
               >
-                <span className="truncate max-w-[80px] sm:max-w-[120px]">
+                <span className="truncate max-w-[120px] sm:max-w-[160px] text-[11px] sm:text-sm font-bold">
                   {types.find(t => t._id === activeType)?.name || "Select Category"}
                 </span>
-                <ChevronDown size={14} className={`transition-transform duration-200 ${showTypeDropdown ? "rotate-180" : ""}`} />
+                <ChevronDown size={16} className={`text-gray-400 transition-transform duration-200 ${showTypeDropdown ? "rotate-180" : ""}`} />
               </button>
 
               {showTypeDropdown && (
-                <div className="absolute top-full left-0 mt-1.5 w-52 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl z-[100] py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-                  <div className="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Categories</div>
-                  <div className="max-h-60 overflow-y-auto no-scrollbar">
+                <div className="absolute top-full left-0 mt-2 w-64 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 shadow-2xl z-[100] py-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-700/50 mb-1">Available Categories</div>
+                  <div className="max-h-72 overflow-y-auto custom-scrollbar">
                     {types.map((t) => (
                       <button
                         key={t._id}
                         onClick={() => { setActiveType(t._id); setShowTypeDropdown(false); }}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-[11px] font-semibold transition-colors ${
+                        className={`w-full flex items-center justify-between px-4 py-2.5 text-xs sm:text-sm font-bold transition-all ${
                           activeType === t._id 
                             ? "bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" 
                             : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                         }`}
                       >
-                        {t.name}
-                        <span className="text-[9px] opacity-60 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{t.channels.length} ch</span>
+                        <span className="truncate">{t.name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] opacity-60 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full font-black uppercase">{t.channels.length} CH</span>
+                          {activeType === t._id && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm" />}
+                        </div>
                       </button>
                     ))}
                   </div>
-                  <div className="h-px bg-gray-100 dark:bg-gray-700 my-1" />
+                  <div className="h-px bg-gray-100 dark:bg-gray-700 my-1.5" />
                   <button
                     onClick={() => { setSettingsOpen(true); setShowTypeDropdown(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[11px] sm:text-xs font-black uppercase tracking-tight text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
                   >
-                    <Settings size={12} /> Manage Categories
+                    <Settings size={14} /> <span>Manage Categories</span>
                   </button>
                 </div>
               )}
@@ -1408,7 +1407,17 @@ function CompetitorWatch() {
             </div>
           </div>
         )}
-        {loading ? (
+        {!activeType ? (
+          <div className="flex flex-col items-center justify-center py-32 text-center fade-in">
+             <div className="w-24 h-24 bg-blue-50/50 dark:bg-blue-900/20 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-blue-500/10 border border-blue-100/50 dark:border-blue-800/30 ring-8 ring-blue-50/20 dark:ring-blue-900/10">
+               <Layers size={40} className="text-blue-500 dark:text-blue-400" />
+             </div>
+            <p className="text-2xl font-black tracking-tight text-gray-800 dark:text-gray-200 mb-2">Welcome to Trending Hub</p>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
+              To start tracking competitor performance, please select a <span className="text-blue-600 dark:text-blue-400 font-bold">Category</span> from the dropdown above.
+            </p>
+          </div>
+        ) : loading ? (
           <div className="flex items-center justify-center py-32">
             <div className="flex flex-col items-center gap-5">
               <div className="relative flex items-center justify-center w-16 h-16">
