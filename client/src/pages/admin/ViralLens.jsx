@@ -243,6 +243,13 @@ function formatViews(n) {
   return n.toLocaleString();
 }
 
+function getThumbnailUrl(videoId, type = 'hd') {
+  if (!videoId) return "";
+  // YouTube thumbnail patterns
+  if (type === 'hd') return `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
+  return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+}
+
 function ScheduleVideoModal({ video, channelType, onClose }) {
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
@@ -604,31 +611,56 @@ function CompetitorVideoCard({ video, onSchedule }) {
         <h4 className="text-[10px] sm:text-[11px] font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors drop-shadow-sm">
           {video.title}
         </h4>
-        <div className="mt-auto flex flex-col gap-1 text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400">
+        <div className="mt-auto flex flex-col gap-1.5 text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400">
           <div className="flex items-center justify-between">
             <span className="font-extrabold text-[10px] sm:text-[11px] text-gray-900 dark:text-gray-100 inline-flex items-center gap-1">
               <Eye size={10} className="text-blue-500 dark:text-blue-400" /> {video.viewsText || formatViews(video.views)}
             </span>
-            {onSchedule && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onSchedule(video); }}
-                className="p-1 rounded-lg bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:text-white hover:bg-gradient-to-br hover:from-blue-500 hover:to-indigo-600 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
-                title="Schedule this video"
-              >
-                <CalendarPlus size={12} />
-              </button>
-            )}
+            <div className="flex items-center gap-1">
+              {onSchedule && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onSchedule(video); }}
+                  className="p-1 rounded-lg bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:text-white hover:bg-gradient-to-br hover:from-blue-500 hover:to-indigo-600 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
+                  title="Schedule this video"
+                >
+                  <CalendarPlus size={12} />
+                </button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1 mt-0.5">
+          
+          <div className="flex items-center justify-between gap-1 mt-0.5">
             <span className="font-semibold text-gray-700 dark:text-gray-300 truncate max-w-[5rem] sm:max-w-[7rem] bg-gray-100/80 dark:bg-gray-700/80 px-1.5 py-0.5 rounded border border-gray-200/50 dark:border-gray-600/50">
               {video.channelName}
             </span>
-            {video.publishedText && (
-              <span className="inline-flex items-center gap-1 opacity-80 font-medium ml-auto whitespace-nowrap">
-                <Clock size={9} /> {video.publishedText}
-              </span>
-            )}
+            
+            <div className="flex items-center gap-1 ml-auto">
+              <a 
+                href={getThumbnailUrl(video.videoId, 'hd')} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 hover:bg-blue-500 hover:text-white transition-all"
+              >
+                HD
+              </a>
+              <a 
+                href={getThumbnailUrl(video.videoId, 'sd')} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700/50 hover:bg-gray-500 hover:text-white transition-all"
+              >
+                SD
+              </a>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between text-[9px] opacity-60">
+             <div className="flex items-center gap-1">
+               <Clock size={9} /> {video.publishedText}
+             </div>
           </div>
         </div>
       </div>
