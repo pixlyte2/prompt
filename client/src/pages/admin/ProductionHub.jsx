@@ -30,6 +30,7 @@ import {
   CheckSquare,
   Download,
   Filter,
+  Image,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
@@ -352,6 +353,7 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
   const platform = task.platform || "youtube";
   const taskUrl = getTaskUrl(task);
   const thumb = getTaskThumbnail(task);
+  const ytId = task.videoId || extractYoutubeId(task.url);
   const platMeta = PLATFORM_META[platform] || PLATFORM_META.website;
 
   const handleStatusClick = () => {
@@ -441,6 +443,33 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
       <span className="hidden sm:inline-flex text-[7.5px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 flex-shrink-0 shadow-sm">
         {task.channelType}
       </span>
+
+      {/* Thumbnail pill */}
+      {ytId && (
+        <div className="hidden sm:inline-flex items-center gap-1 text-[7.5px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400/80 flex-shrink-0 shadow-sm border border-amber-100/50 dark:border-amber-800/30">
+          <Image size={8} className="flex-shrink-0 opacity-70" />
+          <span className="opacity-50">Image:</span>
+          <a
+            href={`https://i.ytimg.com/vi/${ytId}/maxresdefault.jpg`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-700 dark:text-amber-200 hover:underline hover:text-amber-600 transition-colors"
+            title="High Definition (Might not exist for all videos)"
+          >
+            HD
+          </a>
+          <span className="text-[6px] opacity-20 mx-px">|</span>
+          <a
+            href={`https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-700 dark:text-amber-200 hover:underline hover:text-amber-600 transition-colors"
+            title="Standard Definition (Reliable)"
+          >
+            SD
+          </a>
+        </div>
+      )}
 
       {/* Assigned Users — now at the end! */}
       {task.assignedTo && task.assignedTo.length > 0 && (
@@ -736,6 +765,9 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
                   URL
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  Thumbnail
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -782,16 +814,39 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-xs">
-                    {getTaskUrl(task) && (
-                      <a
-                        href={getTaskUrl(task)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 dark:text-blue-400 hover:underline truncate block"
-                        title={getTaskUrl(task)}
-                      >
-                        {getTaskUrl(task)}
-                      </a>
+                    {task.videoId || extractYoutubeId(task.url) ? (
+                      <div className="flex items-center gap-3">
+                        <a
+                          href={`https://i.ytimg.com/vi/${task.videoId || extractYoutubeId(task.url)}/maxresdefault.jpg`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-amber-600 dark:text-amber-400 hover:underline text-xs flex items-center gap-1 font-bold"
+                          title="High Definition"
+                        >
+                          <Image size={12} /> HD
+                        </a>
+                        <div className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
+                        <a
+                          href={`https://i.ytimg.com/vi/${task.videoId || extractYoutubeId(task.url)}/hqdefault.jpg`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-amber-600 dark:text-amber-400 hover:underline text-xs flex items-center gap-1 font-bold"
+                          title="Standard Definition"
+                        >
+                          <Image size={12} /> SD
+                        </a>
+                      </div>
+                    ) : (
+                      task.thumbnail && (
+                        <a
+                          href={task.thumbnail}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-amber-600 dark:text-amber-400 hover:underline text-xs flex items-center gap-1 font-bold"
+                        >
+                          <Image size={12} /> View
+                        </a>
+                      )
                     )}
                   </td>
                 </tr>
