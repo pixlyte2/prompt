@@ -319,32 +319,6 @@ export default function Dashboard() {
 
         {/* ── Activity — fills all remaining viewport ── */}
         <section className="flex-1 min-h-0 flex flex-col overflow-hidden" aria-labelledby="dash-activity">
-          <div className="flex items-center justify-between mb-1 flex-shrink-0">
-            <h2 id="dash-activity" className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Recent Activity
-            </h2>
-            {history.length > 0 && (
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => navigate("/admin/ai-chat")}
-                  className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
-                >
-                  <Zap size={11} /> AI Chat
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHistoryItemId(null);
-                    setHistoryModal(true);
-                  }}
-                  className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  View all
-                </button>
-              </div>
-            )}
-          </div>
 
           {/* Delivery Monitor — Premium Assignments Widget */}
           <div className="flex-shrink-0 flex flex-col gap-3 mb-4">
@@ -366,7 +340,7 @@ export default function Dashboard() {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[155px] overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[320px] overflow-hidden">
               {["Pooja", "Soundarya"].map(name => {
                 const myTasks = todayTasks.filter(t => {
                   if (!t.assignedTo) return false;
@@ -473,76 +447,27 @@ export default function Dashboard() {
           ) : (
             <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
               {/* Last-session banner */}
-              <button
-                type="button"
-                onClick={() => openChatWithItem(lastUsed)}
-                className="flex-shrink-0 w-full rounded-lg border border-amber-200/80 dark:border-amber-800/40 bg-gradient-to-r from-amber-50/80 to-orange-50/30 dark:from-amber-950/30 dark:to-orange-950/15 px-3 py-2 text-left flex items-center gap-2.5 hover:shadow-sm transition-shadow group"
-              >
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40 flex-shrink-0">
-                  <Sparkles size={14} className="text-amber-600 dark:text-amber-400" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300 leading-none">
-                    Resume last session
-                  </p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {lastChannel && <span className={badgeClass.blue}>{lastChannel}</span>}
-                    {lastPromptType && <span className={badgeClass.violet}>{lastPromptType}</span>}
-                    {(lastUsed.subType || lastUsed.aiModel) && (
-                      <span className={badgeClass.amber}>{lastUsed.subType || lastUsed.aiModel}</span>
-                    )}
-                  </div>
-                </div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 tabular-nums flex-shrink-0">
-                  {timeAgo(lastUsed.timestamp)}
-                </span>
-                <ChevronRight className="text-gray-400 group-hover:text-amber-500 transition-colors flex-shrink-0" size={14} />
-              </button>
 
-              {/* Two-column activity — internally scrollable */}
-              <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-3 overflow-hidden">
-                {/* Inputs */}
-                <div className="min-h-0 flex flex-col overflow-hidden">
-                  <div className="flex items-center gap-1.5 mb-1.5 flex-shrink-0">
-                    <MessageSquare size={12} className="text-gray-400 dark:text-gray-500" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Inputs
+              {/* Single Column Activity */}
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between mb-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare size={13} className="text-blue-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                      Recent Activity / Prompts
                     </span>
                   </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-0.5">
-                    {history.slice(0, 2).map((item) => (
-                      <RecentHistoryRow
-                        key={item.id}
-                        item={item}
-                        mode="input"
-                        onOpenChat={openChatWithItem}
-                        onOpenGeneration={openGeneration}
-                      />
-                    ))}
-                  </div>
                 </div>
-
-                {/* Outputs */}
-                <div className="min-h-0 flex flex-col overflow-hidden">
-                  <div className="flex items-center justify-between mb-1.5 flex-shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      <Clock size={12} className="text-gray-400 dark:text-gray-500" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                        Outputs
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-0.5">
-                    {history.slice(0, 2).map((item) => (
-                      <RecentHistoryRow
-                        key={`gen-${item.id}`}
-                        item={item}
-                        mode="output"
-                        onOpenChat={openChatWithItem}
-                        onOpenGeneration={openGeneration}
-                      />
-                    ))}
-                  </div>
+                <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-0.5 no-scrollbar">
+                  {history.slice(0, 6).map((item) => (
+                    <RecentHistoryRow
+                      key={item.id}
+                      item={item}
+                      mode="input"
+                      onOpenChat={openChatWithItem}
+                      onOpenGeneration={openGeneration}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
