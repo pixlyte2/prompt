@@ -25,6 +25,7 @@ import {
   Filter,
   Layers,
   AlertTriangle,
+  ListChecks,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
@@ -306,7 +307,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
   if (!video) return null;
 
   const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
-  const canSave = title.trim() && channelType && scheduledDate;
+  const canSave = title.trim() && channelType && (scheduledDate || !scheduledDate); // Backlog allows no date
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -491,21 +492,41 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
             <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Select one, both, or none</p>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Channel Type</label>
-            <div className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300">
-              {channelType}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Channel Type</label>
+              <div className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300">
+                {channelType}
+              </div>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Scheduled Date</label>
-            <input
-              type="date"
-              value={scheduledDate}
-              onChange={(e) => setScheduledDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-            />
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Scheduled Date</label>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[9px] font-black uppercase tracking-tighter transition-colors ${!scheduledDate ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}`}>Backlog</span>
+                  <button
+                    type="button"
+                    onClick={() => setScheduledDate(scheduledDate ? null : new Date(Date.now() + 86_400_000).toISOString().split("T")[0])}
+                    className={`relative inline-flex h-[18px] w-[32px] flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${!scheduledDate ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" : "bg-gray-200 dark:bg-gray-700"}`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-[14px] w-[14px] transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${!scheduledDate ? "translate-x-[14px]" : "translate-x-0"}`}
+                    />
+                  </button>
+                </div>
+              </div>
+              <input
+                type="date"
+                value={scheduledDate || ""}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border transition-all text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                  !scheduledDate 
+                    ? "bg-gray-50/50 dark:bg-gray-800/50 text-gray-400 border-gray-100 dark:border-gray-800 opacity-60" 
+                    : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700"
+                }`}
+              />
+            </div>
           </div>
           <div>
             <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Notes (optional)</label>
@@ -535,8 +556,8 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
               disabled={saving || !canSave}
               className="ml-auto px-4 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
             >
-              {saving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-              Add to Board
+              {saving ? <Loader2 size={12} className="animate-spin" /> : (scheduledDate ? <Plus size={12} /> : <ListChecks size={12} />)}
+              {scheduledDate ? "Schedule Task" : "Add to Backlog"}
             </button>
           </div>
         </div>
