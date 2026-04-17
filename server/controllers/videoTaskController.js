@@ -133,3 +133,17 @@ exports.deleteTask = async (req, res) => {
     res.status(500).json({ message: "Failed to delete task" });
   }
 };
+
+exports.deleteManyTasks = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ message: "ids array is required" });
+    }
+    await VideoTask.deleteMany({ _id: { $in: ids } });
+    res.json({ message: `${ids.length} tasks deleted` });
+  } catch (err) {
+    console.error("deleteManyTasks error:", err.message);
+    res.status(500).json({ message: "Failed to delete tasks" });
+  }
+};

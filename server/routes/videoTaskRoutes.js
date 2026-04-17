@@ -5,6 +5,7 @@ const ctrl = require("../controllers/videoTaskController");
 
 router.get("/", protect, ctrl.getTasks);
 router.post("/", protect, ctrl.createTask);
+router.delete("/bulk", protect, ctrl.deleteManyTasks);
 router.put("/:id", protect, ctrl.updateTask);
 router.delete("/:id", protect, ctrl.deleteTask);
 

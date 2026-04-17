@@ -400,8 +400,26 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail }) {
       className="group flex items-center gap-1.5 px-2 py-0.5 sm:py-0.5 bg-white dark:bg-gray-800/80 rounded-lg border border-gray-100 dark:border-gray-700/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:shadow-sm cursor-grab active:cursor-grabbing"
     >
       {/* Checkbox */}
-      <div className="scale-90">
+      <div className="scale-90 flex-shrink-0">
         <StatusCheckbox status={task.status} onClick={handleStatusClick} />
+      </div>
+
+      {/* Actions (visible on hover/active) */}
+      <div className="flex-shrink-0 flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity mr-0.5">
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+          className="p-1 rounded text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
+          title="Edit"
+        >
+          <Pencil size={12} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); if (confirm("Delete this task?")) onDelete(task._id); }}
+          className="p-1 rounded text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+          title="Delete"
+        >
+          <Trash2 size={12} />
+        </button>
       </div>
 
       {/* Thumbnail / Platform icon */}
@@ -524,7 +542,7 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail }) {
         </span>
       )}
 
-      {/* Actions (visible on hover) */}
+      {/* Move Actions (Undo) */}
       <div className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
         {PREV_STATUS[task.status] && (
           <button
@@ -535,20 +553,6 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail }) {
             Undo
           </button>
         )}
-        <button
-          onClick={() => onEdit(task)}
-          className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          title="Edit"
-        >
-          <Pencil size={12} />
-        </button>
-        <button
-          onClick={() => { if (confirm("Delete this task?")) onDelete(task._id); }}
-          className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-          title="Delete"
-        >
-          <Trash2 size={12} />
-        </button>
       </div>
     </div>
   );
@@ -883,7 +887,10 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
   );
 }
 /* ─── Date Group ─── */
-function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, onPreviewThumbnail, defaultOpen, variant }) {
+function DateGroup({ 
+  dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, onPreviewThumbnail, defaultOpen, variant,
+  isSelected, onSelect 
+}) {
   const [open, setOpen] = useState(defaultOpen);
   const [isOver, setIsOver] = useState(false);
 
@@ -981,97 +988,113 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
       onDrop={handleDrop}
       className={`rounded-2xl border border-gray-100 dark:border-gray-700 border-l-[4px] ${borderColor} overflow-hidden shadow-md shadow-gray-200/20 dark:shadow-black/20 bg-white/40 dark:bg-gray-900/40 backdrop-blur-sm transition-all duration-300 ${isOver ? "ring-2 ring-blue-500 ring-inset scale-[1.01] brightness-105" : ""}`}
     >
-      <button
-        onClick={() => setOpen(!open)}
-        className={`w-full flex items-center gap-2 px-3 py-1 sm:py-1.5 ${headerBg} backdrop-blur-md transition-colors hover:brightness-95 `}
-      >
-        <span className="flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-300" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
-          <ChevronRight size={14} />
-        </span>
-
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 overflow-hidden">
-          <div className="flex items-center gap-3">
-            <span className={`text-sm font-black whitespace-nowrap ${(!isHistory && cat === "overdue") ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : isHistory ? "text-emerald-700 dark:text-emerald-400" : cat === "backlog" ? "text-gray-500 dark:text-gray-400 italic" : "text-gray-800 dark:text-gray-200"}`}>
-              {formatDateLabel(dateKey)}
-            </span>
-            
-            {dailySummary.total > 0 && (
-              <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700/50 shadow-sm">
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">{dailySummary.total} Tasks</span>
-                <div className="w-px h-3 bg-gray-200 dark:bg-gray-700 mx-1" />
-                <div className="flex items-center gap-1.5">
-                  {dailySummary.long > 0 && <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{dailySummary.long}L</span>}
-                  {dailySummary.short > 0 && <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400">{dailySummary.short}S</span>}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-2.5">
-            {Object.entries(assignmentSummary).map(([name, counts]) => {
-              const isUn = name === "Unassigned";
-              const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "soundarya" ? "bg-purple-400" : "bg-blue-400"));
-              const textColor = isUn ? "text-amber-600 dark:text-amber-400" : (ASSIGNED_PILL[name.toLowerCase()]?.split(' ').pop() || "text-gray-700 dark:text-gray-300");
-              const totalSum = (counts.long || 0) + (counts.short || 0);
-              
-              return (
-                <div key={name} className="flex items-center gap-1 bg-white/60 dark:bg-gray-800/60 pl-2 pr-1 py-0.5 rounded-xl border border-white/50 dark:border-gray-700/50 shadow-sm backdrop-blur-md group/assignment transition-all hover:bg-white dark:hover:bg-gray-800 hover:shadow-md hover:-translate-y-px">
-                  <div className="flex items-center gap-1.5 mr-1">
-                    <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-[0_0_8px_rgba(0,0,0,0.1)] group-hover/assignment:scale-110 transition-transform`} />
-                    <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${textColor}`}>
-                      {name}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-0.5">
-                    {totalSum > 0 && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-black bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 shadow-sm border border-transparent mr-1" title="Total (L+S)">
-                        {totalSum}
-                      </span>
-                    )}
-                    {counts.long > 0 && (
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.long} shadow-sm border border-transparent`} title="Long Format">
-                        {counts.long}L
-                      </span>
-                    )}
-                    {counts.short > 0 && (
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.short} shadow-sm border border-transparent`} title="Shorts">
-                        {counts.short}S
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {cat === "overdue" && <AlertTriangle size={14} className="text-red-500 flex-shrink-0 animate-pulse" />}
-
-        <div className="flex items-center gap-2 ml-auto">
-          {inProgress > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
-              <PlayCircle size={10} /> {inProgress}
-            </span>
-          )}
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50">
-            {completed}/{total}
-          </span>
-          <button
-            onClick={(e) => { e.stopPropagation(); onPreview(dateKey, tasks); }}
-            className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors shadow-sm"
-            title="Preview tasks"
-          >
-            <Eye size={10} /> Preview
-          </button>
-          <div className="hidden sm:flex w-20 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden shadow-inner">
-            <div
-              className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-blue-500 to-indigo-500"}`}
-              style={{ width: `${pct}%` }}
+      <div className="flex items-center">
+        {variant === "completed" && (
+          <div className="pl-3 flex items-center">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(e) => {
+                e.stopPropagation();
+                onSelect(dateKey, e.target.checked);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
             />
           </div>
+        )}
+        <div
+          onClick={() => setOpen(!open)}
+          className={`w-full flex items-center gap-2 px-3 py-1 sm:py-1.5 ${headerBg} backdrop-blur-md transition-colors hover:brightness-95 cursor-pointer select-none`}
+        >
+          <span className="flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-300" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
+            <ChevronRight size={14} />
+          </span>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 overflow-hidden">
+            <div className="flex items-center gap-3">
+              <span className={`text-sm font-black whitespace-nowrap ${(!isHistory && cat === "overdue") ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : isHistory ? "text-emerald-700 dark:text-emerald-400" : cat === "backlog" ? "text-gray-500 dark:text-gray-400 italic" : "text-gray-800 dark:text-gray-200"}`}>
+                {formatDateLabel(dateKey)}
+              </span>
+              
+              {dailySummary.total > 0 && (
+                <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700/50 shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">{dailySummary.total} Tasks</span>
+                  <div className="w-px h-3 bg-gray-200 dark:bg-gray-700 mx-1" />
+                  <div className="flex items-center gap-1.5">
+                    {dailySummary.long > 0 && <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{dailySummary.long}L</span>}
+                    {dailySummary.short > 0 && <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400">{dailySummary.short}S</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2.5">
+              {Object.entries(assignmentSummary).map(([name, counts]) => {
+                const isUn = name === "Unassigned";
+                const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "soundarya" ? "bg-purple-400" : "bg-blue-400"));
+                const textColor = isUn ? "text-amber-600 dark:text-amber-400" : (ASSIGNED_PILL[name.toLowerCase()]?.split(' ').pop() || "text-gray-700 dark:text-gray-300");
+                const totalSum = (counts.long || 0) + (counts.short || 0);
+                
+                return (
+                  <div key={name} className="flex items-center gap-1 bg-white/60 dark:bg-gray-800/60 pl-2 pr-1 py-0.5 rounded-xl border border-white/50 dark:border-gray-700/50 shadow-sm backdrop-blur-md group/assignment transition-all hover:bg-white dark:hover:bg-gray-800 hover:shadow-md hover:-translate-y-px">
+                    <div className="flex items-center gap-1.5 mr-1">
+                      <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-[0_0_8px_rgba(0,0,0,0.1)] group-hover/assignment:scale-110 transition-transform`} />
+                      <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${textColor}`}>
+                        {name}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-0.5">
+                      {totalSum > 0 && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-black bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 shadow-sm border border-transparent mr-1" title="Total (L+S)">
+                          {totalSum}
+                        </span>
+                      )}
+                      {counts.long > 0 && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.long} shadow-sm border border-transparent`} title="Long Format">
+                          {counts.long}L
+                        </span>
+                      )}
+                      {counts.short > 0 && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.short} shadow-sm border border-transparent`} title="Shorts">
+                          {counts.short}S
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {cat === "overdue" && <AlertTriangle size={14} className="text-red-500 flex-shrink-0 animate-pulse" />}
+
+          <div className="flex items-center gap-2 ml-auto">
+            {inProgress > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
+                <PlayCircle size={10} /> {inProgress}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50">
+              {completed}/{total}
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); onPreview(dateKey, tasks); }}
+              className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors shadow-sm"
+              title="Preview tasks"
+            >
+              <Eye size={10} /> Preview
+            </button>
+            <div className="hidden sm:flex w-20 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden shadow-inner">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-blue-500 to-indigo-500"}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
         </div>
-      </button>
+      </div>
 
       {open && (
         <div className="p-3 space-y-2 bg-gray-50/50 dark:bg-gray-800/20">
@@ -1086,6 +1109,7 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
         </div>
       )}
     </div>
+
   );
 }
 
@@ -1432,18 +1456,10 @@ export default function ProductionHub() {
   const [editTask, setEditTask] = useState(null);
   const [viewMode, setViewMode] = useState("schedule");
   const [previewModal, setPreviewModal] = useState({ open: false, tasks: [], dateKey: null });
+  const [selectedDateKeys, setSelectedDateKeys] = useState([]);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const typeDropdownRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (typeDropdownRef.current && !typeDropdownRef.current.contains(event.target)) {
-        setShowTypeDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -1499,6 +1515,58 @@ export default function ProductionHub() {
     setShowModal(false);
     setEditTask(null);
   }, []);
+
+  const handleSelectDate = useCallback((key, checked) => {
+    const k = key === null ? "no-date" : key;
+    setSelectedDateKeys(prev => 
+      checked ? [...prev, k] : prev.filter(item => item !== k)
+    );
+  }, []);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedDateKeys.length === 0) return;
+    
+    // Find all tasks in these date groups
+    const tasksToDelete = tasks.filter(t => {
+      const k = t.scheduledDate ? toDateKey(t.scheduledDate) : "no-date";
+      return selectedDateKeys.includes(k) && t.status === "completed";
+    });
+
+    if (tasksToDelete.length === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete all ${tasksToDelete.length} tasks in the selected date groups?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const ids = tasksToDelete.map(t => t._id);
+      await api.delete("/video-tasks/bulk", { data: { ids } });
+      toast.success(`Deleted ${tasksToDelete.length} tasks`);
+      setSelectedDateKeys([]);
+      fetchTasks();
+    } catch {
+      toast.error("Failed to delete tasks");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedDateKeys, tasks, fetchTasks]);
+
+  useEffect(() => {
+    // Clear selection when changing view
+    setSelectedDateKeys([]);
+  }, [viewMode]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(event.target)) {
+        setShowTypeDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
 
   const handleDropTask = useCallback(async (taskId, newDate) => {
     // If newDate is null (no-date group), we might handle it as clearing the date
@@ -1670,9 +1738,8 @@ export default function ProductionHub() {
         </div>
 
         {/* Unified Filter Section */}
-        <FilterBar className="flex-shrink-0 p-1.5 sm:p-2 z-30">
-          {/* View mode, types, search and actions all on one row when possible */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full">
+        <div className="flex-shrink-0 p-1 sm:p-1.5 z-30">
+          <div className="flex flex-wrap lg:flex-nowrap items-center gap-1.5 sm:gap-2 w-full">
             <div className="flex items-center gap-2">
               <FilterLabel icon={Filter}>View:</FilterLabel>
               <FilterSegment
@@ -1760,7 +1827,7 @@ export default function ProductionHub() {
               </button>
             </div>
           </div>
-        </FilterBar>
+        </div>
 
         {/* Content */}
         {loading ? (
@@ -1837,6 +1904,35 @@ export default function ProductionHub() {
           </div>
         ) : (
           <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
+            {selectedDateKeys.length > 0 && (
+              <div className="sticky top-0 z-20 mb-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-red-600 dark:text-red-400">
+                    <Trash2 size={16} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-red-700 dark:text-red-300">{selectedDateKeys.length} Date Groups Selected</p>
+                    <p className="text-[10px] text-red-600/70 dark:text-red-400/70">All tasks within these dates will be deleted permanently</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedDateKeys([])}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-500 hover:bg-white dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={isDeleting}
+                    className="px-4 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-all shadow-md shadow-red-500/20 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    Delete Permanently
+                  </button>
+                </div>
+              </div>
+            )}
             {completedDateGroups.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Circle size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
@@ -1856,6 +1952,8 @@ export default function ProductionHub() {
                   onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
                   defaultOpen={false}
                   variant="completed"
+                  isSelected={selectedDateKeys.includes(g.key === null ? "no-date" : g.key)}
+                  onSelect={handleSelectDate}
                 />
               ))
             )}

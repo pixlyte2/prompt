@@ -84,8 +84,8 @@ export default function Topbar({ title = "Dashboard", icon: Icon, onCacheClear, 
           showUserMenu ? "z-50" : "z-30"
         }`}
       >
-        <div className="px-3 sm:px-6 min-h-20 flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-          <div className="flex items-start gap-2 sm:gap-3 min-w-0 flex-1">
+        <div className="px-3 sm:px-6 min-h-[64px] sm:min-h-20 flex items-center justify-between gap-3 py-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             {onOpenMobileNav && (
               <button
                 type="button"
@@ -119,11 +119,11 @@ export default function Topbar({ title = "Dashboard", icon: Icon, onCacheClear, 
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-1 sm:gap-2 md:gap-4 flex-shrink-0 flex-wrap sm:flex-nowrap pb-1 sm:pb-0 text-sm text-gray-700 dark:text-gray-300">
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2 md:gap-4 flex-shrink-0 flex-nowrap pb-1 sm:pb-0 text-sm text-gray-700 dark:text-gray-300">
             <button
               type="button"
               onClick={toggleDarkMode}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
               aria-label={isDark ? "Light mode" : "Dark mode"}
             >
               {isDark ? <Sun size={18} /> : <Moon size={18} />}
