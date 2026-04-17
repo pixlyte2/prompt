@@ -9,7 +9,7 @@ const adminMenu = [
   { label: "Users", path: "/admin/users", icon: Users },
   { label: "Prompts", path: "/admin/prompts", icon: FileText },
   { label: "AI Chat", path: "/admin/ai-chat", icon: MessageSquare },
-  { label: "Trending Hub", path: "/admin/viral-lens", icon: TrendingUp },
+  { label: "Trending Hub", path: "/admin/trending-hub", icon: TrendingUp },
   { label: "Production Hub", path: "/admin/production-hub", icon: LayoutDashboard },
   { label: "Help", path: "/admin/help", icon: HelpCircle }
 ];

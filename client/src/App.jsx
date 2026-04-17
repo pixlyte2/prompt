@@ -16,7 +16,7 @@ import ViewerPrompts from "./pages/viewer/Prompts";
 import Users from "./pages/admin/Users";
 import Dashboard from "./pages/superadmin/Dashboard";
 import PromptTypes from "./pages/admin/PromptTypes";
-import ViralLens from "./pages/admin/ViralLens";
+import TrendingHub from "./pages/admin/TrendingHub";
 import ProductionHub from "./pages/admin/ProductionHub";
 
 export default function App() {
@@ -128,10 +128,10 @@ export default function App() {
         />
 
         <Route
-          path="/admin/viral-lens"
+          path="/admin/trending-hub"
           element={
             <PrivateRoute allowedRoles={["admin"]}>
-              <ViralLens />
+              <TrendingHub />
             </PrivateRoute>
           }
         />

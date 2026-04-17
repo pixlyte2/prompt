@@ -191,6 +191,31 @@ function StatsBadge({ count, label, variant = "default" }) {
   );
 }
 
+function ThumbnailModal({ url, onClose }) {
+  if (!url) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div 
+        className="absolute inset-0 bg-black/70 backdrop-blur-md" 
+        onClick={onClose} 
+      />
+      <div className="relative max-w-5xl w-full bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 duration-200">
+        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent pointer-events-none z-10">
+          <span className="text-white text-xs font-bold uppercase tracking-widest drop-shadow-md">Thumbnail Preview</span>
+          <button 
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all pointer-events-auto backdrop-blur-sm"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <img src={url} alt="Thumbnail Preview" className="w-full h-auto max-h-[85vh] object-contain bg-gray-100 dark:bg-gray-800" />
+      </div>
+    </div>
+  );
+}
+
 
 
 /* ─── Competitor Watch ────────────────────────────────────────── */
@@ -573,7 +598,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
   );
 }
 
-function CompetitorVideoCard({ video, onSchedule }) {
+function CompetitorVideoCard({ video, onSchedule, onPreviewThumbnail }) {
   return (
     <div className="group flex flex-col rounded-2xl border border-white/40 dark:border-gray-700/50 bg-white/60 dark:bg-gray-800/40 backdrop-blur-xl overflow-hidden hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1 transition-all duration-300">
       <a
@@ -636,24 +661,20 @@ function CompetitorVideoCard({ video, onSchedule }) {
             </span>
             
             <div className="flex items-center gap-1 ml-auto">
-              <a 
-                href={getThumbnailUrl(video.videoId, 'hd')} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
+              <button 
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(video.videoId, 'hd')); }}
                 className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 hover:bg-blue-500 hover:text-white transition-all"
               >
                 HD
-              </a>
-              <a 
-                href={getThumbnailUrl(video.videoId, 'sd')} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
+              </button>
+              <button 
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(video.videoId, 'sd')); }}
                 className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700/50 hover:bg-gray-500 hover:text-white transition-all"
               >
                 SD
-              </a>
+              </button>
             </div>
           </div>
           
@@ -1062,6 +1083,7 @@ function CompetitorWatch() {
   const [compSearch, setCompSearch] = useState("");
   const [minViews, setMinViews] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [previewThumbUrl, setPreviewThumbUrl] = useState(null);
   const [scheduleVideo, setScheduleVideo] = useState(null);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
@@ -1382,7 +1404,14 @@ function CompetitorWatch() {
 
           {/* Search and Secondary Selectors */}
           <div className="flex items-center gap-2 flex-grow min-w-0">
-             <div className="flex items-center gap-1.5 relative flex-1 max-w-sm" ref={channelDropdownRef}>
+             <SearchInput
+               value={compSearch}
+               onChange={setCompSearch}
+               onClear={() => setCompSearch("")}
+               placeholder="Search videos..."
+             />
+
+             <div className="flex items-center gap-1.5 relative min-w-[140px] max-w-[200px]" ref={channelDropdownRef}>
               <button
                 onClick={() => setShowChannelDropdown(!showChannelDropdown)}
                 className="w-full flex items-center justify-between px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 text-[10px] sm:text-xs font-bold transition-all hover:bg-white dark:hover:bg-gray-800"
@@ -1496,13 +1525,19 @@ function CompetitorWatch() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-3 sm:gap-4 pt-6 text-xs">
             {filtered.map((video) => (
-              <CompetitorVideoCard key={`${video.channelHandle}-${video.videoId}`} video={video} onSchedule={setScheduleVideo} />
+              <CompetitorVideoCard 
+                key={`${video.channelHandle}-${video.videoId}`} 
+                video={video} 
+                onSchedule={setScheduleVideo} 
+                onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
+              />
             ))}
           </div>
         )}
       </div>
 
       <CompetitorSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} onTypesChanged={handleTypesChanged} />
+      {previewThumbUrl && <ThumbnailModal url={previewThumbUrl} onClose={() => setPreviewThumbUrl(null)} />}
       {scheduleVideo && (
         <ScheduleVideoModal
           video={scheduleVideo}
@@ -1514,10 +1549,10 @@ function CompetitorWatch() {
   );
 }
 
-export default function ViralLens() {
+export default function TrendingHub() {
   return (
     <AdminLayout title="Trending Hub" titleInfo="Competitor video analysis & tracking" icon={Youtube} contentFit>
-      <div className="flex flex-col h-full min-h-0 overflow-hidden w-full max-w-[1600px] mx-auto">
+      <div className="flex flex-col h-full min-h-0 overflow-y-auto sm:overflow-hidden w-full max-w-[1600px] mx-auto custom-scrollbar">
         <CompetitorWatch />
       </div>
     </AdminLayout>

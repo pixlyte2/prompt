@@ -171,6 +171,37 @@ function StatsBadge({ count, label, variant = "default" }) {
   );
 }
 
+function ThumbnailModal({ url, onClose }) {
+  if (!url) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div 
+        className="absolute inset-0 bg-black/70 backdrop-blur-md" 
+        onClick={onClose} 
+      />
+      <div className="relative max-w-5xl w-full bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 duration-200">
+        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent pointer-events-none z-10">
+          <span className="text-white text-xs font-bold uppercase tracking-widest drop-shadow-md">Thumbnail Preview</span>
+          <button 
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all pointer-events-auto backdrop-blur-sm"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <img src={url} alt="Thumbnail Preview" className="w-full h-auto max-h-[85vh] object-contain bg-gray-100 dark:bg-gray-800" />
+      </div>
+    </div>
+  );
+}
+
+function getThumbnailUrl(videoId, type = 'hd') {
+  if (!videoId) return "";
+  if (type === 'hd') return `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
+  return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+}
+
 const STATUS_META = {
   todo: { label: "To Do", color: "text-gray-400 dark:text-gray-500", pill: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300" },
   in_progress: { label: "In Progress", color: "text-blue-500", pill: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -343,7 +374,7 @@ function PlatformIcon({ platform, size = 8 }) {
 }
 
 /* ─── Inline Row for a single task ─── */
-function TaskRow({ task, onMove, onDelete, onEdit }) {
+function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail }) {
   const handleDragStart = (e) => {
     e.dataTransfer.setData("taskId", task._id);
     e.dataTransfer.effectAllowed = "move";
@@ -446,28 +477,24 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
 
       {/* Thumbnail pill */}
       {ytId && (
-        <div className="hidden sm:inline-flex items-center gap-1 text-[7.5px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400/80 flex-shrink-0 shadow-sm border border-amber-100/50 dark:border-amber-800/30">
-          <Image size={8} className="flex-shrink-0 opacity-70" />
-          <span className="opacity-50">Image:</span>
-          <a
-            href={`https://i.ytimg.com/vi/${ytId}/maxresdefault.jpg`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-amber-700 dark:text-amber-200 hover:underline hover:text-amber-600 transition-colors"
-            title="High Definition (Might not exist for all videos)"
+        <div className="hidden sm:inline-flex items-center gap-2 px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400/80 flex-shrink-0 shadow-sm border border-amber-100/50 dark:border-amber-800/30">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(ytId, 'hd')); }}
+            className="text-[9px] font-black uppercase tracking-tighter hover:text-amber-700 dark:hover:text-amber-200 transition-colors"
+            title="High Definition"
           >
             HD
-          </a>
-          <span className="text-[6px] opacity-20 mx-px">|</span>
-          <a
-            href={`https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-amber-700 dark:text-amber-200 hover:underline hover:text-amber-600 transition-colors"
-            title="Standard Definition (Reliable)"
+          </button>
+          <div className="w-px h-2.5 bg-amber-200/50 dark:bg-amber-700/50" />
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(ytId, 'sd')); }}
+            className="text-[9px] font-black uppercase tracking-tighter hover:text-amber-700 dark:hover:text-amber-200 transition-colors"
+            title="Standard Definition"
           >
             SD
-          </a>
+          </button>
         </div>
       )}
 
@@ -528,7 +555,7 @@ function TaskRow({ task, onMove, onDelete, onEdit }) {
 }
 
 /* ─── Preview Modal ─── */
-function PreviewModal({ open, onClose, tasks, dateKey }) {
+function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
   const [copied, setCopied] = useState(false);
 
   const assignmentSummary = useMemo(() => {
@@ -815,37 +842,34 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-xs">
                     {task.videoId || extractYoutubeId(task.url) ? (
-                      <div className="flex items-center gap-3">
-                        <a
-                          href={`https://i.ytimg.com/vi/${task.videoId || extractYoutubeId(task.url)}/maxresdefault.jpg`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-amber-600 dark:text-amber-400 hover:underline text-xs flex items-center gap-1 font-bold"
+                      <div className="inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400/80 shadow-sm border border-amber-100/50 dark:border-amber-800/30">
+                        <button
+                          type="button"
+                          onClick={() => onPreviewThumbnail(getThumbnailUrl(task.videoId || extractYoutubeId(task.url), 'hd'))}
+                          className="text-[10px] sm:text-xs font-black uppercase hover:text-amber-700 dark:hover:text-amber-200 transition-colors"
                           title="High Definition"
                         >
-                          <Image size={12} /> HD
-                        </a>
-                        <div className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
-                        <a
-                          href={`https://i.ytimg.com/vi/${task.videoId || extractYoutubeId(task.url)}/hqdefault.jpg`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-amber-600 dark:text-amber-400 hover:underline text-xs flex items-center gap-1 font-bold"
+                          HD
+                        </button>
+                        <div className="w-px h-3 bg-amber-200/60 dark:bg-amber-700/60" />
+                        <button
+                          type="button"
+                          onClick={() => onPreviewThumbnail(getThumbnailUrl(task.videoId || extractYoutubeId(task.url), 'sd'))}
+                          className="text-[10px] sm:text-xs font-black uppercase hover:text-amber-700 dark:hover:text-amber-200 transition-colors"
                           title="Standard Definition"
                         >
-                          <Image size={12} /> SD
-                        </a>
+                          SD
+                        </button>
                       </div>
                     ) : (
                       task.thumbnail && (
-                        <a
-                          href={task.thumbnail}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-amber-600 dark:text-amber-400 hover:underline text-xs flex items-center gap-1 font-bold"
+                        <button
+                          type="button"
+                          onClick={() => onPreviewThumbnail(task.thumbnail)}
+                          className="px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400/80 border border-amber-100/50 dark:border-amber-800/30 text-[10px] sm:text-xs font-black uppercase transition-colors hover:text-amber-700"
                         >
-                          <Image size={12} /> View
-                        </a>
+                          View
+                        </button>
                       )
                     )}
                   </td>
@@ -859,7 +883,7 @@ function PreviewModal({ open, onClose, tasks, dateKey }) {
   );
 }
 /* ─── Date Group ─── */
-function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, defaultOpen, variant }) {
+function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, onPreviewThumbnail, defaultOpen, variant }) {
   const [open, setOpen] = useState(defaultOpen);
   const [isOver, setIsOver] = useState(false);
 
@@ -1052,7 +1076,7 @@ function DateGroup({ dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDrop
       {open && (
         <div className="p-3 space-y-2 bg-gray-50/50 dark:bg-gray-800/20">
           {tasks.map((t) => (
-            <TaskRow key={t._id} task={t} onMove={onMove} onDelete={onDelete} onEdit={onEdit} />
+            <TaskRow key={t._id} task={t} onMove={onMove} onDelete={onDelete} onEdit={onEdit} onPreviewThumbnail={onPreviewThumbnail} />
           ))}
           {tasks.length === 0 && (
             <div className="py-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[10px] text-gray-400">
@@ -1386,6 +1410,7 @@ export default function ProductionHub() {
   const [tasks, setTasks] = useState([]);
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [previewThumbUrl, setPreviewThumbUrl] = useState(null);
   const scrollRef = useCallback((node) => {
     if (node !== null) {
       node.addEventListener("dragover", (e) => {
@@ -1780,6 +1805,7 @@ export default function ProductionHub() {
                   onEdit={handleEdit}
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
+                  onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
                   defaultOpen={getDateCategory(g.key) === "overdue" || getDateCategory(g.key) === "today"}
                 />
               ))
@@ -1803,6 +1829,7 @@ export default function ProductionHub() {
                   onEdit={handleEdit}
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
+                  onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
                   defaultOpen={true}
                 />
               ))
@@ -1826,6 +1853,7 @@ export default function ProductionHub() {
                   onEdit={handleEdit}
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
+                  onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
                   defaultOpen={false}
                   variant="completed"
                 />
@@ -1848,7 +1876,9 @@ export default function ProductionHub() {
         onClose={handlePreviewClose}
         tasks={previewModal.tasks}
         dateKey={previewModal.dateKey}
+        onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
       />
+      {previewThumbUrl && <ThumbnailModal url={previewThumbUrl} onClose={() => setPreviewThumbUrl(null)} />}
     </AdminLayout>
   );
 }

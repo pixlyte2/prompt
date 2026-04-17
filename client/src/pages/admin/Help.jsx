@@ -30,7 +30,7 @@ export default function Help() {
       icon: TrendingUp,
       color: "text-pink-500",
       items: [
-        "Viral Lens: Monitor competitors and trending topics",
+        "Monitor competitors and trending topics in real-time",
         "Pulse tracking: Identify high-performing content patterns",
         "Integration with Production Hub for scheduling ideas"
       ]
@@ -75,7 +75,7 @@ export default function Help() {
       titleInfo="Complete guide to manage prompts and AI interactions"
       icon={HelpCircle}
     >
-      <div className="buffer-card overflow-hidden p-4">
+      <div className="buffer-card overflow-y-auto p-4 custom-scrollbar">
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {sections.map((section, idx) => {
