@@ -175,8 +175,8 @@ function FilterLabel({ icon: Icon, children }) {
 
 function StatsBadge({ count, label, variant = "default" }) {
   const variants = {
-    default: "bg-blue-50/80 text-blue-700 border-blue-200/60 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/40",
-    success: "bg-emerald-50/80 text-emerald-700 border-emerald-200/60 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/40",
+    default: "bg-blue-50/80 text-blue-700 border-blue-200/60 dark:bg-blue-900/30 dark:text-white dark:border-blue-700/40",
+    success: "bg-emerald-50/80 text-emerald-700 border-emerald-200/60 dark:bg-emerald-900/30 dark:text-white dark:border-emerald-700/40",
   };
 
   return (
@@ -1291,7 +1291,7 @@ function CompetitorWatch() {
           {/* Group 1: Category & Sources */}
           <div className="flex items-center gap-1.5 p-1 bg-white/70 dark:bg-gray-800/80 backdrop-blur-2xl rounded-[22px] border border-gray-200/60 dark:border-gray-700/60 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] flex-shrink-0 relative z-20">
              <div className="flex flex-col gap-1 relative" ref={typeDropdownRef}>
-              <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80 ml-1.5 mb-0.5">
+              <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-blue-600/80 dark:text-white ml-1.5 mb-0.5">
                 <Layers size={11} /> Category
               </span>
               <button
@@ -1299,7 +1299,7 @@ function CompetitorWatch() {
                 className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-[14px] border transition-all duration-300 ${
                   activeType 
                     ? "bg-blue-600 text-white border-transparent shadow-lg shadow-blue-500/30"
-                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-blue-400 hover:shadow-md"
+                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-white hover:border-blue-400 hover:shadow-md"
                 }`}
               >
                 <span className="truncate max-w-[100px] sm:max-w-[130px] text-[11px] font-black uppercase tracking-tight">
@@ -1316,7 +1316,7 @@ function CompetitorWatch() {
                         key={t._id}
                         onClick={() => { setActiveType(t._id); setShowTypeDropdown(false); }}
                         className={`w-full flex items-center justify-between px-5 py-3 text-xs font-bold transition-all ${
-                          activeType === t._id ? "bg-blue-50/50 dark:bg-blue-900/40 text-blue-600" : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                          activeType === t._id ? "bg-blue-50/50 dark:bg-blue-900/40 text-blue-600" : "text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60"
                         }`}
                       >
                         <span className="truncate">{t.name}</span>
@@ -1335,15 +1335,15 @@ function CompetitorWatch() {
             <div className="w-[2px] h-10 bg-gray-200/80 dark:bg-gray-700/80 self-end mb-1" />
 
             <div className="flex flex-col gap-1 relative min-w-[120px]" ref={channelDropdownRef}>
-              <span className="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-violet-600/80 dark:text-violet-400/80 ml-1.5 mb-0.5">
+              <span className="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-violet-600/80 dark:text-white ml-1.5 mb-0.5">
                 <Users size={11} /> Sources
               </span>
               <button
                 onClick={() => setShowChannelDropdown(!showChannelDropdown)}
                 className={`w-full flex items-center justify-between px-3.5 py-1.5 rounded-[14px] border transition-all duration-300 ${
                   activeChannel !== "all"
-                    ? "bg-violet-50/80 dark:bg-violet-900/40 border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300 shadow-sm"
-                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-violet-400 hover:shadow-md"
+                    ? "bg-violet-50/80 dark:bg-violet-900/40 border-violet-200 dark:border-violet-700 text-violet-700 dark:text-white shadow-sm"
+                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-white hover:border-violet-400 hover:shadow-md"
                 }`}
               >
                 <span className="truncate text-[11px] font-bold">
@@ -1354,10 +1354,10 @@ function CompetitorWatch() {
 
               {showChannelDropdown && (
                 <div className="absolute top-full left-0 mt-3 w-full min-w-[220px] rounded-[24px] bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border border-gray-200 dark:border-gray-700 shadow-2xl z-[100] py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                  <button onClick={() => { setActiveChannel("all"); setShowChannelDropdown(false); }} className="w-full text-left px-5 py-3 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800/60">All Channels</button>
+                  <button onClick={() => { setActiveChannel("all"); setShowChannelDropdown(false); }} className="w-full text-left px-5 py-3 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800/60 dark:text-white">All Channels</button>
                   <div className="max-h-64 overflow-y-auto custom-scrollbar border-t border-gray-100 dark:border-gray-800">
                     {channels.map((ch) => (
-                      <button key={ch.handle} onClick={() => { setActiveChannel(ch.handle); setShowChannelDropdown(false); }} className="w-full text-left px-5 py-3 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800/60 truncate">{ch.name}</button>
+                      <button key={ch.handle} onClick={() => { setActiveChannel(ch.handle); setShowChannelDropdown(false); }} className="w-full text-left px-5 py-3 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800/60 truncate dark:text-white">{ch.name}</button>
                     ))}
                   </div>
                 </div>
@@ -1370,12 +1370,12 @@ function CompetitorWatch() {
             {/* Group 2: Analysis Filters */}
             <div className="flex flex-wrap lg:flex-nowrap items-center gap-1 p-1 bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl rounded-[22px] border border-gray-200/60 dark:border-gray-700/60 flex-grow min-w-0 shadow-[0_10px_35px_-10px_rgba(0,0,0,0.12)] dark:shadow-[0_15px_40px_-12px_rgba(0,0,0,0.4)]">
               <div className="flex flex-col gap-1 relative" ref={periodDropdownRef}>
-                <span className="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-rose-600/80 dark:text-rose-400/80 ml-1.5 mb-0.5">
+                <span className="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-rose-600/80 dark:text-white ml-1.5 mb-0.5">
                   <Clock size={11} /> Time
                 </span>
                 <button
                   onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
-                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-[14px] border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 text-gray-700 dark:text-gray-200 text-[11px] font-black transition-all hover:border-rose-300 hover:shadow-sm"
+                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-[14px] border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 text-gray-700 dark:text-white text-[11px] font-black transition-all hover:border-rose-300 hover:shadow-sm"
                 >
                   <span className="truncate">{COMP_PERIODS.find(p => p.value === period)?.label}</span>
                   <ChevronDown size={14} className={`opacity-40 transition-transform ${showPeriodDropdown ? "rotate-180" : ""}`} />
@@ -1384,7 +1384,7 @@ function CompetitorWatch() {
                 {showPeriodDropdown && (
                   <div className="absolute top-full left-0 mt-3 w-44 rounded-[20px] bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border border-gray-200 dark:border-gray-700 shadow-2xl z-[100] py-2 animate-in fade-in zoom-in-95 duration-200">
                     {COMP_PERIODS.map((p) => (
-                      <button key={p.value} onClick={() => { setPeriod(p.value); setShowPeriodDropdown(false); }} className="w-full flex items-center justify-between px-4 py-2.5 text-[10px] font-bold hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                      <button key={p.value} onClick={() => { setPeriod(p.value); setShowPeriodDropdown(false); }} className="w-full flex items-center justify-between px-4 py-2.5 text-[10px] font-bold hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors dark:text-white">
                         {p.label}
                         {periodCounts[p.value] > 0 && <span className="text-[9px] font-black bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md border border-gray-200/50 dark:border-gray-700/50 text-gray-500">{periodCounts[p.value]}</span>}
                       </button>
@@ -1394,13 +1394,13 @@ function CompetitorWatch() {
               </div>
 
               <div className="flex flex-col gap-1 relative" ref={viewDropdownRef}>
-                <span className="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80 ml-1.5 mb-0.5">
+                <span className="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-600/80 dark:text-white ml-1.5 mb-0.5">
                   <Eye size={11} /> Views
                 </span>
                 <button
                   onClick={() => setShowViewDropdown(!showViewDropdown)}
                   className={`flex items-center gap-2.5 px-3 py-1.5 rounded-[14px] border transition-all ${
-                    minViews > 0 ? "bg-emerald-50/80 dark:bg-emerald-900/40 border-emerald-300 text-emerald-700 shadow-sm" : "bg-white/70 dark:bg-gray-900/70 border-gray-100 dark:border-gray-800"
+                    minViews > 0 ? "bg-emerald-50/80 dark:bg-emerald-900/40 border-emerald-300 text-emerald-700 shadow-sm" : "bg-white/70 dark:bg-gray-900/70 border-gray-100 dark:border-gray-800 dark:text-white"
                   }`}
                 >
                   <span className="truncate text-[11px] font-black tracking-tight">{COMP_VIEW_FILTERS.find(vf => vf.value === minViews)?.label}</span>
@@ -1410,7 +1410,7 @@ function CompetitorWatch() {
                 {showViewDropdown && (
                   <div className="absolute top-full left-0 mt-3 w-52 rounded-[20px] bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border border-gray-200 dark:border-gray-700 shadow-2xl z-[100] py-2 animate-in fade-in zoom-in-95 duration-200">
                     {COMP_VIEW_FILTERS.map((vf) => (
-                      <button key={vf.value} onClick={() => { setMinViews(vf.value); setShowViewDropdown(false); }} className="w-full flex items-center justify-between px-4 py-2.5 text-[10px] font-bold hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                      <button key={vf.value} onClick={() => { setMinViews(vf.value); setShowViewDropdown(false); }} className="w-full flex items-center justify-between px-4 py-2.5 text-[10px] font-bold hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors dark:text-white">
                         {vf.label}
                         {viewCounts[vf.value] > 0 && <span className="text-[9px] font-black bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md border border-gray-200/50 dark:border-gray-700/50 text-gray-500">{viewCounts[vf.value]}</span>}
                       </button>
@@ -1420,7 +1420,7 @@ function CompetitorWatch() {
               </div>
 
               <div className="hidden sm:flex flex-col gap-1 flex-grow min-w-[100px] relative">
-                <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 ml-1.5 mb-0.5">
+                <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-white ml-1.5 mb-0.5">
                   <Search size={11} /> Search
                 </span>
                 <div className="w-full">
@@ -1436,7 +1436,7 @@ function CompetitorWatch() {
               <div className="hidden sm:block w-[2px] h-10 bg-gray-200/80 dark:bg-gray-700/80 self-end mb-1" />
 
               <div className="flex flex-col gap-1 flex-shrink-0 min-w-[110px] relative" ref={sortDropdownRef}>
-                <span className="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 ml-1.5 mb-0.5">
+                <span className="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-white ml-1.5 mb-0.5">
                   <ArrowDownWideNarrow size={11} /> Rank
                 </span>
                 <button
@@ -1458,7 +1458,7 @@ function CompetitorWatch() {
                         className={`w-full flex items-center justify-between px-5 py-3 text-xs font-bold transition-colors ${
                           compSort === s.value 
                             ? "bg-gray-50 dark:bg-gray-800 text-blue-600 dark:text-blue-400" 
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                            : "text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60"
                         }`}
                       >
                         {s.label}
