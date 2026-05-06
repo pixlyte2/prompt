@@ -304,7 +304,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
 
   const ASSIGNED_OPTIONS = [
     { value: "pooja", label: "Pooja" },
-    { value: "soundarya", label: "Soundarya" },
+    { value: "mahalakshmi", label: "Mahalakshmi" },
   ];
 
   const FORMAT_PILL = {
@@ -314,7 +314,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
 
   const ASSIGNED_PILL = {
     pooja: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
-    soundarya: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+    mahalakshmi: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
   };
 
   const PLATFORM_META = {

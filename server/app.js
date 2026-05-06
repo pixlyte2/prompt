@@ -18,6 +18,9 @@ const trendsRoutes = require("./routes/trendsRoutes");
 const competitorRoutes = require("./routes/competitorRoutes");
 const competitorTypeRoutes = require("./routes/competitorTypeRoutes");
 const videoTaskRoutes = require("./routes/videoTaskRoutes");
+const youtubeRoutes = require("./routes/youtube");
+
+const VideoTask = require("./models/VideoTask");
 
 const app = express();
 
@@ -68,6 +71,7 @@ app.use("/api/trends", trendsRoutes);
 app.use("/api/competitors", competitorRoutes);
 app.use("/api/competitor-types", competitorTypeRoutes);
 app.use("/api/video-tasks", videoTaskRoutes);
+app.use("/api/youtube", youtubeRoutes);
 
 /**
  * 🧪 Health Check
@@ -81,7 +85,10 @@ app.get("/", (req, res) => {
  */
 const startServer = async () => {
   await connectDB();
-  
+
+  // One-shot data migrations (idempotent on subsequent boots)
+  await VideoTask.migrateLegacyAssignees();
+
   if (process.env.NODE_ENV !== "production") {
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {

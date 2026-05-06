@@ -18,6 +18,7 @@ import Dashboard from "./pages/superadmin/Dashboard";
 import PromptTypes from "./pages/admin/PromptTypes";
 import TrendingHub from "./pages/admin/TrendingHub";
 import ProductionHub from "./pages/admin/ProductionHub";
+import YouTubeVideoInspector from "./pages/admin/YouTubeVideoInspector";
 
 export default function App() {
   return (
@@ -150,6 +151,15 @@ export default function App() {
           element={
             <PrivateRoute allowedRoles={["admin"]}>
               <Help />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/youtube-inspector"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <YouTubeVideoInspector />
             </PrivateRoute>
           }
         />

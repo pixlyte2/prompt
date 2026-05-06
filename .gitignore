@@ -40,3 +40,7 @@ coverage/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# @distube/ytdl-core caches the YouTube player signature decoder script in CWD
+*-player-script.js
+

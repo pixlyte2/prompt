@@ -31,10 +31,10 @@ const videoTaskSchema = new mongoose.Schema(
       type: [String],
       validate: {
         validator: function(arr) {
-          const validAssignees = ["pooja", "soundarya"];
+          const validAssignees = ["pooja", "mahalakshmi"];
           return arr.every(assignee => validAssignees.includes(assignee));
         },
-        message: 'assignedTo must contain only "pooja" or "soundarya"'
+        message: 'assignedTo must contain only "pooja" or "mahalakshmi"'
       },
       default: [],
     },
@@ -53,5 +53,27 @@ const videoTaskSchema = new mongoose.Schema(
 );
 
 videoTaskSchema.index({ status: 1, channelType: 1 });
+
+/**
+ * One-shot migration: rewrite the legacy assignee value `soundarya` to
+ * `mahalakshmi` on any existing tasks. Idempotent — after the first run
+ * it matches zero documents and is essentially a no-op.
+ */
+videoTaskSchema.statics.migrateLegacyAssignees = async function migrateLegacyAssignees() {
+  try {
+    const result = await this.updateMany(
+      { assignedTo: "soundarya" },
+      { $set: { "assignedTo.$[legacy]": "mahalakshmi" } },
+      { arrayFilters: [{ legacy: "soundarya" }] }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`🔁 VideoTask migration: renamed assignee 'soundarya' → 'mahalakshmi' on ${result.modifiedCount} task(s)`);
+    }
+    return result.modifiedCount || 0;
+  } catch (err) {
+    console.error("VideoTask assignee migration failed:", err.message);
+    return 0;
+  }
+};
 
 module.exports = mongoose.model("VideoTask", videoTaskSchema);

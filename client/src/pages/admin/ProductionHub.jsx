@@ -225,8 +225,14 @@ const FORMAT_OPTIONS = [
 
 const ASSIGNED_OPTIONS = [
   { value: "pooja", label: "Pooja" },
-  { value: "soundarya", label: "Soundarya" },
+  { value: "mahalakshmi", label: "Mahalakshmi" },
 ];
+
+const getAssigneeDisplayName = (key) => {
+  if (!key) return "";
+  const k = String(key).toLowerCase();
+  return k.charAt(0).toUpperCase() + k.slice(1);
+};
 
 const FORMAT_PILL = {
   short: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
@@ -235,7 +241,7 @@ const FORMAT_PILL = {
 
 const ASSIGNED_PILL = {
   pooja: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
-  soundarya: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+  mahalakshmi: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
 };
 
 function exportToCsv(tasks) {
@@ -524,7 +530,7 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail }) {
               key={name}
               className={`inline-flex px-1.5 py-0.5 rounded-full text-[7.5px] font-black uppercase tracking-tighter border border-transparent shadow-sm ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
             >
-              {name}
+              {getAssigneeDisplayName(name)}
             </span>
           ))}
         </div>
@@ -619,9 +625,9 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
     const getAssignedToString = (task) => {
       if (!task.assignedTo || task.assignedTo.length === 0) return "";
       if (Array.isArray(task.assignedTo)) {
-        return task.assignedTo.map(a => a.charAt(0).toUpperCase() + a.slice(1)).sort().join(", ");
+        return task.assignedTo.map(getAssigneeDisplayName).sort().join(", ");
       }
-      return task.assignedTo.charAt(0).toUpperCase() + task.assignedTo.slice(1);
+      return getAssigneeDisplayName(task.assignedTo);
     };
     
     const aAssigned = getAssignedToString(a);
@@ -637,9 +643,9 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
 
   const formatAssignedTo = (assignedTo) => {
     if (!assignedTo || assignedTo.length === 0) return "";
-    return Array.isArray(assignedTo) 
-      ? assignedTo.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(", ")
-      : assignedTo.charAt(0).toUpperCase() + assignedTo.slice(1);
+    return Array.isArray(assignedTo)
+      ? assignedTo.map(getAssigneeDisplayName).join(", ")
+      : getAssigneeDisplayName(assignedTo);
   };
 
   const formatContentFormat = (contentFormat) => {
@@ -711,7 +717,7 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
             <div className="flex flex-wrap items-center gap-2">
               {Object.entries(assignmentSummary).map(([name, counts]) => {
                 const isUn = name === "Unassigned";
-                const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "soundarya" ? "bg-purple-400" : "bg-blue-400"));
+                const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "mahalakshmi" ? "bg-purple-400" : "bg-blue-400"));
                 const textColor = isUn ? "text-amber-600 dark:text-amber-400" : (ASSIGNED_PILL[name.toLowerCase()]?.split(' ').pop() || "text-gray-700 dark:text-gray-300");
                 const totalSum = (counts.long || 0) + (counts.short || 0);
 
@@ -720,7 +726,7 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
                     <div className="flex items-center gap-1.5 mr-1">
                       <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-sm`} />
                       <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${textColor}`}>
-                        {name}
+                        {isUn ? name : getAssigneeDisplayName(name)}
                       </span>
                     </div>
                     
@@ -815,10 +821,10 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
                         {(Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo]).map(assignee => (
                           <span key={assignee} className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                             assignee === 'pooja' ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300' :
-                            assignee === 'soundarya' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
+                            assignee === 'mahalakshmi' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
                             'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                           }`}>
-                            {assignee.charAt(0).toUpperCase() + assignee.slice(1)}
+                            {getAssigneeDisplayName(assignee)}
                           </span>
                         ))}
                       </div>
@@ -1032,7 +1038,7 @@ function DateGroup({
             <div className="flex flex-wrap items-center gap-2.5">
               {Object.entries(assignmentSummary).map(([name, counts]) => {
                 const isUn = name === "Unassigned";
-                const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "soundarya" ? "bg-purple-400" : "bg-blue-400"));
+                const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "mahalakshmi" ? "bg-purple-400" : "bg-blue-400"));
                 const textColor = isUn ? "text-amber-600 dark:text-amber-400" : (ASSIGNED_PILL[name.toLowerCase()]?.split(' ').pop() || "text-gray-700 dark:text-gray-300");
                 const totalSum = (counts.long || 0) + (counts.short || 0);
                 
@@ -1041,7 +1047,7 @@ function DateGroup({
                     <div className="flex items-center gap-1.5 mr-1">
                       <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-[0_0_8px_rgba(0,0,0,0.1)] group-hover/assignment:scale-110 transition-transform`} />
                       <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${textColor}`}>
-                        {name}
+                        {isUn ? name : getAssigneeDisplayName(name)}
                       </span>
                     </div>
                     

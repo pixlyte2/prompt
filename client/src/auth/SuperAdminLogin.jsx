@@ -102,7 +102,7 @@ export default function SuperAdminLogin() {
         {/* Footer */}
         <div className="text-center mt-6">
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            © 2024 CreatorAI. All rights reserved.
+            © {new Date().getFullYear()} Pixlyt Digital Solutions Pvt Ltd. All rights reserved.
           </p>
         </div>
       </div>

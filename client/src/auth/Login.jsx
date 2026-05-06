@@ -213,7 +213,7 @@ export default function Login() {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-              © 2024 CreatorAI. All rights reserved.
+              © {new Date().getFullYear()} Pixlyt Digital Solutions Pvt Ltd. All rights reserved.
             </p>
           </div>
         </div>

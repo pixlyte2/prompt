@@ -341,18 +341,21 @@ export default function Dashboard() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[320px] overflow-hidden">
-              {["Pooja", "Soundarya"].map(name => {
+              {[
+                { value: "pooja", label: "Pooja" },
+                { value: "mahalakshmi", label: "Mahalakshmi" },
+              ].map(({ value, label }) => {
                 const myTasks = todayTasks.filter(t => {
                   if (!t.assignedTo) return false;
                   const assignees = Array.isArray(t.assignedTo) ? t.assignedTo : [t.assignedTo];
-                  return assignees.some(a => a.toLowerCase() === name.toLowerCase());
+                  return assignees.some(a => a.toLowerCase() === value);
                 });
                 const count = myTasks.reduce((sum, t) => {
                   const fmts = Array.isArray(t.contentFormat) ? t.contentFormat : [t.contentFormat].filter(Boolean);
                   return sum + fmts.length;
                 }, 0);
                 if (count === 0) return null;
-                const isPooja = name === "Pooja";
+                const isPooja = value === "pooja";
                 
                 // Premium mesh-style color schemes
                 const colorClasses = isPooja 
@@ -367,7 +370,7 @@ export default function Dashboard() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                    key={name} 
+                    key={value} 
                     className={`flex flex-col h-full min-w-0 rounded-xl border px-3 py-2 shadow-lg backdrop-blur-xl transition-all hover:shadow-xl hover:-translate-y-0.5 group/monitor relative overflow-hidden ${colorClasses}`}
                   >
                     {/* Decorative mesh background element */}
@@ -376,7 +379,7 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between mb-2 relative z-10">
                       <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${dotClass} animate-pulse`} />
-                        <span className={`text-[12px] font-black uppercase tracking-wider ${textColor}`}>{name}</span>
+                        <span className={`text-[12px] font-black uppercase tracking-wider ${textColor}`}>{label}</span>
                       </div>
                       <span className="text-[11px] font-black tabular-nums bg-gray-100 dark:bg-black/40 px-2.5 py-0.5 rounded-full ring-1 ring-inset ring-black/[0.05] dark:ring-white/[0.05] shadow-inner text-gray-700 dark:text-gray-300">
                         {count}
