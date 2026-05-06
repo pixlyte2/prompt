@@ -69,12 +69,12 @@ function SidebarFooter({ onLinkClick, isCollapsed }) {
 function BrandBlock({ isCollapsed }) {
   return (
     <div className={`p-4 border-b border-gray-100 dark:border-gray-700 flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
-      <div className="flex items-center gap-3 overflow-hidden">
+      <Link to="/" className="flex items-center gap-3 overflow-hidden">
         <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
           <span className="text-white font-bold text-xs">CA</span>
         </div>
         {!isCollapsed && <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">CreatorAI</h2>}
-      </div>
+      </Link>
     </div>
   );
 }
@@ -134,12 +134,12 @@ export default function Sidebar({ menu, mobileOpen, onCloseMobile, isCollapsed, 
             aria-label="Main navigation"
           >
             <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
+              <Link to="/" className="flex items-center gap-3 min-w-0">
                 <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
                   <span className="text-white font-bold text-xs">CA</span>
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">CreatorAI</h2>
-              </div>
+              </Link>
               <button
                 type="button"
                 onClick={onCloseMobile}
