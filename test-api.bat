@@ -1,7 +1,7 @@
 @echo off
 echo Testing API Endpoints...
 echo.
-
+ 
 echo 1. Testing Health Check
 curl -X GET http://localhost:5000/
 echo.
