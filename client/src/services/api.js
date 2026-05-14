@@ -29,22 +29,22 @@ const cachedGet = async (url) => {
 
 const cachedApi = {
   get: cachedGet,
-  post: async (url, data) => {
-    const response = await api.post(url, data);
+  post: async (url, data, config) => {
+    const response = await api.post(url, data, config);
     const prefix = url.split('?')[0].split('/')[1];
     clearCacheByPrefix(`/${prefix}`);
     clearCache("/dashboard");
     return response;
   },
-  put: async (url, data) => {
-    const response = await api.put(url, data);
+  put: async (url, data, config) => {
+    const response = await api.put(url, data, config);
     const prefix = url.split('?')[0].split('/')[1];
     clearCacheByPrefix(`/${prefix}`);
     clearCache("/dashboard");
     return response;
   },
-  delete: async (url) => {
-    const response = await api.delete(url);
+  delete: async (url, config) => {
+    const response = await api.delete(url, config);
     const prefix = url.split('?')[0].split('/')[1];
     clearCacheByPrefix(`/${prefix}`);
     clearCache("/dashboard");

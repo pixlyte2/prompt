@@ -1,8 +1,79 @@
 const express = require('express');
 const router = express.Router();
+const https = require('https');
 const { getSubtitles } = require('youtube-captions-scraper');
 const ytdl = require('@distube/ytdl-core');
 const { protect } = require('../middleware/authMiddleware');
+
+// Fetch a URL and return parsed JSON — no extra deps needed
+function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+      let raw = '';
+      res.on('data', (c) => { raw += c; });
+      res.on('end', () => {
+        try { resolve({ status: res.statusCode, body: JSON.parse(raw) }); }
+        catch { reject(new Error('Invalid JSON from ' + url)); }
+      });
+    }).on('error', reject);
+  });
+}
+
+// Build a best-effort payload from YouTube oEmbed + noembed data
+async function fetchViaOembed(videoId) {
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  // oEmbed gives title, author_name, thumbnail_url, html
+  const oembed = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`);
+  if (oembed.status !== 200) throw new Error('oEmbed failed: ' + oembed.status);
+  const o = oembed.body;
+
+  // Build thumbnail bundle from known YouTube CDN patterns
+  const thumbs = [
+    { url: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`, width: 1280, height: 720 },
+    { url: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,     width: 480,  height: 360 },
+    { url: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,     width: 320,  height: 180 },
+    { url: `https://i.ytimg.com/vi/${videoId}/sddefault.jpg`,     width: 640,  height: 480 },
+  ];
+  const thumbBundle = buildThumbnailBundle(thumbs);
+
+  return {
+    videoId,
+    title: o.title || null,
+    description: null,
+    shortDescription: null,
+    lengthSeconds: null,
+    lengthFormatted: null,
+    viewCount: null,
+    viewCountCompact: null,
+    likeCount: null,
+    likeCountCompact: null,
+    commentCount: null,
+    commentCountCompact: null,
+    publishedRaw: null,
+    publishedAtFormatted: null,
+    isLive: false,
+    isUpcoming: false,
+    isPrivate: false,
+    isUnlisted: false,
+    isFamilySafe: null,
+    isRemixContent: null,
+    category: null,
+    tags: [],
+    defaultLanguage: null,
+    defaultAudioLanguage: null,
+    channel: {
+      id: null,
+      name: o.author_name || null,
+      userId: null,
+      url: o.author_url || null,
+    },
+    watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
+    embedUrl: `https://www.youtube.com/embed/${videoId}`,
+    embedHtml: o.html || null,
+    thumbnails: thumbBundle,
+    _source: 'oembed',
+  };
+}
 
 const VIDEO_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/;
 
@@ -231,8 +302,17 @@ router.post('/inspect', protect, async (req, res) => {
     } catch (e) {
       console.error('ytdl.getInfo error for videoId:', videoId, e.message);
       const msg = e && e.message ? e.message : '';
-      
-      // More specific error handling
+
+      // On cloud/Vercel ytdl often gets bot-blocked — fall back to oEmbed
+      try {
+        console.log('Falling back to oEmbed for videoId:', videoId);
+        const fallback = await fetchViaOembed(videoId);
+        writeInspectCache(videoId, fallback);
+        return res.json({ ...fallback, cached: false });
+      } catch (oembedErr) {
+        console.error('oEmbed fallback also failed:', oembedErr.message);
+      }
+
       if (/private|sign in|login/i.test(msg)) {
         return res.status(403).json({ message: 'This video is private or requires sign-in' });
       }
@@ -251,10 +331,9 @@ router.post('/inspect', protect, async (req, res) => {
       if (/network|timeout|connect/i.test(msg)) {
         return res.status(503).json({ message: 'Network error. Please check your connection and try again' });
       }
-      
-      // Generic error with more details in development
-      const errorMsg = process.env.NODE_ENV === 'development' 
-        ? `Video not found: ${msg}` 
+
+      const errorMsg = process.env.NODE_ENV === 'development'
+        ? `Video not found: ${msg}`
         : 'Video not found or could not be loaded';
       return res.status(404).json({ message: errorMsg });
     }

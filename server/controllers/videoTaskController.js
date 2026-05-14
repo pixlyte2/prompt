@@ -1,11 +1,100 @@
 const VideoTask = require("../models/VideoTask");
 
+function localDateKey(d) {
+  if (!d) return "";
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return "";
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Lightweight counts for dashboard / hub ribbon (same rules as Production Hub client).
+ */
+exports.getTaskStats = async (req, res) => {
+  try {
+    const tasks = await VideoTask.find(
+      {},
+      { status: 1, scheduledDate: 1 },
+    ).lean();
+
+    const todayKey = localDateKey(new Date());
+    const weekEnd = new Date();
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const weekEndKey = localDateKey(weekEnd);
+
+    let overdue = 0;
+    let today = 0;
+    let thisWeek = 0;
+    let backlog = 0;
+    let scheduled = 0;
+    let completed = 0;
+
+    for (const t of tasks) {
+      if (t.status === "completed") {
+        completed += 1;
+        continue;
+      }
+      const k = t.scheduledDate ? localDateKey(t.scheduledDate) : "";
+      if (!t.scheduledDate || k === "") {
+        backlog += 1;
+      } else {
+        scheduled += 1;
+        if (k < todayKey) overdue += 1;
+        if (k === todayKey) today += 1;
+        if (k >= todayKey && k <= weekEndKey) thisWeek += 1;
+      }
+    }
+
+    const active = tasks.length - completed;
+
+    res.json({
+      overdue,
+      today,
+      thisWeek,
+      backlog,
+      scheduled,
+      completed,
+      active,
+    });
+  } catch (err) {
+    console.error("getTaskStats error:", err.message);
+    res.status(500).json({ message: "Failed to load task stats" });
+  }
+};
+
 exports.getTasks = async (req, res) => {
   try {
     const filter = {};
     if (req.query.status) filter.status = req.query.status;
     if (req.query.channelType) filter.channelType = req.query.channelType;
-    const tasks = await VideoTask.find(filter).sort({ scheduledDate: 1 }).lean();
+
+    const bucket = typeof req.query.bucket === "string" ? req.query.bucket.trim() : "";
+
+    if (bucket === "schedule") {
+      filter.status = { $ne: "completed" };
+      filter.scheduledDate = { $ne: null, $exists: true };
+    } else if (bucket === "backlog") {
+      filter.status = { $ne: "completed" };
+      filter.$or = [
+        { scheduledDate: null },
+        { scheduledDate: { $exists: false } },
+      ];
+    } else if (bucket === "completed") {
+      filter.status = "completed";
+    } else if (bucket !== "") {
+      return res.status(400).json({ message: "Invalid bucket. Use schedule, backlog, or completed." });
+    }
+
+    const sort = bucket === "completed"
+      ? { completedAt: -1, updatedAt: -1 }
+      : bucket === "backlog"
+        ? { updatedAt: -1 }
+        : { scheduledDate: 1 };
+
+    const tasks = await VideoTask.find(filter).sort(sort).lean();
     res.json(tasks);
   } catch (err) {
     console.error("getTasks error:", err.message);

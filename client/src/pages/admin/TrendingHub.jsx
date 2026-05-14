@@ -223,6 +223,7 @@ function ThumbnailModal({ url, onClose }) {
 const COMP_PERIODS = [
   { value: "4h", label: "Last 4h", ms: 14_400_000 },
   { value: "8h", label: "Last 8h", ms: 28_800_000 },
+  { value: "12h", label: "Last 12h", ms: 43_200_000 },
   { value: "24h", label: "Last 24h", ms: 86_400_000 },
   { value: "7d", label: "Last 7 days", ms: 604_800_000 },
   { value: "all", label: "All", ms: Infinity },

@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect } = require("../middleware/authMiddleware");
 const ctrl = require("../controllers/videoTaskController");
 
+router.get("/stats", protect, ctrl.getTaskStats);
 router.get("/", protect, ctrl.getTasks);
 router.post("/", protect, ctrl.createTask);
 router.delete("/bulk", protect, ctrl.deleteManyTasks);

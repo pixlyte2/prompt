@@ -67,9 +67,10 @@ function SidebarFooter({ onLinkClick, isCollapsed }) {
 }
 
 function BrandBlock({ isCollapsed }) {
+  const location = useLocation();
   return (
     <div className={`p-4 border-b border-gray-100 dark:border-gray-700 flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
-      <Link to="/" className="flex items-center gap-3 overflow-hidden">
+      <Link to={location.pathname} className="flex items-center gap-3 overflow-hidden">
         <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
           <span className="text-white font-bold text-xs">CA</span>
         </div>
@@ -80,6 +81,7 @@ function BrandBlock({ isCollapsed }) {
 }
 
 export default function Sidebar({ menu, mobileOpen, onCloseMobile, isCollapsed, onToggleCollapse }) {
+  const location = useLocation();
   useEffect(() => {
     if (!mobileOpen) return;
     document.body.style.overflow = "hidden";
@@ -134,7 +136,7 @@ export default function Sidebar({ menu, mobileOpen, onCloseMobile, isCollapsed, 
             aria-label="Main navigation"
           >
             <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
-              <Link to="/" className="flex items-center gap-3 min-w-0">
+              <Link to={location.pathname} className="flex items-center gap-3 min-w-0">
                 <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
                   <span className="text-white font-bold text-xs">CA</span>
                 </div>

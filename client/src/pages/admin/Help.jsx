@@ -1,81 +1,103 @@
-import { HelpCircle, Users, Layers, Tag, FileText, MessageSquare, Copy, Eye, LayoutDashboard, TrendingUp, Zap, MousePointer2 } from "lucide-react";
+import {
+  HelpCircle,
+  Users,
+  FileText,
+  MessageSquare,
+  Copy,
+  LayoutDashboard,
+  TrendingUp,
+  MousePointer2,
+  BarChart3,
+  Youtube,
+  Menu,
+  Database,
+} from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 
 export default function Help() {
   const sections = [
     {
       title: "Dashboard",
-      icon: HelpCircle,
+      icon: BarChart3,
       color: "text-gray-600",
       items: [
-        "View system statistics and quick actions",
-        "Delivery Monitor: Real-time pipeline tracking and task assignments",
-        "Resume last session banner for AI Chat",
-        "Navigate to different sections quickly"
-      ]
+        "Overview: tap the stat tiles for Prompts, Users, or Prompt Types (counts come from the server).",
+        "Channels are managed under Prompts → Channels (same data as the Channels count).",
+        "Delivery Monitor: today’s scheduled video tasks grouped by assignee (Pooja, Mahalakshmi), with workload-style counts.",
+        "Recent AI Chat activity: resume a session from a row, or open full history from the top bar clock icon.",
+      ],
     },
     {
-      title: "Production Hub",
-      icon: LayoutDashboard,
-      color: "text-blue-500",
+      title: "Users",
+      icon: Users,
+      color: "text-blue-600",
       items: [
-        "Schedule management for video tasks and scripts",
-        "Backlog system for unscheduled priorities",
-        "Multi-assignee and multi-format (Long/Short) support",
-        "Daily workload summaries and pill-based tracking"
-      ]
+        "Invite and manage team accounts from the Users screen.",
+        "Admin accounts use this full console; other roles sign in at the same login and only see their allowed areas.",
+      ],
+    },
+    {
+      title: "Prompts (library)",
+      icon: FileText,
+      color: "text-indigo-600",
+      items: [
+        "Three tabs: Prompts, Prompt Types, and Channels—switch tabs at the top of Prompt Management.",
+        "Build and edit prompts, assign channels and types, and preview before use where supported.",
+        "Filtering and lists match the live Prompt Manager, Channel Manager, and Prompt Type Manager behavior.",
+      ],
+    },
+    {
+      title: "AI Chat",
+      icon: MessageSquare,
+      color: "text-emerald-600",
+      items: [
+        "Run context-aware generation with your saved prompts and source material.",
+        "Sessions can be restored from the Dashboard activity list or the top bar history (clock).",
+        "Shift+Enter for a new line; Enter sends when appropriate for the active field.",
+      ],
     },
     {
       title: "Trending Hub",
       icon: TrendingUp,
       color: "text-pink-500",
       items: [
-        "Monitor competitors and trending topics in real-time",
-        "Pulse tracking: Identify high-performing content patterns",
-        "Integration with Production Hub for scheduling ideas"
-      ]
+        "Competitor watch: pick a category (type), channel, time window (4h, 8h, 12h, 24h, 7d, or All), minimum views, search, and sort (trending / views / latest).",
+        "Configure categories and YouTube sources from the settings entry in the category menu.",
+        "Add a video to Production Hub with Schedule / backlog, platform, format, assignees, and optional notes.",
+      ],
     },
     {
-      title: "Users & Access",
-      icon: Users,
-      color: "text-blue-600",
+      title: "Production Hub",
+      icon: LayoutDashboard,
+      color: "text-blue-500",
       items: [
-        "Manage team members and credentials",
-        "Role-based access (Admin, Content Manager, Viewer)",
-        "Secure credential management"
-      ]
+        "Board for video tasks: scheduled dates, backlog, assignees, Long/Short format pills, and platform.",
+        "Create and edit tasks, move work through your team’s pipeline alongside the Dashboard Delivery Monitor.",
+      ],
     },
     {
-      title: "Library Management",
-      icon: FileText,
-      color: "text-indigo-600",
+      title: "YouTube Video Inspector",
+      icon: Youtube,
+      color: "text-red-600",
       items: [
-        "Organize prompts by Channels and Types",
-        "Preview with Eye icon before use",
-        "Export prompts for external backup (JSON)",
-        "Advanced filtering by model and category"
-      ]
+        "Paste a watch URL, Shorts link, youtu.be link, or 11-character video ID, then Analyze (long timeout for slow fetches).",
+        "Shows thumbnails, stats, channel block, metadata, description, and tags when the API returns them; clear or paste from clipboard using the bar actions.",
+      ],
     },
-    {
-      title: "AI Production",
-      icon: MessageSquare,
-      color: "text-emerald-600",
-      items: [
-        "Context-aware AI Chat with prompt memory",
-        "Source material processing (URL/Script parsing)",
-        "Shift+Enter for multi-line, Enter for instant send",
-        "Copy/paste results directly to Production Hub"
-      ]
-    }
   ];
 
   return (
-    <AdminLayout 
-      title="Help & Guide" 
-      titleInfo="Complete guide to manage prompts and AI interactions"
+    <AdminLayout
+      title="Help & Guide"
+      titleInfo="What each admin screen does and how it fits together"
       icon={HelpCircle}
     >
       <div className="buffer-card overflow-y-auto p-4 custom-scrollbar">
+
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 max-w-3xl">
+          The left sidebar matches this order: Dashboard, Users, Prompts, AI Chat, Trending Hub, Production Hub,
+          YouTube inspector, and Help. Collapse the sidebar with the chevron on its edge; the choice is remembered on this device.
+        </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {sections.map((section, idx) => {
@@ -101,30 +123,38 @@ export default function Help() {
           })}
         </div>
 
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 mt-3">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 mt-4">
           <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-gray-900 dark:text-gray-100">
             <Copy className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-            Quick Tips
+            Quick tips
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-700 dark:text-gray-300">
             <div className="flex items-start gap-2">
               <span className="text-cyan-600 dark:text-cyan-400">✓</span>
-              <span>Use <MousePointer2 className="inline w-4 h-4" /> Sidebar Toggle to maximize workspace</span>
+              <span>
+                <Menu className="inline w-4 h-4 align-text-bottom" /> Mobile: open the full menu from the top bar; <MousePointer2 className="inline w-4 h-4 align-text-bottom" /> on desktop use the sidebar chevron to widen the canvas.
+              </span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-cyan-600 dark:text-cyan-400">✓</span>
-              <span>Pills in Production Hub indicate Long/Short content counts</span>
+              <span>Production Hub uses Long/Short pills and backlog mode; Trending Hub can push the same video onto the board in one flow.</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-cyan-600 dark:text-cyan-400">✓</span>
-              <span>Dark Mode preference and Sidebar state persist across pages</span>
+              <span>Dark mode and sidebar collapsed state persist while you move between pages.</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-cyan-600 dark:text-cyan-400">✓</span>
-              <span>Click <Zap className="inline w-4 h-4" /> in Hub to view real-time delivery status</span>
+              <span>
+                <Database className="inline w-4 h-4 align-text-bottom" /> Top bar Clear: wipes cached prompt data and local AI chat history after you confirm. The user avatar menu is for logout only.
+              </span>
             </div>
           </div>
         </div>
+
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+          Content managers and viewers use separate routes after login (their own prompt libraries only). Super admin uses the dedicated super admin login and console, not this admin sidebar.
+        </p>
       </div>
     </AdminLayout>
   );

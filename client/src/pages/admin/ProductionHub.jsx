@@ -244,6 +244,16 @@ const ASSIGNED_PILL = {
   mahalakshmi: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
 };
 
+const ZERO_BOARD_STATS = {
+  overdue: 0,
+  today: 0,
+  thisWeek: 0,
+  backlog: 0,
+  scheduled: 0,
+  completed: 0,
+  active: 0,
+};
+
 function exportToCsv(tasks) {
   const headers = ["Title", "Platform", "Format", "Channel Type", "Channel", "Status", "Scheduled Date", "Views", "Notes", "URL"];
   const rows = tasks.map((t) => [
@@ -1206,7 +1216,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
         await api.post("/video-tasks", payload);
         toast.success("Added to board");
       }
-      onSaved();
+      await onSaved?.();
       onClose();
     } catch (err) {
       const msg = err.response?.data?.message || (isEdit ? "Failed to update" : "Failed to add");
@@ -1437,7 +1447,13 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
 
 /* ─── Main Board ─── */
 export default function ProductionHub() {
-  const [tasks, setTasks] = useState([]);
+  const [datedTasks, setDatedTasks] = useState([]);
+  const [backlogTasks, setBacklogTasks] = useState([]);
+  const [completedTasks, setCompletedTasks] = useState([]);
+  const [boardStats, setBoardStats] = useState(null);
+  const [backlogLoaded, setBacklogLoaded] = useState(false);
+  const [completedLoaded, setCompletedLoaded] = useState(false);
+  const [tabBusy, setTabBusy] = useState(false);
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewThumbUrl, setPreviewThumbUrl] = useState(null);
@@ -1467,15 +1483,23 @@ export default function ProductionHub() {
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const typeDropdownRef = useRef(null);
 
-  const fetchTasks = useCallback(async () => {
+  const stats = boardStats ?? ZERO_BOARD_STATS;
+
+  const loadInitialBoard = useCallback(async () => {
     setLoading(true);
     try {
-      const [tasksRes, typesRes] = await Promise.all([
-        api.get("/video-tasks"),
+      const [statsRes, datedRes, typesRes] = await Promise.all([
+        api.get("/video-tasks/stats"),
+        api.get("/video-tasks?bucket=schedule"),
         api.get("/competitor-types"),
       ]);
-      setTasks(tasksRes.data);
+      setBoardStats(statsRes.data);
+      setDatedTasks(datedRes.data);
       setTypes(typesRes.data);
+      setBacklogLoaded(false);
+      setCompletedLoaded(false);
+      setBacklogTasks([]);
+      setCompletedTasks([]);
     } catch {
       toast.error("Failed to load board");
     } finally {
@@ -1483,34 +1507,122 @@ export default function ProductionHub() {
     }
   }, []);
 
-  useEffect(() => { fetchTasks(); }, [fetchTasks]);
+  const refreshFullBoard = useCallback(async () => {
+    setLoading(true);
+    setBacklogLoaded(false);
+    setCompletedLoaded(false);
+    setBacklogTasks([]);
+    setCompletedTasks([]);
+    try {
+      const [statsRes, datedRes, typesRes] = await Promise.all([
+        api.get("/video-tasks/stats"),
+        api.get("/video-tasks?bucket=schedule"),
+        api.get("/competitor-types"),
+      ]);
+      setBoardStats(statsRes.data);
+      setDatedTasks(datedRes.data);
+      setTypes(typesRes.data);
+
+      if (viewMode === "backlog") {
+        const { data } = await api.get("/video-tasks?bucket=backlog");
+        setBacklogTasks(data);
+        setBacklogLoaded(true);
+      } else if (viewMode === "completed") {
+        const { data } = await api.get("/video-tasks?bucket=completed");
+        setCompletedTasks(data);
+        setCompletedLoaded(true);
+      }
+    } catch {
+      toast.error("Failed to refresh board");
+    } finally {
+      setLoading(false);
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
+    void loadInitialBoard();
+  }, [loadInitialBoard]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTabData() {
+      if (viewMode === "backlog" && !backlogLoaded) {
+        setTabBusy(true);
+        try {
+          const { data } = await api.get("/video-tasks?bucket=backlog");
+          if (!cancelled) {
+            setBacklogTasks(data);
+            setBacklogLoaded(true);
+          }
+        } catch {
+          if (!cancelled) toast.error("Failed to load backlog");
+        } finally {
+          if (!cancelled) setTabBusy(false);
+        }
+        return;
+      }
+      if (viewMode === "completed" && !completedLoaded) {
+        setTabBusy(true);
+        try {
+          const { data } = await api.get("/video-tasks?bucket=completed");
+          if (!cancelled) {
+            setCompletedTasks(data);
+            setCompletedLoaded(true);
+          }
+        } catch {
+          if (!cancelled) toast.error("Failed to load completed tasks");
+        } finally {
+          if (!cancelled) setTabBusy(false);
+        }
+      }
+    }
+    void loadTabData();
+    return () => {
+      cancelled = true;
+    };
+  }, [viewMode, backlogLoaded, completedLoaded]);
+
+  const syncBoardAfterMutation = useCallback(async () => {
+    try {
+      const [statsRes, datedRes] = await Promise.all([
+        api.get("/video-tasks/stats"),
+        api.get("/video-tasks?bucket=schedule"),
+      ]);
+      setBoardStats(statsRes.data);
+      setDatedTasks(datedRes.data);
+      if (backlogLoaded) {
+        const { data } = await api.get("/video-tasks?bucket=backlog");
+        setBacklogTasks(data);
+      }
+      if (completedLoaded) {
+        const { data } = await api.get("/video-tasks?bucket=completed");
+        setCompletedTasks(data);
+      }
+    } catch {
+      toast.error("Failed to refresh board");
+    }
+  }, [backlogLoaded, completedLoaded]);
 
   const handleMove = useCallback(async (id, newStatus) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t._id === id
-          ? { ...t, status: newStatus, completedAt: newStatus === "completed" ? new Date().toISOString() : null }
-          : t,
-      ),
-    );
     try {
       await api.put(`/video-tasks/${id}`, { status: newStatus });
+      await syncBoardAfterMutation();
     } catch {
       toast.error("Failed to update");
-      fetchTasks();
+      await syncBoardAfterMutation();
     }
-  }, [fetchTasks]);
+  }, [syncBoardAfterMutation]);
 
   const handleDelete = useCallback(async (id) => {
-    setTasks((prev) => prev.filter((t) => t._id !== id));
     try {
       await api.delete(`/video-tasks/${id}`);
       toast.success("Task deleted");
+      await syncBoardAfterMutation();
     } catch {
       toast.error("Failed to delete");
-      fetchTasks();
+      await syncBoardAfterMutation();
     }
-  }, [fetchTasks]);
+  }, [syncBoardAfterMutation]);
 
   const handleEdit = useCallback((task) => {
     setEditTask(task);
@@ -1532,8 +1644,7 @@ export default function ProductionHub() {
   const handleBulkDelete = useCallback(async () => {
     if (selectedDateKeys.length === 0) return;
     
-    // Find all tasks in these date groups
-    const tasksToDelete = tasks.filter(t => {
+    const tasksToDelete = completedTasks.filter(t => {
       const k = t.scheduledDate ? toDateKey(t.scheduledDate) : "no-date";
       return selectedDateKeys.includes(k) && t.status === "completed";
     });
@@ -1550,13 +1661,13 @@ export default function ProductionHub() {
       await api.delete("/video-tasks/bulk", { data: { ids } });
       toast.success(`Deleted ${tasksToDelete.length} tasks`);
       setSelectedDateKeys([]);
-      fetchTasks();
+      await syncBoardAfterMutation();
     } catch {
       toast.error("Failed to delete tasks");
     } finally {
       setIsDeleting(false);
     }
-  }, [selectedDateKeys, tasks, fetchTasks]);
+  }, [selectedDateKeys, completedTasks, syncBoardAfterMutation]);
 
   useEffect(() => {
     // Clear selection when changing view
@@ -1575,21 +1686,17 @@ export default function ProductionHub() {
 
 
   const handleDropTask = useCallback(async (taskId, newDate) => {
-    // If newDate is null (no-date group), we might handle it as clearing the date
     const dateVal = newDate === "no-date" ? null : newDate;
-    
-    setTasks((prev) =>
-      prev.map((t) => (t._id === taskId ? { ...t, scheduledDate: dateVal } : t))
-    );
 
     try {
       await api.put(`/video-tasks/${taskId}`, { scheduledDate: dateVal });
       toast.success(`Moved to ${newDate === "no-date" ? "Backlog" : formatDateLabel(newDate).split('—')[0].trim()}`);
+      await syncBoardAfterMutation();
     } catch {
       toast.error("Failed to move task");
-      fetchTasks();
+      await syncBoardAfterMutation();
     }
-  }, [fetchTasks]);
+  }, [syncBoardAfterMutation]);
 
   const handlePreview = useCallback((dateKey, tasks) => {
     setPreviewModal({ open: true, tasks, dateKey });
@@ -1599,43 +1706,38 @@ export default function ProductionHub() {
     setPreviewModal({ open: false, tasks: [], dateKey: null });
   }, []);
 
-  const filtered = useMemo(() => {
-    let list = [...tasks];
-    if (activeType !== "all") list = list.filter((t) => t.channelType === activeType);
+  const filterList = useCallback((list) => {
+    let l = [...list];
+    if (activeType !== "all") l = l.filter((t) => t.channelType === activeType);
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter((t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.channelName?.toLowerCase().includes(q) ||
-        t.notes?.toLowerCase().includes(q),
+      l = l.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.channelName?.toLowerCase().includes(q) ||
+          t.notes?.toLowerCase().includes(q),
       );
     }
-    return list;
-  }, [tasks, activeType, search]);
+    return l;
+  }, [activeType, search]);
 
-  const stats = useMemo(() => {
-    const todayKey = toDateKey(new Date());
-    const weekEnd = new Date();
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    const weekEndKey = toDateKey(weekEnd);
-    const active = filtered.filter((t) => t.status !== "completed");
-    const overdue = active.filter((t) => t.scheduledDate && toDateKey(t.scheduledDate) < todayKey);
-    const today = active.filter((t) => t.scheduledDate && toDateKey(t.scheduledDate) === todayKey);
-    const thisWeek = active.filter((t) => {
-      const k = t.scheduledDate ? toDateKey(t.scheduledDate) : "";
-      return k >= todayKey && k <= weekEndKey;
-    });
-    const unscheduled = active.filter((t) => !t.scheduledDate || toDateKey(t.scheduledDate) === "");
-    const scheduled = active.length - unscheduled.length;
-    const completed = filtered.filter((t) => t.status === "completed");
-    return { overdue: overdue.length, today: today.length, thisWeek: thisWeek.length, active: active.length, backlog: unscheduled.length, scheduled, completed: completed.length };
-  }, [filtered]);
+  const filteredDated = useMemo(() => filterList(datedTasks), [filterList, datedTasks]);
+  const filteredBacklog = useMemo(() => filterList(backlogTasks), [filterList, backlogTasks]);
+  const filteredCompleted = useMemo(() => filterList(completedTasks), [filterList, completedTasks]);
+
+  const filtered = useMemo(() => {
+    if (viewMode === "completed") return filteredCompleted;
+    if (viewMode === "backlog") return filteredBacklog;
+    return filteredDated;
+  }, [viewMode, filteredCompleted, filteredBacklog, filteredDated]);
 
   const scheduleDateGroups = useMemo(() => {
-    const active = filtered.filter((t) => t.status !== "completed");
+    const active = filteredDated.filter(
+      (t) => t.status !== "completed" && t.scheduledDate && toDateKey(t.scheduledDate),
+    );
     const map = {};
     active.forEach((t) => {
-      const key = t.scheduledDate ? toDateKey(t.scheduledDate) : "no-date";
+      const key = toDateKey(t.scheduledDate);
       if (!map[key]) map[key] = [];
       map[key].push(t);
     });
@@ -1648,16 +1750,14 @@ export default function ProductionHub() {
       })
     );
     return Object.keys(map)
-      .sort((a, b) => {
-        if (a === "no-date") return 1;
-        if (b === "no-date") return -1;
-        return a.localeCompare(b);
-      })
-      .map((key) => ({ key: key === "no-date" ? null : key, tasks: map[key] }));
-  }, [filtered]);
+      .sort((a, b) => a.localeCompare(b))
+      .map((key) => ({ key, tasks: map[key] }));
+  }, [filteredDated]);
 
   const backlogGroups = useMemo(() => {
-    const list = filtered.filter((t) => t.status !== "completed" && (!t.scheduledDate || toDateKey(t.scheduledDate) === ""));
+    const list = filteredBacklog.filter(
+      (t) => t.status !== "completed" && (!t.scheduledDate || toDateKey(t.scheduledDate) === ""),
+    );
     list.sort((a, b) => {
       const aAss = (a.assignedTo && a.assignedTo.length > 0) ? a.assignedTo[0].toLowerCase() : "zzzz";
       const bAss = (b.assignedTo && b.assignedTo.length > 0) ? b.assignedTo[0].toLowerCase() : "zzzz";
@@ -1665,10 +1765,10 @@ export default function ProductionHub() {
       return STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
     });
     return [{ key: null, tasks: list }];
-  }, [filtered]);
+  }, [filteredBacklog]);
 
   const completedDateGroups = useMemo(() => {
-    const list = filtered.filter((t) => t.status === "completed");
+    const list = filteredCompleted.filter((t) => t.status === "completed");
     const map = {};
     list.forEach((t) => {
       const key = t.scheduledDate ? toDateKey(t.scheduledDate) : "no-date";
@@ -1690,21 +1790,29 @@ export default function ProductionHub() {
         return b.localeCompare(a); // DESC sorting for history
       })
       .map((key) => ({ key, tasks: map[key] }));
-  }, [filtered]);
+  }, [filteredCompleted]);
+
+  const allTasks = useMemo(
+    () => [...datedTasks, ...backlogTasks, ...completedTasks],
+    [datedTasks, backlogTasks, completedTasks],
+  );
 
   const uniqueTypes = useMemo(() => {
-    const set = new Set(tasks.map((t) => t.channelType).filter(Boolean));
+    const set = new Set(allTasks.map((t) => t.channelType).filter(Boolean));
     return [...set].sort();
-  }, [tasks]);
+  }, [allTasks]);
 
   const typeNames = useMemo(() => types.map((t) => t.name), [types]);
+
+  const hasAnyTasks = stats.active > 0 || stats.completed > 0;
+  const showStatsRibbon = !loading && boardStats != null && hasAnyTasks;
 
   return (
     <AdminLayout title="Production Hub" titleInfo="Track & manage scheduled content" icon={LayoutDashboard} contentFit noPadding>
       <div className="flex flex-col h-full min-h-0 overflow-hidden w-full gap-1.5 sm:gap-2 px-3 sm:px-4 pt-2 pb-4">
 
         {/* Stats & Search Ribbon */}
-        {!loading && tasks.length > 0 && (
+        {showStatsRibbon && (
           <div className="flex-shrink-0 flex items-center justify-between gap-4 px-3 py-1.5 bg-gray-50/50 dark:bg-gray-800/30 rounded-lg border border-gray-100/50 dark:border-gray-700/50">
             <div className="flex items-center gap-3 sm:gap-4 md:gap-6 ml-1">
               <StatCard icon={AlertTriangle} label="Overdue" count={stats.overdue} color="text-red-500" />
@@ -1722,7 +1830,7 @@ export default function ProductionHub() {
                 onClear={() => setSearch("")}
               />
               <button
-                onClick={fetchTasks}
+                onClick={refreshFullBoard}
                 disabled={loading}
                 className="p-1.5 rounded-lg bg-white/50 dark:bg-gray-700/50 border border-gray-200/50 dark:border-gray-600/50 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
                 title="Refresh board"
@@ -1789,12 +1897,12 @@ export default function ProductionHub() {
                     }`}
                   >
                     All Categories
-                    <span className="text-[10px] opacity-60 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full font-black uppercase">{tasks.length}</span>
+                    <span className="text-[10px] opacity-60 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full font-black uppercase">{allTasks.length}</span>
                   </button>
                   <div className="h-px bg-gray-100 dark:bg-gray-700 my-1.5" />
                   <div className="max-h-64 overflow-y-auto custom-scrollbar">
                     {uniqueTypes.map((ct) => {
-                      const count = tasks.filter(t => t.channelType === ct).length;
+                      const count = allTasks.filter(t => t.channelType === ct).length;
                       return (
                         <button
                           key={ct}
@@ -1843,7 +1951,7 @@ export default function ProductionHub() {
               <p className="text-sm text-gray-500 dark:text-gray-400">Loading board…</p>
             </div>
           </div>
-        ) : tasks.length === 0 ? (
+        ) : !hasAnyTasks ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
             <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
               <LayoutDashboard size={28} className="text-gray-400 dark:text-gray-500" />
@@ -1886,7 +1994,12 @@ export default function ProductionHub() {
           </div>
         ) : viewMode === "backlog" ? (
           <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-             {backlogGroups[0].tasks.length === 0 ? (
+            {tabBusy && !backlogLoaded ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-3">
+                <Loader2 size={28} className="animate-spin text-blue-500" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">Loading backlog…</p>
+              </div>
+            ) : backlogGroups[0].tasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <ListChecks size={32} className="text-gray-300 mb-3" />
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Backlog is empty</p>
@@ -1910,6 +2023,13 @@ export default function ProductionHub() {
           </div>
         ) : (
           <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
+            {tabBusy && !completedLoaded ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-3">
+                <Loader2 size={28} className="animate-spin text-emerald-500" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">Loading completed…</p>
+              </div>
+            ) : (
+            <>
             {selectedDateKeys.length > 0 && (
               <div className="sticky top-0 z-20 mb-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center gap-3">
@@ -1963,6 +2083,8 @@ export default function ProductionHub() {
                 />
               ))
             )}
+            </>
+            )}
           </div>
         )}
       </div>
@@ -1970,7 +2092,7 @@ export default function ProductionHub() {
       <ContentModal
         open={showModal}
         onClose={handleModalClose}
-        onSaved={fetchTasks}
+        onSaved={syncBoardAfterMutation}
         channelTypes={typeNames}
         editTask={editTask}
       />
