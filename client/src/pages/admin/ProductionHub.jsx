@@ -244,6 +244,47 @@ const ASSIGNED_PILL = {
   mahalakshmi: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
 };
 
+const VIEWS_PILL =
+  "bg-emerald-50 text-emerald-800 border border-emerald-200/80 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800/50";
+
+/** Prefer numeric `views`; otherwise parse `viewsText` (commas, optional K/M/L suffix). */
+function parseViewsCount(task) {
+  if (task?.views != null && Number.isFinite(Number(task.views))) {
+    return Math.round(Number(task.views));
+  }
+  const s = String(task?.viewsText || "")
+    .replace(/,/g, "")
+    .trim();
+  if (!s) return null;
+  const suffixed = s.match(/(\d+(?:\.\d+)?)\s*([kKmMlL])\b/i);
+  if (suffixed) {
+    let n = parseFloat(suffixed[1]);
+    const u = suffixed[2].toLowerCase();
+    if (u === "k") n *= 1000;
+    else if (u === "m") n *= 1_000_000;
+    else if (u === "l") n *= 100_000;
+    return Number.isFinite(n) ? Math.round(n) : null;
+  }
+  const digits = s.replace(/[^\d]/g, "");
+  if (!digits) return null;
+  const n = parseInt(digits, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Thousands as K, lakhs (1e5) as L — for compact row pills. */
+function formatViewsKL(n) {
+  const x = Math.round(Number(n));
+  if (!Number.isFinite(x) || x <= 0) return null;
+  const oneDec = (v) => {
+    const r = Math.round(v * 10) / 10;
+    const str = r.toFixed(1);
+    return str.endsWith(".0") ? String(Math.round(r)) : str;
+  };
+  if (x < 1000) return String(x);
+  if (x < 100_000) return `${oneDec(x / 1000)}K`;
+  return `${oneDec(x / 100_000)}L`;
+}
+
 const ZERO_BOARD_STATS = {
   overdue: 0,
   today: 0,
@@ -256,7 +297,9 @@ const ZERO_BOARD_STATS = {
 
 function exportToCsv(tasks) {
   const headers = ["Title", "Platform", "Format", "Channel Type", "Channel", "Status", "Scheduled Date", "Views", "Notes", "URL"];
-  const rows = tasks.map((t) => [
+  const rows = tasks.map((t) => {
+    const viewsNum = parseViewsCount(t);
+    return [
     `"${(t.title || "").replace(/"/g, '""')}"`,
     t.platform || "youtube",
     t.contentFormat || "",
@@ -264,10 +307,11 @@ function exportToCsv(tasks) {
     `"${(t.channelName || "").replace(/"/g, '""')}"`,
     (STATUS_META[t.status]?.label) || t.status,
     t.scheduledDate ? toDateKey(t.scheduledDate) : "",
-    t.viewsText || t.views || "",
+    viewsNum != null ? String(viewsNum) : (t.viewsText || t.views || ""),
     `"${(t.notes || "").replace(/"/g, '""')}"`,
     getTaskUrl(t) || "",
-  ]);
+  ];
+  });
   const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -389,8 +433,59 @@ function PlatformIcon({ platform, size = 8 }) {
   return <Icon size={size} className={`${meta.color} flex-shrink-0`} />;
 }
 
+function hasTaskNotes(task) {
+  return Boolean(String(task?.notes ?? "").trim());
+}
+
+/* ─── Notes detail modal ─── */
+function NotesModal({ task, onClose }) {
+  if (!task) return null;
+  const body = String(task.notes ?? "").trim();
+  return (
+    <div className="fixed inset-0 z-[96] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div
+        role="dialog"
+        aria-labelledby="notes-modal-title"
+        className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+      >
+        <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="min-w-0">
+            <h3 id="notes-modal-title" className="text-sm font-bold text-gray-900 dark:text-white leading-snug line-clamp-2">
+              Notes available
+            </h3>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{task.title}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="px-4 py-3 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+          <pre className="whitespace-pre-wrap text-[13px] text-gray-800 dark:text-gray-100 leading-relaxed font-sans break-words">
+            {body}
+          </pre>
+        </div>
+        <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/50 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200/80 dark:hover:bg-gray-700 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Inline Row for a single task ─── */
-function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail }) {
+function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNotes }) {
   const handleDragStart = (e) => {
     e.dataTransfer.setData("taskId", task._id);
     e.dataTransfer.effectAllowed = "move";
@@ -419,6 +514,23 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail }) {
       <div className="scale-90 flex-shrink-0">
         <StatusCheckbox status={task.status} onClick={handleStatusClick} />
       </div>
+
+      {/* Notes available — first pill; opens detail modal */}
+      {hasTaskNotes(task) && (
+        <button
+          type="button"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenNotes?.(task);
+          }}
+          className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[7px] sm:text-[7.5px] font-black uppercase tracking-tight bg-sky-50 text-sky-700 border border-sky-200/80 dark:bg-sky-900/30 dark:text-sky-200 dark:border-sky-800/50 shadow-sm hover:bg-sky-100 dark:hover:bg-sky-900/50 hover:border-sky-300 dark:hover:border-sky-600 transition-colors cursor-pointer"
+          title="Click to read notes"
+        >
+          <FileText size={9} className="flex-shrink-0" />
+          <span className="hidden sm:inline">Notes available</span>
+        </button>
+      )}
 
       {/* Actions (visible on hover/active) */}
       <div className="flex-shrink-0 flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity mr-0.5">
@@ -479,14 +591,23 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail }) {
               {task.channelName}
             </span>
           )}
-          {task.viewsText && (
-            <>
-              <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
-              <span className="text-[7.5px] text-gray-500 dark:text-gray-400 inline-flex items-center gap-0.5">
-                <Eye size={7} /> {task.viewsText}
-              </span>
-            </>
-          )}
+          {(() => {
+            const viewsN = parseViewsCount(task);
+            const viewsShort = viewsN != null ? formatViewsKL(viewsN) : null;
+            if (!viewsShort) return null;
+            return (
+              <>
+                <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
+                <span
+                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[7px] sm:text-[7.5px] font-black tracking-tight shadow-sm ${VIEWS_PILL}`}
+                  title={`${viewsN.toLocaleString("en-IN")} views`}
+                >
+                  <Eye size={7} className="flex-shrink-0 opacity-90" />
+                  {viewsShort}
+                </span>
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -550,13 +671,6 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail }) {
       <span className={`hidden md:inline-flex items-center gap-1 text-[7.5px] font-black uppercase tracking-tighter px-1 py-0.5 rounded-full flex-shrink-0 shadow-sm border border-transparent ${meta.pill}`}>
         {meta.label}
       </span>
-
-      {/* Notes indicator */}
-      {task.notes && (
-        <span className="flex-shrink-0 text-gray-400 dark:text-gray-500" title={task.notes}>
-          <FileText size={12} />
-        </span>
-      )}
 
       {/* Move Actions (Undo) */}
       <div className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -904,7 +1018,7 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
 }
 /* ─── Date Group ─── */
 function DateGroup({ 
-  dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, onPreviewThumbnail, defaultOpen, variant,
+  dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, onPreviewThumbnail, onOpenNotes, defaultOpen, variant,
   isSelected, onSelect 
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -1115,7 +1229,7 @@ function DateGroup({
       {open && (
         <div className="p-3 space-y-2 bg-gray-50/50 dark:bg-gray-800/20">
           {tasks.map((t) => (
-            <TaskRow key={t._id} task={t} onMove={onMove} onDelete={onDelete} onEdit={onEdit} onPreviewThumbnail={onPreviewThumbnail} />
+            <TaskRow key={t._id} task={t} onMove={onMove} onDelete={onDelete} onEdit={onEdit} onPreviewThumbnail={onPreviewThumbnail} onOpenNotes={onOpenNotes} />
           ))}
           {tasks.length === 0 && (
             <div className="py-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[10px] text-gray-400">
@@ -1457,6 +1571,7 @@ export default function ProductionHub() {
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewThumbUrl, setPreviewThumbUrl] = useState(null);
+  const [notesModalTask, setNotesModalTask] = useState(null);
   const scrollRef = useCallback((node) => {
     if (node !== null) {
       node.addEventListener("dragover", (e) => {
@@ -1987,6 +2102,7 @@ export default function ProductionHub() {
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
                   onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
+                  onOpenNotes={setNotesModalTask}
                   defaultOpen={getDateCategory(g.key) === "overdue" || getDateCategory(g.key) === "today"}
                 />
               ))
@@ -2016,6 +2132,7 @@ export default function ProductionHub() {
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
                   onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
+                  onOpenNotes={setNotesModalTask}
                   defaultOpen={true}
                 />
               ))
@@ -2076,6 +2193,7 @@ export default function ProductionHub() {
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
                   onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
+                  onOpenNotes={setNotesModalTask}
                   defaultOpen={false}
                   variant="completed"
                   isSelected={selectedDateKeys.includes(g.key === null ? "no-date" : g.key)}
@@ -2105,6 +2223,9 @@ export default function ProductionHub() {
         onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
       />
       {previewThumbUrl && <ThumbnailModal url={previewThumbUrl} onClose={() => setPreviewThumbUrl(null)} />}
+      {notesModalTask && (
+        <NotesModal task={notesModalTask} onClose={() => setNotesModalTask(null)} />
+      )}
     </AdminLayout>
   );
 }
