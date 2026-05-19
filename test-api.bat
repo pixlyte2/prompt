@@ -10,7 +10,7 @@ echo.
 echo 2. Testing Login (Replace with your credentials)
 curl -X POST http://localhost:5000/api/auth/login ^
   -H "Content-Type: application/json" ^
-  -d "{\"email\":\"pixlyt.e1@gmail.com\",\"password\":\"Pixlyt@123\"}"
+  -d "{\"email\":\"pixlyt.e1@gmail.com\",\"passwordd\":\"Pixlyt@123\"}"
 echo.
 echo.
 
