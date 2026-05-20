@@ -5,7 +5,7 @@ const createUser = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    if (!["content_manager", "viewer"].includes(role))
+    if (!["content_manager", "viewer", "voice_over"].includes(role))
       return res.status(400).json({ message: "Invalid role" });
 
     const hash = await bcrypt.hash(password, 10);

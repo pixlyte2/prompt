@@ -20,7 +20,7 @@ const EXAMPLES = [
 
 function SearchInput({ value, onChange, placeholder, onClear, inputRef }) {
   return (
-    <div className="relative flex-1 min-w-[120px] max-w-md group">
+    <div className="relative w-full min-w-0 flex-1 group">
       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
         <Search size={16} className="text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
       </div>
@@ -44,14 +44,6 @@ function SearchInput({ value, onChange, placeholder, onClear, inputRef }) {
           <X size={16} />
         </button>
       )}
-    </div>
-  );
-}
-
-function FilterRow({ children, className = "" }) {
-  return (
-    <div className={`flex items-center gap-1.5 sm:gap-2 flex-wrap md:flex-nowrap w-full ${className}`}>
-      {children}
     </div>
   );
 }
@@ -329,59 +321,45 @@ export default function YouTubeVideoInspector() {
     >
       <div className="flex flex-col h-full min-h-0 overflow-y-auto sm:overflow-hidden w-full max-w-[1600px] mx-auto custom-scrollbar px-3 pt-2 pb-4 gap-1.5">
 
-        {/* Filter strip — Trending Hub style */}
-        <div className="flex-shrink-0 p-1 z-30">
+        {/* URL bar: search fills width, Paste + Analyze flush right next to it */}
+        <div className="flex-shrink-0 p-1 z-30 w-full">
           <form
             onSubmit={(e) => { e.preventDefault(); fetchVideo(url); }}
-            className="flex flex-wrap lg:flex-nowrap items-end gap-1.5 w-full"
+            className="w-full"
           >
-            <div className="flex flex-wrap lg:flex-nowrap items-center gap-1 p-1 bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl rounded-[22px] border border-gray-200/60 dark:border-gray-700/60 flex-grow min-w-0 shadow-[0_10px_35px_-10px_rgba(0,0,0,0.12)] dark:shadow-[0_15px_40px_-12px_rgba(0,0,0,0.4)]">
-              <FilterRow className="items-end px-1 sm:px-2 py-1 flex-1 min-w-0">
-                  <div className="hidden sm:flex flex-col gap-1 flex-1 min-w-[200px] relative">
-                    <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-blue-600/80 dark:text-white ml-1.5 mb-0.5">
-                      <Search size={11} /> Target
-                    </span>
-                    <SearchInput
-                      inputRef={inputRef}
-                      value={url}
-                      onChange={setUrl}
-                      onClear={() => setUrl("")}
-                      placeholder="YouTube URL, Shorts link, or video ID…"
-                    />
-                  </div>
-                  <div className="sm:hidden flex-1 w-full -mx-0.5 px-0.5">
-                    <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-blue-600/80 dark:text-white mb-1">
-                      <Search size={11} /> Target
-                    </span>
-                    <SearchInput
-                      inputRef={inputRef}
-                      value={url}
-                      onChange={setUrl}
-                      onClear={() => setUrl("")}
-                      placeholder="URL or video ID…"
-                    />
-                  </div>
-              </FilterRow>
-            </div>
+            <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-2 p-2 sm:p-2 bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl rounded-[22px] border border-gray-200/60 dark:border-gray-700/60 w-full min-w-0 shadow-[0_10px_35px_-10px_rgba(0,0,0,0.12)] dark:shadow-[0_15px_40px_-12px_rgba(0,0,0,0.4)]">
+              <div className="flex-1 min-w-0 flex flex-col gap-1">
+                <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-blue-600/80 dark:text-white ml-0.5 sm:ml-1.5 mb-0.5">
+                  <Search size={11} /> Target
+                </span>
+                <SearchInput
+                  inputRef={inputRef}
+                  value={url}
+                  onChange={setUrl}
+                  onClear={() => setUrl("")}
+                  placeholder="YouTube URL, Shorts link, or video ID…"
+                />
+              </div>
 
-            <div className="flex items-center gap-1.5 p-1 bg-white/60 dark:bg-gray-900/70 backdrop-blur-3xl rounded-[20px] border border-white/40 dark:border-gray-700/50 flex-shrink-0 self-end mb-0 lg:mb-0 shadow-[0_10px_30px_rgb(0,0,0,0.1)] dark:shadow-[0_15px_40px_rgba(0,0,0,0.4)]">
-              <button
-                type="button"
-                onClick={handlePaste}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-gray-600 dark:text-gray-300 bg-white/70 dark:bg-gray-900/70 border border-gray-100 dark:border-gray-800 hover:border-violet-300 dark:hover:border-violet-600 hover:shadow-sm transition-all duration-300"
-              >
-                <ClipboardPaste size={14} />
-                <span className="hidden sm:inline">Paste</span>
-              </button>
-              <div className="h-6 w-px bg-gradient-to-b from-transparent via-gray-200 dark:via-gray-700 to-transparent opacity-80" />
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-[11px] font-black uppercase tracking-tight shadow-lg shadow-blue-500/25 disabled:opacity-60 transition-all duration-300 border border-white/10"
-              >
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                {loading ? "Analyzing…" : "Analyze"}
-              </button>
+              <div className="flex items-center justify-end sm:justify-start gap-1.5 flex-shrink-0 sm:pb-0.5">
+                <button
+                  type="button"
+                  onClick={handlePaste}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-gray-600 dark:text-gray-300 bg-white/70 dark:bg-gray-900/70 border border-gray-100 dark:border-gray-800 hover:border-violet-300 dark:hover:border-violet-600 hover:shadow-sm transition-all duration-300"
+                >
+                  <ClipboardPaste size={14} />
+                  <span className="hidden sm:inline">Paste</span>
+                </button>
+                <div className="hidden sm:block h-8 w-px flex-shrink-0 bg-gradient-to-b from-transparent via-gray-200 dark:via-gray-700 to-transparent opacity-80" />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-[11px] font-black uppercase tracking-tight shadow-lg shadow-blue-500/25 disabled:opacity-60 transition-all duration-300 border border-white/10"
+                >
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  {loading ? "Analyzing…" : "Analyze"}
+                </button>
+              </div>
             </div>
           </form>
         </div>

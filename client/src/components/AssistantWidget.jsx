@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
-import { Bot, X, Send, Loader2, Trash2, Minimize2 } from "lucide-react";
+import { Bot, X, Send, Loader2, Trash2, Minimize2, GripHorizontal } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useDarkMode } from "../contexts/DarkModeContext";
 import { renderMarkdown } from "../utils/markdown";
 
 const SESSION_KEY = "creatorai_assistant_session_v1";
+const DOCK_POS_KEY = "creatorai_assistant_dock_pos_v1";
+const DRAG_THRESHOLD_PX = 6;
+
 const MODEL_OPTIONS = [
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
@@ -33,6 +36,29 @@ function saveSession(messages) {
   }
 }
 
+function loadDockPos() {
+  try {
+    const raw = localStorage.getItem(DOCK_POS_KEY);
+    if (!raw) return null;
+    const j = JSON.parse(raw);
+    if (typeof j.r === "number" && typeof j.b === "number") return { right: j.r, bottom: j.b };
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function clampDock(right, bottom) {
+  const margin = 8;
+  const minHit = 40;
+  const w = typeof window !== "undefined" ? window.innerWidth : 800;
+  const h = typeof window !== "undefined" ? window.innerHeight : 600;
+  return {
+    right: Math.min(Math.max(margin, right), w - minHit),
+    bottom: Math.min(Math.max(margin, bottom), h - minHit),
+  };
+}
+
 export default function AssistantWidget() {
   const { isDark } = useDarkMode();
   const [open, setOpen] = useState(false);
@@ -42,14 +68,85 @@ export default function AssistantWidget() {
   const [aiModel, setAiModel] = useState("gemini-2.5-flash");
   const listRef = useRef(null);
 
+  const [dockPos, setDockPos] = useState(() => loadDockPos() || { right: 20, bottom: 20 });
+  const dockPosRef = useRef(dockPos);
+  useEffect(() => {
+    dockPosRef.current = dockPos;
+  }, [dockPos]);
+
+  const dragListenersRef = useRef({ move: null, up: null });
+
+  const beginDockDrag = useCallback((e, { toggleOnClick }) => {
+    if (e.button !== 0) return;
+
+    const session = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialRight: dockPosRef.current.right,
+      initialBottom: dockPosRef.current.bottom,
+      moved: false,
+      toggleOnClick,
+    };
+
+    const onMove = (ev) => {
+      const dx = ev.clientX - session.startX;
+      const dy = ev.clientY - session.startY;
+      if (!session.moved && dx * dx + dy * dy > DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) {
+        session.moved = true;
+      }
+      if (!session.moved) return;
+      setDockPos(clampDock(session.initialRight - dx, session.initialBottom - dy));
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      dragListenersRef.current = { move: null, up: null };
+
+      if (session.moved) {
+        const p = dockPosRef.current;
+        try {
+          localStorage.setItem(DOCK_POS_KEY, JSON.stringify({ r: p.right, b: p.bottom }));
+        } catch {
+          /* ignore */
+        }
+      } else if (session.toggleOnClick) {
+        setOpen((v) => !v);
+      }
+    };
+
+    dragListenersRef.current = { move: onMove, up: onUp };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      const { move, up } = dragListenersRef.current;
+      if (move) window.removeEventListener("pointermove", move);
+      if (up) {
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setDockPos((p) => clampDock(p.right, p.bottom));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   useEffect(() => {
     saveSession(messages);
   }, [messages]);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") setOpen(false);
+    const onKey = (ev) => {
+      if (ev.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -119,24 +216,34 @@ export default function AssistantWidget() {
   };
 
   return (
-    <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] flex flex-row items-start gap-2 pointer-events-none">
+    <div
+      className="fixed z-[100] flex flex-row-reverse items-end gap-2 pointer-events-none"
+      style={{ right: dockPos.right, bottom: dockPos.bottom }}
+    >
       {open && (
         <div
           className="pointer-events-auto flex w-[min(calc(100vw-2rem),24rem)] h-[min(calc(100dvh-5.5rem),36rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-2xl shadow-gray-900/20 dark:shadow-black/40"
           role="dialog"
           aria-label="AI assistant"
         >
-          <div className="flex items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+          <div
+            className="flex items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white cursor-grab active:cursor-grabbing select-none touch-none"
+            onPointerDown={(e) => beginDockDrag(e, { toggleOnClick: false })}
+            title="Drag to move"
+          >
             <div className="flex items-center gap-2 min-w-0">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white/90">
+                <GripHorizontal size={16} aria-hidden />
+              </span>
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
-                <Bot size={18} aria-hidden />
+                <Bot size={17} aria-hidden />
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold leading-tight truncate">Assistant</p>
                 <p className="text-[10px] text-blue-100 truncate">CreatorAI help · uses your Gemini key</p>
               </div>
             </div>
-            <div className="flex items-center gap-0.5 flex-shrink-0">
+            <div className="flex items-center gap-0.5 flex-shrink-0 cursor-default" onPointerDown={(e) => e.stopPropagation()}>
               <button
                 type="button"
                 onClick={clearChat}
@@ -245,12 +352,13 @@ export default function AssistantWidget() {
 
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/35 hover:from-blue-500 hover:to-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 transition-transform hover:scale-105 active:scale-95"
+        onPointerDown={(e) => beginDockDrag(e, { toggleOnClick: true })}
+        className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30 hover:from-blue-500 hover:to-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 transition-transform active:scale-95 touch-none select-none"
         aria-expanded={open}
         aria-label={open ? "Close assistant" : "Open AI assistant"}
+        title="Drag to move · click to open"
       >
-        {open ? <X size={22} /> : <Bot size={24} />}
+        {open ? <X size={17} /> : <Bot size={17} />}
       </button>
     </div>
   );

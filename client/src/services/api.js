@@ -66,3 +66,5 @@ export const logout = () => {
 };
 
 export default cachedApi;
+/** Same axios instance (auth interceptors); use for blobs, FormData uploads, or non-cached requests */
+export { api as httpClient };

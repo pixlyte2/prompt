@@ -51,7 +51,11 @@ export default function Topbar({ title = "Dashboard", icon: Icon, onCacheClear, 
   const roleDisplayName =
     role === "content_manager"
       ? "CONTENT MANAGER"
-      : role?.toUpperCase() || "ADMIN";
+      : role === "voice_over"
+        ? "VOICE OVER"
+        : role?.toUpperCase() || "ADMIN";
+
+  const isVoiceOverRole = role === "voice_over";
 
   const handleLogout = () => {
     logout();
@@ -129,28 +133,32 @@ export default function Topbar({ title = "Dashboard", icon: Icon, onCacheClear, 
               {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setShowHistory(true)}
-              className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              <Clock size={16} className="flex-shrink-0" />
-              <span className="hidden md:inline">History</span>
-              {historyCount > 0 && (
-                <span className="text-xs px-1.5 py-0.5 bg-blue-600 text-white rounded-full min-w-[1.25rem] text-center">
-                  {historyCount > 99 ? "99+" : historyCount}
-                </span>
-              )}
-            </button>
+            {!isVoiceOverRole && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowHistory(true)}
+                  className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400"
+                >
+                  <Clock size={16} className="flex-shrink-0" />
+                  <span className="hidden md:inline">History</span>
+                  {historyCount > 0 && (
+                    <span className="text-xs px-1.5 py-0.5 bg-blue-600 text-white rounded-full min-w-[1.25rem] text-center">
+                      {historyCount > 99 ? "99+" : historyCount}
+                    </span>
+                  )}
+                </button>
 
-            <button
-              type="button"
-              onClick={() => setShowClearConfirm(true)}
-              className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400"
-            >
-              <Database size={16} className="flex-shrink-0" />
-              <span className="hidden md:inline">Clear</span>
-            </button>
+                <button
+                  type="button"
+                  onClick={() => setShowClearConfirm(true)}
+                  className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400"
+                >
+                  <Database size={16} className="flex-shrink-0" />
+                  <span className="hidden md:inline">Clear</span>
+                </button>
+              </>
+            )}
 
             <div className="relative">
               <button

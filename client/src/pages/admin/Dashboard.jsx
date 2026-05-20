@@ -13,9 +13,12 @@ import {
   Sparkles,
   ChevronRight,
   Zap,
+  ScrollText,
+  Mic,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
+import { downloadVoiceOverFile } from "../../utils/voiceOverDownload";
 import { getUser } from "../../utils/api";
 import HistoryModal from "../../components/HistoryModal";
 
@@ -394,16 +397,45 @@ export default function Dashboard() {
                         return (
                           <div key={task._id} className="flex items-center gap-2 group/task rounded-lg px-2 py-1 transition-all hover:bg-gray-50/80 dark:hover:bg-black/40 border border-transparent hover:border-black/[0.02] dark:hover:border-white/[0.02] hover:shadow-sm">
                             <Activity size={12} className={`flex-shrink-0 ${isDone ? "text-gray-300" : textColor} opacity-40 group-hover/task:opacity-100 transition-opacity`} />
+                            {String(task.voiceOverStoredName || "").trim() ? (
+                              <button
+                                type="button"
+                                title="Download uploaded voice-over file"
+                                className="flex-shrink-0 p-0.5 rounded text-emerald-600 dark:text-emerald-400 opacity-60 hover:opacity-100 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-all"
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  try {
+                                    await downloadVoiceOverFile(task);
+                                    toast.success("Download started");
+                                  } catch (err) {
+                                    toast.error(err.message || "Download failed");
+                                  }
+                                }}
+                              >
+                                <Mic size={12} />
+                              </button>
+                            ) : null}
                             
                             <a 
                               href={taskUrl || "#"} 
                               target="_blank" 
                               rel="noopener noreferrer"
+                              title={
+                                String(task.script || "").trim()
+                                  ? `${task.title}\n\nScript:\n${String(task.script).trim()}`
+                                  : task.title
+                              }
                               className="flex-1 min-w-0 flex items-center justify-between gap-3 group/link"
                             >
-                              <p className={`text-[11px] font-bold leading-tight truncate transition-all group-hover/link:translate-x-0.5 ${isDone ? "line-through text-gray-400 dark:text-gray-500 opacity-60" : "text-gray-900 dark:text-white opacity-85 group-hover:opacity-100"}`}>
-                                {task.title}
-                              </p>
+                              <div className="flex items-center gap-1 min-w-0 flex-1">
+                                {String(task.script || "").trim() ? (
+                                  <ScrollText size={11} className={`flex-shrink-0 ${isDone ? "text-gray-300" : textColor} opacity-50`} aria-hidden />
+                                ) : null}
+                                <p className={`text-[11px] font-bold leading-tight truncate transition-all group-hover/link:translate-x-0.5 ${isDone ? "line-through text-gray-400 dark:text-gray-500 opacity-60" : "text-gray-900 dark:text-white opacity-85 group-hover:opacity-100"}`}>
+                                  {task.title}
+                                </p>
+                              </div>
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).filter(Boolean).map(fmt => {
                                   const isShort = fmt.toLowerCase().includes("short");

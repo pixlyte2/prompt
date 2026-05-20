@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import AssistantWidget from "../components/AssistantWidget";
-import { BarChart3, Users, FileText, MessageSquare, HelpCircle, TrendingUp, LayoutDashboard, Youtube } from "lucide-react";
+import { BarChart3, Users, FileText, MessageSquare, HelpCircle, TrendingUp, LayoutDashboard, Youtube, Mic } from "lucide-react";
+import { getRole } from "../utils/api";
 
 const adminMenu = [
   { label: "Dashboard", path: "/admin", icon: BarChart3 },
@@ -11,9 +12,12 @@ const adminMenu = [
   { label: "AI Chat", path: "/admin/ai-chat", icon: MessageSquare },
   { label: "Trending Hub", path: "/admin/trending-hub", icon: TrendingUp },
   { label: "Production Hub", path: "/admin/production-hub", icon: LayoutDashboard },
+  { label: "Voice-over", path: "/admin/voice-over", icon: Mic },
   { label: "YouTube inspector", path: "/admin/youtube-inspector", icon: Youtube },
   { label: "Help", path: "/admin/help", icon: HelpCircle }
 ];
+
+const voiceOverMenu = [{ label: "Voice-over", path: "/admin/voice-over", icon: Mic }];
 
 export default function AdminLayout({
   title,
@@ -38,10 +42,17 @@ export default function AdminLayout({
     });
   };
 
+  const role = getRole();
+  const sidebarMenu = useMemo(
+    () => (role === "voice_over" ? voiceOverMenu : adminMenu),
+    [role],
+  );
+  const showAssistant = role !== "voice_over";
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar
-        menu={adminMenu}
+        menu={sidebarMenu}
         mobileOpen={mobileNavOpen}
         onCloseMobile={() => setMobileNavOpen(false)}
         isCollapsed={sidebarCollapsed}
@@ -67,7 +78,7 @@ export default function AdminLayout({
         >
           {children}
         </div>
-        <AssistantWidget />
+        {showAssistant ? <AssistantWidget /> : null}
       </div>
     </div>
   );

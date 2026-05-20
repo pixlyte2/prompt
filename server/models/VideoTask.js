@@ -41,6 +41,11 @@ const videoTaskSchema = new mongoose.Schema(
     url: { type: String, default: "" },
     scheduledDate: { type: Date, required: false },
     notes: { type: String, default: "" },
+    script: { type: String, default: "" },
+    /** GridFS file id (24-char hex) for voice-over audio stored in MongoDB */
+    voiceOverStoredName: { type: String, default: "" },
+    /** Original client filename for Content-Disposition */
+    voiceOverOriginalName: { type: String, default: "" },
     status: {
       type: String,
       enum: ["todo", "in_progress", "completed"],

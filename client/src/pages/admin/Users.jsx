@@ -15,6 +15,8 @@ function UserCard({ user, onDelete }) {
         return { label: "Content Manager", color: "bg-blue-100 text-blue-700" };
       case "admin":
         return { label: "Admin", color: "bg-purple-100 text-purple-700" };
+      case "voice_over":
+        return { label: "Voice Over", color: "bg-emerald-100 text-emerald-800" };
       default:
         return { label: "Viewer", color: "bg-gray-100 text-gray-700" };
     }
@@ -140,6 +142,7 @@ export default function Users() {
   const admins = users.filter(u => u.role === "admin").length;
   const content = users.filter(u => u.role === "content_manager").length;
   const viewers = users.filter(u => u.role === "viewer").length;
+  const voiceOver = users.filter(u => u.role === "voice_over").length;
 
   return (
     <AdminLayout title="Users" icon={UsersIcon}>
@@ -148,13 +151,14 @@ export default function Users() {
       <div className="space-y-5">
 
         {/* 🔥 STATS - PRO */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
 
           {[
             { label: "Total Users", value: total, filter: "all", color: "blue" },
             { label: "Admins", value: admins, filter: "admin", color: "purple" },
             { label: "Content", value: content, filter: "content_manager", color: "green" },
-            { label: "Viewers", value: viewers, filter: "viewer", color: "gray" }
+            { label: "Viewers", value: viewers, filter: "viewer", color: "gray" },
+            { label: "Voice Over", value: voiceOver, filter: "voice_over", color: "emerald" },
           ].map((item, i) => (
             <div
               key={i}
@@ -174,6 +178,7 @@ export default function Users() {
                 {[5, 8, 6, 10, 7, 9, 6].map((h, idx) => (
                   <div
                     key={idx}
+                    style={{ height: `${h * 3}px`, width: "100%" }}
                     className={
                       item.color === "blue"
                         ? "bg-blue-400/60"
@@ -181,9 +186,10 @@ export default function Users() {
                         ? "bg-purple-400/60"
                         : item.color === "green"
                         ? "bg-green-400/60"
+                        : item.color === "emerald"
+                        ? "bg-emerald-400/60"
                         : "bg-gray-400/60"
                     }
-                    style={{ height: `${h * 3}px`, width: "100%" }}
                   />
                 ))}
               </div>
@@ -260,6 +266,7 @@ export default function Users() {
                 >
                   <option value="viewer">Viewer</option>
                   <option value="content_manager">Content Manager</option>
+                  <option value="voice_over">Voice Over</option>
                 </select>
               </div>
 

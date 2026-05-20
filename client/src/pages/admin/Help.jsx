@@ -8,6 +8,7 @@ import {
   TrendingUp,
   MousePointer2,
   BarChart3,
+  Mic,
   Youtube,
   Menu,
   Database,
@@ -33,7 +34,7 @@ export default function Help() {
       color: "text-blue-600",
       items: [
         "Invite and manage team accounts from the Users screen.",
-        "Admin accounts use this full console; other roles sign in at the same login and only see their allowed areas.",
+        "Admin accounts use this full console; content managers, viewers, and Voice Over users sign in at the same login and only see their allowed areas.",
       ],
     },
     {
@@ -63,7 +64,7 @@ export default function Help() {
       items: [
         "Competitor watch: pick a category (type), channel, time window (4h, 8h, 12h, 24h, 7d, or All), minimum views, search, and sort (trending / views / latest).",
         "Configure categories and YouTube sources from the settings entry in the category menu.",
-        "Add a video to Production Hub with Schedule / backlog, platform, format, assignees, and optional notes.",
+        "Add a video to Production Hub with Schedule / backlog, platform, format, assignees, optional notes, and optional script.",
       ],
     },
     {
@@ -71,8 +72,18 @@ export default function Help() {
       icon: LayoutDashboard,
       color: "text-blue-500",
       items: [
-        "Board for video tasks: scheduled dates, backlog, assignees, Long/Short format pills, and platform.",
+        "Board for video tasks: scheduled dates, backlog, assignees, Long/Short format pills, platform, notes, script, and optional voice-over audio.",
         "Create and edit tasks, move work through your team’s pipeline alongside the Dashboard Delivery Monitor.",
+      ],
+    },
+    {
+      title: "Voice-over",
+      icon: Mic,
+      color: "text-emerald-600",
+      items: [
+        "Lists scheduled Production Hub tasks by date (same as the schedule board).",
+        "Users with the Voice Over role only see this screen after login (no other admin pages or assistant).",
+        "Voice-over audio is stored in MongoDB (GridFS). View script in a modal, download it as .txt, upload or replace the file (common audio formats), download the audio, or remove it.",
       ],
     },
     {
@@ -95,7 +106,7 @@ export default function Help() {
       <div className="buffer-card overflow-y-auto p-4 custom-scrollbar">
 
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 max-w-3xl">
-          The left sidebar matches this order: Dashboard, Users, Prompts, AI Chat, Trending Hub, Production Hub,
+          The left sidebar matches this order: Dashboard, Users, Prompts, AI Chat, Trending Hub, Production Hub, Voice-over,
           YouTube inspector, and Help. Collapse the sidebar with the chevron on its edge; the choice is remembered on this device.
         </p>
 

@@ -1,4 +1,33 @@
 const VideoTask = require("../models/VideoTask");
+const {
+  contentTypeForVoiceOver,
+  defaultVoiceOverOriginalName,
+} = require("../utils/voiceOverAllowedFormats");
+const {
+  deleteVoiceOverGridFs,
+  uploadVoiceOverBuffer,
+  findVoiceOverFile,
+  getBucket,
+  isVoiceOverGridFsId,
+  ObjectId: VoiceOverObjectId,
+} = require("../utils/voiceOverGridfs");
+
+/** Tasks shown on the Voice-over page: scheduled date set and not completed */
+function taskAllowedForVoiceOverRole(task) {
+  if (!task) return false;
+  if (task.status === "completed") return false;
+  return Boolean(task.scheduledDate);
+}
+
+/** @returns {boolean} true if response was sent (403) */
+function rejectVoiceOverOutOfScope(req, res, task) {
+  if (req.user?.role !== "voice_over") return false;
+  if (taskAllowedForVoiceOverRole(task)) return false;
+  res.status(403).json({
+    message: "Voice-over role can only access scheduled, non-completed production tasks",
+  });
+  return true;
+}
 
 function localDateKey(d) {
   if (!d) return "";
@@ -73,6 +102,10 @@ exports.getTasks = async (req, res) => {
 
     const bucket = typeof req.query.bucket === "string" ? req.query.bucket.trim() : "";
 
+    if (req.user.role === "voice_over" && bucket !== "schedule") {
+      return res.status(403).json({ message: "Not authorized to load this task list" });
+    }
+
     if (bucket === "schedule") {
       filter.status = { $ne: "completed" };
       filter.scheduledDate = { $ne: null, $exists: true };
@@ -106,7 +139,7 @@ exports.createTask = async (req, res) => {
   try {
     const {
       videoId, title, thumbnail, channelName, channelHandle,
-      channelType, views, viewsText, duration, scheduledDate, notes,
+      channelType, views, viewsText, duration, scheduledDate, notes, script,
       platform, url, contentFormat, assignedTo,
     } = req.body;
 
@@ -140,6 +173,7 @@ exports.createTask = async (req, res) => {
       url: url || "",
       scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
       notes: notes || "",
+      script: script || "",
       createdBy: req.user._id,
     });
     res.status(201).json(task);
@@ -152,7 +186,7 @@ exports.createTask = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const {
-      status, scheduledDate, notes, title, url, videoId,
+      status, scheduledDate, notes, script, title, url, videoId,
       platform, contentFormat, assignedTo, channelType, channelName, channelHandle,
       thumbnail, views, viewsText, duration,
     } = req.body;
@@ -186,6 +220,7 @@ exports.updateTask = async (req, res) => {
       update.scheduledDate = scheduledDate ? new Date(scheduledDate) : null;
     }
     if (notes !== undefined) update.notes = notes;
+    if (script !== undefined) update.script = script;
     if (title !== undefined) update.title = title;
     if (url !== undefined) update.url = url;
     if (videoId !== undefined) update.videoId = videoId;
@@ -214,8 +249,10 @@ exports.updateTask = async (req, res) => {
 
 exports.deleteTask = async (req, res) => {
   try {
-    const task = await VideoTask.findByIdAndDelete(req.params.id);
+    const task = await VideoTask.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
+    await deleteVoiceOverGridFs(task.voiceOverStoredName);
+    await task.deleteOne();
     res.json({ message: "Task deleted" });
   } catch (err) {
     console.error("deleteTask error:", err.message);
@@ -229,10 +266,123 @@ exports.deleteManyTasks = async (req, res) => {
     if (!ids || !Array.isArray(ids)) {
       return res.status(400).json({ message: "ids array is required" });
     }
+    const tasks = await VideoTask.find({ _id: { $in: ids } }).lean();
+    for (const t of tasks) {
+      await deleteVoiceOverGridFs(t.voiceOverStoredName);
+    }
     await VideoTask.deleteMany({ _id: { $in: ids } });
     res.json({ message: `${ids.length} tasks deleted` });
   } catch (err) {
     console.error("deleteManyTasks error:", err.message);
     res.status(500).json({ message: "Failed to delete tasks" });
+  }
+};
+
+exports.uploadVoiceOver = async (req, res) => {
+  try {
+    if (!req.file?.buffer) {
+      return res.status(400).json({ message: "No file uploaded (use field name: file)" });
+    }
+    const task = await VideoTask.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    if (rejectVoiceOverOutOfScope(req, res, task)) return;
+
+    const prevId = task.voiceOverStoredName;
+    let newIdHex = null;
+    try {
+      const newId = await uploadVoiceOverBuffer(req.file.buffer, {
+        originalName: req.file.originalname,
+        contentType: req.file.mimetype,
+        taskMongoId: task._id,
+      });
+      newIdHex = String(newId);
+      task.voiceOverStoredName = newIdHex;
+      task.voiceOverOriginalName =
+        req.file.originalname || defaultVoiceOverOriginalName(req.file.originalname);
+      await task.save();
+    } catch (inner) {
+      if (newIdHex) await deleteVoiceOverGridFs(newIdHex);
+      throw inner;
+    }
+
+    if (prevId && prevId !== newIdHex) {
+      await deleteVoiceOverGridFs(prevId);
+    }
+
+    res.json(task);
+  } catch (err) {
+    console.error("uploadVoiceOver error:", err.message);
+    res.status(500).json({ message: "Failed to upload voice-over" });
+  }
+};
+
+exports.downloadVoiceOver = async (req, res) => {
+  try {
+    const task = await VideoTask.findById(req.params.id).lean();
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    if (rejectVoiceOverOutOfScope(req, res, task)) return;
+    if (!task?.voiceOverStoredName?.trim()) {
+      return res.status(404).json({ message: "No voice-over file for this task" });
+    }
+    const idStr = String(task.voiceOverStoredName).trim();
+    if (!isVoiceOverGridFsId(idStr)) {
+      return res.status(404).json({ message: "No voice-over file for this task" });
+    }
+
+    const fileDoc = await findVoiceOverFile(idStr);
+    if (!fileDoc) {
+      return res.status(404).json({
+        message: "Voice-over file is missing in the database. Please upload again.",
+      });
+    }
+
+    const rawName =
+      String(task.voiceOverOriginalName || "").trim() ||
+      String(fileDoc.filename || "").trim() ||
+      defaultVoiceOverOriginalName(fileDoc.filename);
+    const asciiName = rawName.replace(/[^\x20-\x7E]/g, "_");
+    const ct =
+      fileDoc.metadata?.contentType ||
+      contentTypeForVoiceOver("", rawName);
+    res.setHeader("Content-Type", ct);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(rawName)}`,
+    );
+
+    const bucket = getBucket();
+    const stream = bucket.openDownloadStream(new VoiceOverObjectId(idStr));
+    stream.on("error", (streamErr) => {
+      if (!res.headersSent) {
+        console.error("downloadVoiceOver stream:", streamErr.message);
+        res.status(500).json({ message: "Failed to download file" });
+      }
+    });
+    stream.pipe(res);
+  } catch (err) {
+    console.error("downloadVoiceOver error:", err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Failed to download voice-over" });
+    }
+  }
+};
+
+exports.deleteVoiceOver = async (req, res) => {
+  try {
+    const task = await VideoTask.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+    if (rejectVoiceOverOutOfScope(req, res, task)) return;
+    await deleteVoiceOverGridFs(task.voiceOverStoredName);
+    task.voiceOverStoredName = "";
+    task.voiceOverOriginalName = "";
+    await task.save();
+    res.json(task);
+  } catch (err) {
+    console.error("deleteVoiceOver error:", err.message);
+    res.status(500).json({ message: "Failed to remove voice-over" });
   }
 };

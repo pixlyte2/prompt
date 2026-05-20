@@ -287,6 +287,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
     new Date(Date.now() + 86_400_000).toISOString().split("T")[0],
   );
   const [notes, setNotes] = useState("");
+  const [script, setScript] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [initialized, setInitialized] = useState(false);
@@ -364,6 +365,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
         duration: video.duration,
         scheduledDate,
         notes,
+        script,
       });
       toast.success(
         (t) => (
@@ -570,6 +572,16 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
               rows={2}
               placeholder="Add any notes…"
               className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Script (optional)</label>
+            <textarea
+              value={script}
+              onChange={(e) => setScript(e.target.value)}
+              rows={4}
+              placeholder="Paste or write the video script…"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-y min-h-[5rem]"
             />
           </div>
         </div>

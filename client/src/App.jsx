@@ -18,6 +18,7 @@ import Dashboard from "./pages/superadmin/Dashboard";
 import PromptTypes from "./pages/admin/PromptTypes";
 import TrendingHub from "./pages/admin/TrendingHub";
 import ProductionHub from "./pages/admin/ProductionHub";
+import VoiceOver from "./pages/admin/VoiceOver";
 import YouTubeVideoInspector from "./pages/admin/YouTubeVideoInspector";
 
 export default function App() {
@@ -142,6 +143,15 @@ export default function App() {
           element={
             <PrivateRoute allowedRoles={["admin"]}>
               <ProductionHub />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/voice-over"
+          element={
+            <PrivateRoute allowedRoles={["admin", "voice_over"]}>
+              <VoiceOver />
             </PrivateRoute>
           }
         />

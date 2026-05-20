@@ -48,7 +48,8 @@ const login = async (req, res) => {
     res.json({
       token,
       role: user.role,
-      companyId: user.companyId
+      companyId: user.companyId,
+      name: user.name,
     });
   } catch (err) {
     console.error("Login error:", err);

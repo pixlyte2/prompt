@@ -31,9 +31,13 @@ import {
   Download,
   Filter,
   Image,
+  ScrollText,
+  Mic,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
+import { downloadVoiceOverFile, uploadVoiceOverFile } from "../../utils/voiceOverDownload";
+import { VOICE_OVER_ACCEPT, isVoiceOverFileAllowed, voiceOverFileTypeHint } from "../../constants/voiceOverFileTypes";
 
 // Shared UI Components
 function FilterChip({ active, onClick, children, count, variant = "default" }) {
@@ -296,7 +300,7 @@ const ZERO_BOARD_STATS = {
 };
 
 function exportToCsv(tasks) {
-  const headers = ["Title", "Platform", "Format", "Channel Type", "Channel", "Status", "Scheduled Date", "Views", "Notes", "URL"];
+  const headers = ["Title", "Platform", "Format", "Channel Type", "Channel", "Status", "Scheduled Date", "Views", "Notes", "Script", "Voice Over", "URL"];
   const rows = tasks.map((t) => {
     const viewsNum = parseViewsCount(t);
     return [
@@ -309,6 +313,8 @@ function exportToCsv(tasks) {
     t.scheduledDate ? toDateKey(t.scheduledDate) : "",
     viewsNum != null ? String(viewsNum) : (t.viewsText || t.views || ""),
     `"${(t.notes || "").replace(/"/g, '""')}"`,
+    `"${(t.script || "").replace(/"/g, '""')}"`,
+    `"${(t.voiceOverOriginalName || "").replace(/"/g, '""')}"`,
     getTaskUrl(t) || "",
   ];
   });
@@ -405,23 +411,23 @@ function StatusCheckbox({ status, onClick }) {
   if (status === "completed") {
     return (
       <button onClick={onClick} className="flex-shrink-0 text-emerald-500 hover:text-emerald-600 transition-colors" title="Mark incomplete">
-        <CheckSquare size={16} />
+        <CheckSquare size={24} />
       </button>
     );
   }
   if (status === "in_progress") {
     return (
       <button onClick={onClick} className="flex-shrink-0 relative" title="Mark done">
-        <Square size={16} className="text-blue-400" />
+        <Square size={24} className="text-blue-400" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-2 h-2 rounded-sm bg-blue-400" />
+          <div className="w-3 h-3 rounded-sm bg-blue-400" />
         </div>
       </button>
     );
   }
   return (
     <button onClick={onClick} className="flex-shrink-0 text-gray-300 dark:text-gray-600 hover:text-gray-400 dark:hover:text-gray-500 transition-colors" title="Start task">
-      <Square size={16} />
+      <Square size={24} />
     </button>
   );
 }
@@ -437,22 +443,37 @@ function hasTaskNotes(task) {
   return Boolean(String(task?.notes ?? "").trim());
 }
 
-/* ─── Notes detail modal ─── */
-function NotesModal({ task, onClose }) {
+function hasTaskScript(task) {
+  return Boolean(String(task?.script ?? "").trim());
+}
+
+function hasTaskVoiceOver(task) {
+  return Boolean(String(task?.voiceOverStoredName ?? "").trim());
+}
+/* ─── Notes / script / voice-over detail modal ─── */
+function TaskDetailModal({ task, onClose, onDownloadVoiceOver }) {
   if (!task) return null;
-  const body = String(task.notes ?? "").trim();
+  const notesBody = String(task.notes ?? "").trim();
+  const scriptBody = String(task.script ?? "").trim();
+  const hasVoice = hasTaskVoiceOver(task);
+  const titleBits = [];
+  if (notesBody) titleBits.push("Notes");
+  if (scriptBody) titleBits.push("Script");
+  if (hasVoice) titleBits.push("Voice-over");
+  const modalTitle = titleBits.length ? titleBits.join(" · ") : "Details";
+
   return (
     <div className="fixed inset-0 z-[96] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} aria-hidden />
       <div
         role="dialog"
-        aria-labelledby="notes-modal-title"
+        aria-labelledby="task-detail-modal-title"
         className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
       >
         <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <div className="min-w-0">
-            <h3 id="notes-modal-title" className="text-sm font-bold text-gray-900 dark:text-white leading-snug line-clamp-2">
-              Notes available
+            <h3 id="task-detail-modal-title" className="text-sm font-bold text-gray-900 dark:text-white leading-snug line-clamp-2">
+              {modalTitle}
             </h3>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{task.title}</p>
           </div>
@@ -465,10 +486,41 @@ function NotesModal({ task, onClose }) {
             <X size={16} />
           </button>
         </div>
-        <div className="px-4 py-3 overflow-y-auto custom-scrollbar flex-1 min-h-0">
-          <pre className="whitespace-pre-wrap text-[13px] text-gray-800 dark:text-gray-100 leading-relaxed font-sans break-words">
-            {body}
-          </pre>
+        <div className="px-4 py-3 overflow-y-auto custom-scrollbar flex-1 min-h-0 space-y-4">
+          {notesBody && (
+            <section>
+              <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Notes</h4>
+              <pre className="whitespace-pre-wrap text-[13px] text-gray-800 dark:text-gray-100 leading-relaxed font-sans break-words">
+                {notesBody}
+              </pre>
+            </section>
+          )}
+          {scriptBody && (
+            <section>
+              <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Script</h4>
+              <pre className="whitespace-pre-wrap text-[13px] text-gray-800 dark:text-gray-100 leading-relaxed font-sans break-words">
+                {scriptBody}
+              </pre>
+            </section>
+          )}
+          {hasVoice && (
+            <section>
+              <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Voice-over</h4>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[12px] text-gray-700 dark:text-gray-200 truncate max-w-[240px]" title={task.voiceOverOriginalName || ""}>
+                  {task.voiceOverOriginalName || "Uploaded file"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onDownloadVoiceOver?.(task)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                >
+                  <Download size={12} />
+                  Download file
+                </button>
+              </div>
+            </section>
+          )}
         </div>
         <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/50 flex justify-end">
           <button
@@ -485,7 +537,7 @@ function NotesModal({ task, onClose }) {
 }
 
 /* ─── Inline Row for a single task ─── */
-function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNotes }) {
+function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenDetail, onDownloadVoiceOver }) {
   const handleDragStart = (e) => {
     e.dataTransfer.setData("taskId", task._id);
     e.dataTransfer.effectAllowed = "move";
@@ -508,27 +560,61 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNot
     <div
       draggable
       onDragStart={handleDragStart}
-      className="group flex items-center gap-1.5 px-2 py-0.5 sm:py-0.5 bg-white dark:bg-gray-800/80 rounded-lg border border-gray-100 dark:border-gray-700/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:shadow-sm cursor-grab active:cursor-grabbing"
+      className="group flex items-center gap-2 px-2.5 py-1 sm:py-1 bg-white dark:bg-gray-800/80 rounded-lg border border-gray-100 dark:border-gray-700/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:shadow-sm cursor-grab active:cursor-grabbing"
     >
       {/* Checkbox */}
-      <div className="scale-90 flex-shrink-0">
+      <div className="scale-100 flex-shrink-0">
         <StatusCheckbox status={task.status} onClick={handleStatusClick} />
       </div>
 
-      {/* Notes available — first pill; opens detail modal */}
+      {/* Notes — opens detail modal */}
       {hasTaskNotes(task) && (
         <button
           type="button"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            onOpenNotes?.(task);
+            onOpenDetail?.(task);
           }}
-          className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[7px] sm:text-[7.5px] font-black uppercase tracking-tight bg-sky-50 text-sky-700 border border-sky-200/80 dark:bg-sky-900/30 dark:text-sky-200 dark:border-sky-800/50 shadow-sm hover:bg-sky-100 dark:hover:bg-sky-900/50 hover:border-sky-300 dark:hover:border-sky-600 transition-colors cursor-pointer"
-          title="Click to read notes"
+          className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-sky-50 text-sky-800 border border-sky-200/90 dark:bg-sky-900/35 dark:text-sky-100 dark:border-sky-700/60 shadow-sm hover:bg-sky-100 dark:hover:bg-sky-900/55 hover:border-sky-300 dark:hover:border-sky-500 transition-colors cursor-pointer min-h-[26px]"
+          title="Notes — tap to read"
+          aria-label="Open notes"
         >
-          <FileText size={9} className="flex-shrink-0" />
-          <span className="hidden sm:inline">Notes available</span>
+          <FileText size={14} className="flex-shrink-0 opacity-90" aria-hidden />
+          <span>Notes</span>
+        </button>
+      )}
+      {/* Script — opens same detail modal */}
+      {hasTaskScript(task) && (
+        <button
+          type="button"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenDetail?.(task);
+          }}
+          className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-violet-50 text-violet-800 border border-violet-200/90 dark:bg-violet-900/35 dark:text-violet-100 dark:border-violet-700/60 shadow-sm hover:bg-violet-100 dark:hover:bg-violet-900/55 hover:border-violet-300 dark:hover:border-violet-500 transition-colors cursor-pointer min-h-[26px]"
+          title="Script — tap to read"
+          aria-label="Open script"
+        >
+          <ScrollText size={14} className="flex-shrink-0 opacity-90" aria-hidden />
+          <span>Script</span>
+        </button>
+      )}
+      {hasTaskVoiceOver(task) && (
+        <button
+          type="button"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDownloadVoiceOver?.(task);
+          }}
+          className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-800 border border-emerald-200/90 dark:bg-emerald-900/35 dark:text-emerald-100 dark:border-emerald-700/60 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/55 hover:border-emerald-300 dark:hover:border-emerald-500 transition-colors cursor-pointer min-h-[26px]"
+          title="Voice-over — tap to download"
+          aria-label="Download voice-over"
+        >
+          <Mic size={14} className="flex-shrink-0 opacity-90" aria-hidden />
+          <span>VO</span>
         </button>
       )}
 
@@ -536,17 +622,17 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNot
       <div className="flex-shrink-0 flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity mr-0.5">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-          className="p-1 rounded text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
+          className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
           title="Edit"
         >
-          <Pencil size={12} />
+          <Pencil size={18} />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); if (confirm("Delete this task?")) onDelete(task._id); }}
-          className="p-1 rounded text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+          className="p-1.5 rounded-lg text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
           title="Delete"
         >
-          <Trash2 size={12} />
+          <Trash2 size={18} />
         </button>
       </div>
 
@@ -560,10 +646,10 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNot
         >
           <img src={thumb} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-110" loading="lazy" />
           <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors flex items-center justify-center">
-            <ExternalLink size={10} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity" />
+            <ExternalLink size={14} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity" />
           </div>
           {task.duration && (
-            <span className="absolute bottom-0 right-0 px-0.5 py-px bg-black/75 text-[6px] font-medium text-white rounded-tl">
+            <span className="absolute bottom-0 right-0 px-1 py-0.5 bg-black/75 text-[9px] font-semibold text-white rounded-tl">
               {task.duration}
             </span>
           )}
@@ -575,7 +661,7 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNot
           rel="noopener noreferrer"
           className={`flex-shrink-0 w-10 h-6 sm:w-12 sm:h-7.5 rounded flex items-center justify-center ${platMeta.bg}`}
         >
-          <PlatformIcon platform={platform} size={14} />
+          <PlatformIcon platform={platform} size={16} />
         </a>
       )}
 
@@ -599,10 +685,10 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNot
               <>
                 <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
                 <span
-                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[7px] sm:text-[7.5px] font-black tracking-tight shadow-sm ${VIEWS_PILL}`}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-tight shadow-sm min-h-[26px] ${VIEWS_PILL}`}
                   title={`${viewsN.toLocaleString("en-IN")} views`}
                 >
-                  <Eye size={7} className="flex-shrink-0 opacity-90" />
+                  <Eye size={11} className="flex-shrink-0 opacity-90" />
                   {viewsShort}
                 </span>
               </>
@@ -613,11 +699,11 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNot
 
       {/* Content format pills */}
       {task.contentFormat && (
-        <div className="flex items-center gap-0.5 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0">
           {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).map(fmt => (
             <span
               key={fmt}
-              className={`inline-flex text-[7px] font-black uppercase tracking-tighter px-1 py-0.5 rounded-full shadow-sm border border-transparent ${FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+              className={`inline-flex items-center text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full shadow-sm border border-transparent min-h-[26px] ${FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
             >
               {FORMAT_OPTIONS.find((f) => f.value === fmt)?.label || fmt}
             </span>
@@ -625,27 +711,22 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNot
         </div>
       )}
 
-      {/* Channel type pill */}
-      <span className="hidden sm:inline-flex text-[7.5px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 flex-shrink-0 shadow-sm">
-        {task.channelType}
-      </span>
-
       {/* Thumbnail pill */}
       {ytId && (
-        <div className="hidden sm:inline-flex items-center gap-2 px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400/80 flex-shrink-0 shadow-sm border border-amber-100/50 dark:border-amber-800/30">
+        <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300/90 flex-shrink-0 shadow-sm border border-amber-100/50 dark:border-amber-800/30 min-h-[26px]">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(ytId, 'hd')); }}
-            className="text-[9px] font-black uppercase tracking-tighter hover:text-amber-700 dark:hover:text-amber-200 transition-colors"
+            className="text-[12px] font-bold uppercase tracking-wide hover:text-amber-800 dark:hover:text-amber-100 transition-colors"
             title="High Definition"
           >
             HD
           </button>
-          <div className="w-px h-2.5 bg-amber-200/50 dark:bg-amber-700/50" />
+          <div className="w-px h-3.5 bg-amber-200/60 dark:bg-amber-700/50" />
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(ytId, 'sd')); }}
-            className="text-[9px] font-black uppercase tracking-tighter hover:text-amber-700 dark:hover:text-amber-200 transition-colors"
+            className="text-[12px] font-bold uppercase tracking-wide hover:text-amber-800 dark:hover:text-amber-100 transition-colors"
             title="Standard Definition"
           >
             SD
@@ -655,11 +736,11 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNot
 
       {/* Assigned Users — now at the end! */}
       {task.assignedTo && task.assignedTo.length > 0 && (
-        <div className="hidden sm:flex items-center gap-0.5 flex-shrink-0">
+        <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
           {task.assignedTo.map((name) => (
             <span
               key={name}
-              className={`inline-flex px-1.5 py-0.5 rounded-full text-[7.5px] font-black uppercase tracking-tighter border border-transparent shadow-sm ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+              className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide border border-transparent shadow-sm min-h-[26px] ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
             >
               {getAssigneeDisplayName(name)}
             </span>
@@ -668,7 +749,7 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNot
       )}
 
       {/* Status text */}
-      <span className={`hidden md:inline-flex items-center gap-1 text-[7.5px] font-black uppercase tracking-tighter px-1 py-0.5 rounded-full flex-shrink-0 shadow-sm border border-transparent ${meta.pill}`}>
+      <span className={`hidden md:inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full flex-shrink-0 shadow-sm border border-transparent min-h-[26px] ${meta.pill}`}>
         {meta.label}
       </span>
 
@@ -677,7 +758,7 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNot
         {PREV_STATUS[task.status] && (
           <button
             onClick={() => onMove(task._id, PREV_STATUS[task.status])}
-            className="px-1.5 py-0.5 rounded text-[9px] font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="px-2 py-1 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title={`Back to ${STATUS_META[PREV_STATUS[task.status]].label}`}
           >
             Undo
@@ -689,7 +770,7 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenNot
 }
 
 /* ─── Preview Modal ─── */
-function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
+function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDownloadVoiceOver }) {
   const [copied, setCopied] = useState(false);
 
   const assignmentSummary = useMemo(() => {
@@ -781,12 +862,21 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
   };
 
   const generatePlainTextTable = () => {
-    const headers = ["Channel Type", "Assigned to", "Content Format", "Title", "URL"];
+    const tsvCell = (v) =>
+      String(v ?? "")
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .replace(/\t/g, " ")
+        .replace(/\n/g, " ");
+    const headers = ["Channel Type", "Assigned to", "Content Format", "Title", "Notes", "Script", "Voice-over (file)", "URL"];
     const rows = sortedTasks.map(task => [
       task.channelType || '',
       formatAssignedTo(task.assignedTo),
       formatContentFormat(task.contentFormat),
       task.title || '',
+      tsvCell(task.notes),
+      tsvCell(task.script),
+      tsvCell(hasTaskVoiceOver(task) ? (task.voiceOverOriginalName || "yes") : ""),
       getTaskUrl(task) || ''
     ]);
     
@@ -924,6 +1014,15 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
                   Title
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  Notes
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  Script
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  Voice-over
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
                   URL
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
@@ -974,6 +1073,31 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
                       {task.title}
                     </div>
                   </td>
+                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 max-w-[160px]">
+                    <div className="text-xs line-clamp-3 whitespace-pre-wrap break-words" title={String(task.notes || "").trim() || undefined}>
+                      {String(task.notes || "").trim() ? task.notes : "—"}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 max-w-[160px]">
+                    <div className="text-xs line-clamp-3 whitespace-pre-wrap break-words" title={String(task.script || "").trim() || undefined}>
+                      {String(task.script || "").trim() ? task.script : "—"}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 max-w-[140px]">
+                    {hasTaskVoiceOver(task) ? (
+                      <button
+                        type="button"
+                        onClick={() => onDownloadVoiceOver?.(task)}
+                        title="Download uploaded voice-over file"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+                      >
+                        <Mic size={12} />
+                        File
+                      </button>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-xs">
                     {task.videoId || extractYoutubeId(task.url) ? (
                       <div className="inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400/80 shadow-sm border border-amber-100/50 dark:border-amber-800/30">
@@ -1018,7 +1142,7 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
 }
 /* ─── Date Group ─── */
 function DateGroup({ 
-  dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, onPreviewThumbnail, onOpenNotes, defaultOpen, variant,
+  dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, onPreviewThumbnail, onOpenDetail, onDownloadVoiceOver, defaultOpen, variant,
   isSelected, onSelect 
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -1229,7 +1353,7 @@ function DateGroup({
       {open && (
         <div className="p-3 space-y-2 bg-gray-50/50 dark:bg-gray-800/20">
           {tasks.map((t) => (
-            <TaskRow key={t._id} task={t} onMove={onMove} onDelete={onDelete} onEdit={onEdit} onPreviewThumbnail={onPreviewThumbnail} onOpenNotes={onOpenNotes} />
+            <TaskRow key={t._id} task={t} onMove={onMove} onDelete={onDelete} onEdit={onEdit} onPreviewThumbnail={onPreviewThumbnail} onOpenDetail={onOpenDetail} onDownloadVoiceOver={onDownloadVoiceOver} />
           ))}
           {tasks.length === 0 && (
             <div className="py-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[10px] text-gray-400">
@@ -1261,6 +1385,10 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
   const [channelType, setChannelType] = useState(channelTypes[0] || "");
   const [scheduledDate, setScheduledDate] = useState(null);
   const [notes, setNotes] = useState("");
+  const [script, setScript] = useState("");
+  const [pendingVoiceFile, setPendingVoiceFile] = useState(null);
+  const [markVoiceOverRemoved, setMarkVoiceOverRemoved] = useState(false);
+  const voiceOverInputRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [initialized, setInitialized] = useState(false);
@@ -1276,6 +1404,9 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
       setChannelType(editTask.channelType || channelTypes[0] || "");
       setScheduledDate(editTask.scheduledDate ? toDateKey(editTask.scheduledDate) : null);
       setNotes(editTask.notes || "");
+      setScript(editTask.script || "");
+      setPendingVoiceFile(null);
+      setMarkVoiceOverRemoved(false);
     } else {
       setUrlInput("");
       setTitle("");
@@ -1285,6 +1416,9 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
       setChannelType(channelTypes[0] || "");
       setScheduledDate(null);
       setNotes("");
+      setScript("");
+      setPendingVoiceFile(null);
+      setMarkVoiceOverRemoved(false);
     }
     setInitialized(true);
   }
@@ -1317,9 +1451,12 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
         channelType,
         scheduledDate: scheduledDate || null,
         notes,
+        script,
       };
+      let taskId;
       if (isEdit) {
         await api.put(`/video-tasks/${editTask._id}`, payload);
+        taskId = editTask._id;
         toast.success("Updated");
       } else {
         payload.channelName = "";
@@ -1327,8 +1464,14 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
         payload.views = 0;
         payload.viewsText = "";
         payload.duration = "";
-        await api.post("/video-tasks", payload);
+        const { data } = await api.post("/video-tasks", payload);
+        taskId = data._id;
         toast.success("Added to board");
+      }
+      if (pendingVoiceFile && taskId) {
+        await uploadVoiceOverFile(taskId, pendingVoiceFile);
+      } else if (markVoiceOverRemoved && taskId) {
+        await api.delete(`/video-tasks/${taskId}/voice-over`);
       }
       await onSaved?.();
       onClose();
@@ -1531,6 +1674,77 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
               className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none"
             />
           </div>
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Script (optional)</label>
+            <textarea
+              value={script}
+              onChange={(e) => setScript(e.target.value)}
+              rows={4}
+              placeholder="Paste or write the video script…"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-y min-h-[5rem]"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Voice-over (optional)</label>
+            {isEdit && editTask?.voiceOverStoredName && !markVoiceOverRemoved && !pendingVoiceFile && (
+              <div className="flex flex-wrap items-center gap-2 mb-2 text-[11px]">
+                <span className="text-gray-600 dark:text-gray-400 truncate max-w-[200px]" title={editTask.voiceOverOriginalName || ""}>
+                  Current: {editTask.voiceOverOriginalName || "Uploaded file"}
+                </span>
+                <button
+                  type="button"
+                  className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
+                  onClick={async () => {
+                    try {
+                      await downloadVoiceOverFile(editTask);
+                      toast.success("Download started");
+                    } catch (e) {
+                      toast.error(e.message || "Download failed");
+                    }
+                  }}
+                >
+                  Download
+                </button>
+                <button
+                  type="button"
+                  className="text-red-600 dark:text-red-400 font-semibold hover:underline"
+                  onClick={() => {
+                    setMarkVoiceOverRemoved(true);
+                    setPendingVoiceFile(null);
+                    if (voiceOverInputRef.current) voiceOverInputRef.current.value = "";
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+            <input
+              ref={voiceOverInputRef}
+              type="file"
+              accept={VOICE_OVER_ACCEPT}
+              className="w-full text-[11px] text-gray-700 dark:text-gray-200 file:mr-2 file:py-1.5 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-gray-200 file:text-gray-800 dark:file:bg-gray-700 dark:file:text-gray-100 hover:file:bg-gray-300 dark:hover:file:bg-gray-600"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  if (!isVoiceOverFileAllowed(f)) {
+                    toast.error(`Unsupported file type. Use: ${voiceOverFileTypeHint()}`);
+                    e.target.value = "";
+                    return;
+                  }
+                  setPendingVoiceFile(f);
+                  setMarkVoiceOverRemoved(false);
+                }
+              }}
+            />
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+              Max 40 MB. Formats: {voiceOverFileTypeHint()}. Saving replaces any existing voice-over file.
+            </p>
+            {pendingVoiceFile && (
+              <p className="text-[10px] text-emerald-700 dark:text-emerald-300 mt-1 font-medium truncate" title={pendingVoiceFile.name}>
+                Selected: {pendingVoiceFile.name}
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex flex-col gap-3 px-5 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           {error && (
@@ -1571,7 +1785,7 @@ export default function ProductionHub() {
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewThumbUrl, setPreviewThumbUrl] = useState(null);
-  const [notesModalTask, setNotesModalTask] = useState(null);
+  const [detailModalTask, setDetailModalTask] = useState(null);
   const scrollRef = useCallback((node) => {
     if (node !== null) {
       node.addEventListener("dragover", (e) => {
@@ -1821,6 +2035,15 @@ export default function ProductionHub() {
     setPreviewModal({ open: false, tasks: [], dateKey: null });
   }, []);
 
+  const handleDownloadVoiceOver = useCallback(async (task) => {
+    try {
+      await downloadVoiceOverFile(task);
+      toast.success("Download started");
+    } catch (e) {
+      toast.error(e.message || "Download failed");
+    }
+  }, []);
+
   const filterList = useCallback((list) => {
     let l = [...list];
     if (activeType !== "all") l = l.filter((t) => t.channelType === activeType);
@@ -1830,7 +2053,9 @@ export default function ProductionHub() {
         (t) =>
           t.title.toLowerCase().includes(q) ||
           t.channelName?.toLowerCase().includes(q) ||
-          t.notes?.toLowerCase().includes(q),
+          t.notes?.toLowerCase().includes(q) ||
+          t.script?.toLowerCase().includes(q) ||
+          t.voiceOverOriginalName?.toLowerCase().includes(q),
       );
     }
     return l;
@@ -2102,7 +2327,8 @@ export default function ProductionHub() {
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
                   onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
-                  onOpenNotes={setNotesModalTask}
+                  onOpenDetail={setDetailModalTask}
+                  onDownloadVoiceOver={handleDownloadVoiceOver}
                   defaultOpen={getDateCategory(g.key) === "overdue" || getDateCategory(g.key) === "today"}
                 />
               ))
@@ -2132,7 +2358,8 @@ export default function ProductionHub() {
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
                   onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
-                  onOpenNotes={setNotesModalTask}
+                  onOpenDetail={setDetailModalTask}
+                  onDownloadVoiceOver={handleDownloadVoiceOver}
                   defaultOpen={true}
                 />
               ))
@@ -2193,7 +2420,8 @@ export default function ProductionHub() {
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
                   onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
-                  onOpenNotes={setNotesModalTask}
+                  onOpenDetail={setDetailModalTask}
+                  onDownloadVoiceOver={handleDownloadVoiceOver}
                   defaultOpen={false}
                   variant="completed"
                   isSelected={selectedDateKeys.includes(g.key === null ? "no-date" : g.key)}
@@ -2221,10 +2449,15 @@ export default function ProductionHub() {
         tasks={previewModal.tasks}
         dateKey={previewModal.dateKey}
         onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
+        onDownloadVoiceOver={handleDownloadVoiceOver}
       />
       {previewThumbUrl && <ThumbnailModal url={previewThumbUrl} onClose={() => setPreviewThumbUrl(null)} />}
-      {notesModalTask && (
-        <NotesModal task={notesModalTask} onClose={() => setNotesModalTask(null)} />
+      {detailModalTask && (
+        <TaskDetailModal
+          task={detailModalTask}
+          onClose={() => setDetailModalTask(null)}
+          onDownloadVoiceOver={handleDownloadVoiceOver}
+        />
       )}
     </AdminLayout>
   );
