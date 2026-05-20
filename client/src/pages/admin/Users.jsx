@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { Plus, Trash2, Users as UsersIcon, X, Search, Mail } from "lucide-react";
+import { Plus, Trash2, Users as UsersIcon, Search, Mail, Pencil } from "lucide-react";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -8,7 +8,7 @@ import useLoading from "../../hooks/useLoading";
 import PageSectionLoader from "../../components/PageSectionLoader";
 
 /* ================= USER CARD ================= */
-function UserCard({ user, onDelete }) {
+function UserCard({ user, onDelete, onEdit }) {
   const getRoleInfo = (role) => {
     switch (role) {
       case "content_manager":
@@ -52,14 +52,24 @@ function UserCard({ user, onDelete }) {
           <p>{new Date(user.createdAt).toLocaleDateString()}</p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onDelete(user)}
-          className="sm:opacity-0 sm:group-hover:opacity-100 text-gray-400 hover:text-red-600 dark:hover:text-red-400 p-1 rounded ml-auto sm:ml-0"
-          aria-label={`Delete ${user.name}`}
-        >
-          <Trash2 size={16} />
-        </button>
+        <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 ml-auto sm:ml-0">
+          <button
+            type="button"
+            onClick={() => onEdit(user)}
+            className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-1.5 rounded"
+            aria-label={`Edit ${user.name}`}
+          >
+            <Pencil size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(user)}
+            className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 p-1.5 rounded"
+            aria-label={`Delete ${user.name}`}
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -72,6 +82,8 @@ export default function Users() {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "", role: "viewer", password: "" });
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
 
@@ -106,6 +118,47 @@ export default function Users() {
       setUsers(res.data);
     } catch (err) {
       toast.error(err.response?.data?.message || "User creation failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEditUser = (user) => {
+    setEditingUser(user);
+    setEditForm({
+      name: user.name || "",
+      email: user.email || "",
+      role: user.role || "viewer",
+      password: "",
+    });
+  };
+
+  const saveEditUser = async () => {
+    if (!editingUser) return;
+    if (!editForm.name?.trim() || !editForm.email?.trim()) {
+      return toast.error("Name and email are required");
+    }
+    try {
+      setLoading(true);
+      const payload = {
+        name: editForm.name.trim(),
+        email: editForm.email.trim(),
+      };
+      if (editingUser.role !== "admin") {
+        payload.role = editForm.role;
+      }
+      if (editForm.password?.trim()) {
+        payload.password = editForm.password.trim();
+      }
+      const { data } = await api.put(`/users/${editingUser._id}`, payload);
+      setUsers((prev) =>
+        prev.map((u) => (u._id === data._id || u._id === editingUser._id ? { ...u, ...data } : u)),
+      );
+      toast.success("User updated");
+      setEditingUser(null);
+      setEditForm({ name: "", email: "", role: "viewer", password: "" });
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Update failed");
     } finally {
       setLoading(false);
     }
@@ -224,7 +277,7 @@ export default function Users() {
         <div className="space-y-3">
           {filteredUsers.length > 0 ? (
             filteredUsers.map(user => (
-              <UserCard key={user._id} user={user} onDelete={setDeleting} />
+              <UserCard key={user._id} user={user} onDelete={setDeleting} onEdit={openEditUser} />
             ))
           ) : (
             <div className="buffer-card p-8 text-center">
@@ -276,6 +329,74 @@ export default function Users() {
                 </button>
                 <button onClick={createUser} className="buffer-button-primary">
                   Create
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {editingUser && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="buffer-card w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-base font-semibold mb-1">Edit user</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                {editingUser.role === "admin"
+                  ? "Admin accounts: update name, email, or set a new password. Role cannot be changed here."
+                  : "Update name, email, role, or set a new password (optional)."}
+              </p>
+
+              <div className="space-y-3">
+                <input
+                  placeholder="Name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="buffer-input"
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="buffer-input"
+                />
+                <input
+                  type="password"
+                  placeholder="New password (leave blank to keep)"
+                  value={editForm.password}
+                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                  className="buffer-input"
+                  autoComplete="new-password"
+                />
+                {editingUser.role === "admin" ? (
+                  <p className="text-xs text-gray-600 dark:text-gray-300 px-1">
+                    Role: <span className="font-semibold capitalize">{editingUser.role.replace("_", " ")}</span>
+                  </p>
+                ) : (
+                  <select
+                    value={editForm.role}
+                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                    className="buffer-input"
+                  >
+                    <option value="viewer">Viewer</option>
+                    <option value="content_manager">Content Manager</option>
+                    <option value="voice_over">Voice Over</option>
+                  </select>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 mt-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingUser(null);
+                    setEditForm({ name: "", email: "", role: "viewer", password: "" });
+                  }}
+                  className="buffer-button-secondary"
+                >
+                  Cancel
+                </button>
+                <button type="button" onClick={saveEditUser} className="buffer-button-primary" disabled={loading}>
+                  Save changes
                 </button>
               </div>
             </div>

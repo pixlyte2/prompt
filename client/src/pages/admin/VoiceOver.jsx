@@ -263,14 +263,31 @@ function DeleteVoiceOverModal({ task, onClose, onConfirm, loading }) {
   );
 }
 
-function VoiceOverTaskRow({ task, dateKey, onReload, uploadingId, setUploadingId }) {
+function VoiceOverTaskRow({
+  task,
+  dateKey,
+  onReload,
+  uploadingTaskId,
+  setUploadingTaskId,
+  deletingTaskId,
+  setDeletingTaskId,
+  voiceOverDownloadingIds,
+  onVoiceOverDownload,
+}) {
   const [scriptModalOpen, setScriptModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [scriptDownloadBusy, setScriptDownloadBusy] = useState(false);
   const taskUrl = getTaskUrl(task);
   const thumb = getTaskThumbnail(task);
   const platform = task.platform || "youtube";
   const scriptOk = hasScript(task);
   const voOk = hasVoiceOver(task);
+  const taskKey = String(task._id);
+
+  const busyUpload = uploadingTaskId === taskKey;
+  const busyDelete = deletingTaskId === taskKey;
+  const busyVoDownload = voiceOverDownloadingIds?.has(taskKey) ?? false;
+  const rowBlocking = busyUpload || busyDelete || busyVoDownload;
 
   const handleVoiceFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -280,7 +297,7 @@ function VoiceOverTaskRow({ task, dateKey, onReload, uploadingId, setUploadingId
       toast.error(`Unsupported file type. Allowed: ${voiceOverFileTypeHint()}`);
       return;
     }
-    setUploadingId(task._id);
+    setUploadingTaskId(taskKey);
     try {
       await uploadVoiceOverFile(task._id, file);
       toast.success("Voice-over uploaded");
@@ -288,21 +305,24 @@ function VoiceOverTaskRow({ task, dateKey, onReload, uploadingId, setUploadingId
     } catch (err) {
       toast.error(err.message || "Upload failed");
     } finally {
-      setUploadingId(null);
+      setUploadingTaskId(null);
     }
   };
 
-  const handleDownloadVoice = async () => {
-    try {
-      await downloadVoiceOverFile(task);
-      toast.success("Download started");
-    } catch (err) {
-      toast.error(err.message || "Download failed");
-    }
+  const handleDownloadScriptTxt = () => {
+    if (!scriptOk || rowBlocking || scriptDownloadBusy) return;
+    setScriptDownloadBusy(true);
+    queueMicrotask(() => {
+      try {
+        downloadScriptTxt(task, dateKey);
+      } finally {
+        setScriptDownloadBusy(false);
+      }
+    });
   };
 
   const handleConfirmDeleteVoice = async () => {
-    setUploadingId(task._id);
+    setDeletingTaskId(taskKey);
     try {
       await api.delete(`/video-tasks/${task._id}/voice-over`);
       toast.success("Voice-over removed");
@@ -311,11 +331,9 @@ function VoiceOverTaskRow({ task, dateKey, onReload, uploadingId, setUploadingId
     } catch {
       toast.error("Failed to remove file");
     } finally {
-      setUploadingId(null);
+      setDeletingTaskId(null);
     }
   };
-
-  const busy = uploadingId === task._id;
 
   return (
     <>
@@ -325,7 +343,7 @@ function VoiceOverTaskRow({ task, dateKey, onReload, uploadingId, setUploadingId
         task={task}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleConfirmDeleteVoice}
-        loading={busy}
+        loading={busyDelete}
       />
     )}
     <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border border-gray-200/80 dark:border-gray-700/80 bg-white/80 dark:bg-gray-800/50">
@@ -364,7 +382,7 @@ function VoiceOverTaskRow({ task, dateKey, onReload, uploadingId, setUploadingId
       <div className="flex flex-wrap items-center gap-1.5 sm:flex-shrink-0 sm:justify-end">
         <button
           type="button"
-          disabled={!scriptOk}
+          disabled={!scriptOk || rowBlocking || scriptDownloadBusy}
           onClick={() => setScriptModalOpen(true)}
           title="View script"
           aria-label="View script"
@@ -374,27 +392,32 @@ function VoiceOverTaskRow({ task, dateKey, onReload, uploadingId, setUploadingId
         </button>
         <button
           type="button"
-          disabled={!scriptOk}
-          onClick={() => downloadScriptTxt(task, dateKey)}
+          disabled={!scriptOk || rowBlocking || scriptDownloadBusy}
+          aria-busy={scriptDownloadBusy}
+          onClick={handleDownloadScriptTxt}
           title="Download script as .txt"
           aria-label="Download script"
           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50 text-violet-800 dark:bg-violet-950/50 dark:text-violet-200 hover:bg-violet-100 dark:hover:bg-violet-900/40 disabled:opacity-40 disabled:pointer-events-none transition-colors"
         >
-          <Download size={16} />
+          {scriptDownloadBusy ? (
+            <Loader2 size={16} className="animate-spin shrink-0" aria-hidden />
+          ) : (
+            <Download size={16} aria-hidden />
+          )}
         </button>
 
         <label
           className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors ${
-            busy ? "pointer-events-none opacity-50" : "cursor-pointer"
+            busyUpload || rowBlocking ? "pointer-events-none opacity-50" : "cursor-pointer"
           }`}
-          title={busy ? "Uploading…" : "Upload voice-over (audio file)"}
+          title={busyUpload ? "Uploading…" : rowBlocking ? "Please wait…" : "Upload voice-over (audio file)"}
         >
-          {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} aria-hidden />}
+          {busyUpload ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Upload size={16} aria-hidden />}
           <input
             type="file"
             accept={VOICE_OVER_ACCEPT}
             className="sr-only"
-            disabled={busy}
+            disabled={busyUpload || rowBlocking}
             onChange={handleVoiceFileChange}
           />
         </label>
@@ -403,17 +426,22 @@ function VoiceOverTaskRow({ task, dateKey, onReload, uploadingId, setUploadingId
           <>
             <button
               type="button"
-              disabled={busy}
-              onClick={handleDownloadVoice}
+              disabled={rowBlocking}
+              aria-busy={busyVoDownload}
+              onClick={() => onVoiceOverDownload?.(task)}
               title="Download uploaded voice-over file"
               aria-label="Download uploaded voice-over file"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-50 transition-colors"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-50 disabled:cursor-wait transition-colors"
             >
-              <FileAudio size={16} />
+              {busyVoDownload ? (
+                <Loader2 size={16} className="animate-spin shrink-0" aria-hidden />
+              ) : (
+                <FileAudio size={16} aria-hidden />
+              )}
             </button>
             <button
               type="button"
-              disabled={busy}
+              disabled={rowBlocking}
               onClick={() => setDeleteModalOpen(true)}
               title="Remove voice-over"
               aria-label="Remove voice-over"
@@ -429,7 +457,18 @@ function VoiceOverTaskRow({ task, dateKey, onReload, uploadingId, setUploadingId
   );
 }
 
-function DateSection({ dateKey, tasks, defaultOpen, onReload, uploadingId, setUploadingId }) {
+function DateSection({
+  dateKey,
+  tasks,
+  defaultOpen,
+  onReload,
+  uploadingTaskId,
+  setUploadingTaskId,
+  deletingTaskId,
+  setDeletingTaskId,
+  voiceOverDownloadingIds,
+  onVoiceOverDownload,
+}) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="rounded-2xl border border-gray-200/80 dark:border-gray-700/60 bg-white/60 dark:bg-gray-900/40 overflow-hidden">
@@ -452,8 +491,12 @@ function DateSection({ dateKey, tasks, defaultOpen, onReload, uploadingId, setUp
               task={t}
               dateKey={dateKey}
               onReload={onReload}
-              uploadingId={uploadingId}
-              setUploadingId={setUploadingId}
+              uploadingTaskId={uploadingTaskId}
+              setUploadingTaskId={setUploadingTaskId}
+              deletingTaskId={deletingTaskId}
+              setDeletingTaskId={setDeletingTaskId}
+              voiceOverDownloadingIds={voiceOverDownloadingIds}
+              onVoiceOverDownload={onVoiceOverDownload}
             />
           ))}
         </div>
@@ -465,7 +508,28 @@ function DateSection({ dateKey, tasks, defaultOpen, onReload, uploadingId, setUp
 export default function VoiceOver() {
   const [scheduleTasks, setScheduleTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [uploadingId, setUploadingId] = useState(null);
+  const [uploadingTaskId, setUploadingTaskId] = useState(null);
+  const [deletingTaskId, setDeletingTaskId] = useState(null);
+  const [voiceOverDownloadingIds, setVoiceOverDownloadingIds] = useState(() => new Set());
+
+  const handleVoiceOverDownload = useCallback(async (task) => {
+    const rawId = task?._id;
+    if (rawId == null || rawId === "") return;
+    const idKey = String(rawId);
+    setVoiceOverDownloadingIds((prev) => new Set(prev).add(idKey));
+    try {
+      await downloadVoiceOverFile(task);
+      toast.success("Download started");
+    } catch (e) {
+      toast.error(e.message || "Download failed");
+    } finally {
+      setVoiceOverDownloadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(idKey);
+        return next;
+      });
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -543,8 +607,12 @@ export default function VoiceOver() {
                 tasks={g.tasks}
                 defaultOpen={g.key === todayKey || g.key < todayKey}
                 onReload={load}
-                uploadingId={uploadingId}
-                setUploadingId={setUploadingId}
+                uploadingTaskId={uploadingTaskId}
+                setUploadingTaskId={setUploadingTaskId}
+                deletingTaskId={deletingTaskId}
+                setDeletingTaskId={setDeletingTaskId}
+                voiceOverDownloadingIds={voiceOverDownloadingIds}
+                onVoiceOverDownload={handleVoiceOverDownload}
               />
             ))}
           </div>

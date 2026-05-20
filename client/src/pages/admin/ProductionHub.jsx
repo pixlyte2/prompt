@@ -451,11 +451,12 @@ function hasTaskVoiceOver(task) {
   return Boolean(String(task?.voiceOverStoredName ?? "").trim());
 }
 /* ─── Notes / script / voice-over detail modal ─── */
-function TaskDetailModal({ task, onClose, onDownloadVoiceOver }) {
+function TaskDetailModal({ task, onClose, onDownloadVoiceOver, voiceOverDownloadingIds }) {
   if (!task) return null;
   const notesBody = String(task.notes ?? "").trim();
   const scriptBody = String(task.script ?? "").trim();
   const hasVoice = hasTaskVoiceOver(task);
+  const voiceDownloading = voiceOverDownloadingIds?.has(String(task._id)) ?? false;
   const titleBits = [];
   if (notesBody) titleBits.push("Notes");
   if (scriptBody) titleBits.push("Script");
@@ -512,10 +513,16 @@ function TaskDetailModal({ task, onClose, onDownloadVoiceOver }) {
                 </span>
                 <button
                   type="button"
+                  disabled={voiceDownloading}
+                  aria-busy={voiceDownloading}
                   onClick={() => onDownloadVoiceOver?.(task)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-70 disabled:cursor-wait disabled:pointer-events-none"
                 >
-                  <Download size={12} />
+                  {voiceDownloading ? (
+                    <Loader2 size={12} className="animate-spin shrink-0" aria-hidden />
+                  ) : (
+                    <Download size={12} className="shrink-0" aria-hidden />
+                  )}
                   Download file
                 </button>
               </div>
@@ -537,7 +544,7 @@ function TaskDetailModal({ task, onClose, onDownloadVoiceOver }) {
 }
 
 /* ─── Inline Row for a single task ─── */
-function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenDetail, onDownloadVoiceOver }) {
+function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenDetail, onDownloadVoiceOver, voiceOverDownloadingIds }) {
   const handleDragStart = (e) => {
     e.dataTransfer.setData("taskId", task._id);
     e.dataTransfer.effectAllowed = "move";
@@ -549,6 +556,7 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenDet
   const thumb = getTaskThumbnail(task);
   const ytId = task.videoId || extractYoutubeId(task.url);
   const platMeta = PLATFORM_META[platform] || PLATFORM_META.website;
+  const voiceDownloading = voiceOverDownloadingIds?.has(String(task._id)) ?? false;
 
   const handleStatusClick = () => {
     const next = NEXT_STATUS[task.status];
@@ -604,16 +612,22 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenDet
       {hasTaskVoiceOver(task) && (
         <button
           type="button"
+          disabled={voiceDownloading}
+          aria-busy={voiceDownloading}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             onDownloadVoiceOver?.(task);
           }}
-          className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-800 border border-emerald-200/90 dark:bg-emerald-900/35 dark:text-emerald-100 dark:border-emerald-700/60 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/55 hover:border-emerald-300 dark:hover:border-emerald-500 transition-colors cursor-pointer min-h-[26px]"
+          className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-800 border border-emerald-200/90 dark:bg-emerald-900/35 dark:text-emerald-100 dark:border-emerald-700/60 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/55 hover:border-emerald-300 dark:hover:border-emerald-500 transition-colors min-h-[26px] ${voiceDownloading ? "opacity-80 cursor-wait pointer-events-none" : "cursor-pointer"}`}
           title="Voice-over — tap to download"
           aria-label="Download voice-over"
         >
-          <Mic size={14} className="flex-shrink-0 opacity-90" aria-hidden />
+          {voiceDownloading ? (
+            <Loader2 size={14} className="flex-shrink-0 opacity-90 animate-spin" aria-hidden />
+          ) : (
+            <Mic size={14} className="flex-shrink-0 opacity-90" aria-hidden />
+          )}
           <span>VO</span>
         </button>
       )}
@@ -770,7 +784,7 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenDet
 }
 
 /* ─── Preview Modal ─── */
-function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDownloadVoiceOver }) {
+function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDownloadVoiceOver, voiceOverDownloadingIds }) {
   const [copied, setCopied] = useState(false);
 
   const assignmentSummary = useMemo(() => {
@@ -1031,7 +1045,9 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {sortedTasks.map((task, index) => (
+              {sortedTasks.map((task, index) => {
+                const voiceDownloading = voiceOverDownloadingIds?.has(String(task._id)) ?? false;
+                return (
                 <tr key={task._id} className={index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800/30"}>
                   <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                     <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
@@ -1087,11 +1103,17 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
                     {hasTaskVoiceOver(task) ? (
                       <button
                         type="button"
+                        disabled={voiceDownloading}
+                        aria-busy={voiceDownloading}
                         onClick={() => onDownloadVoiceOver?.(task)}
                         title="Download uploaded voice-over file"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 disabled:opacity-70 disabled:cursor-wait disabled:pointer-events-none"
                       >
-                        <Mic size={12} />
+                        {voiceDownloading ? (
+                          <Loader2 size={12} className="animate-spin shrink-0" aria-hidden />
+                        ) : (
+                          <Mic size={12} className="shrink-0" aria-hidden />
+                        )}
                         File
                       </button>
                     ) : (
@@ -1132,7 +1154,8 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1142,7 +1165,7 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
 }
 /* ─── Date Group ─── */
 function DateGroup({ 
-  dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, onPreviewThumbnail, onOpenDetail, onDownloadVoiceOver, defaultOpen, variant,
+  dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, onPreviewThumbnail, onOpenDetail, onDownloadVoiceOver, voiceOverDownloadingIds, defaultOpen, variant,
   isSelected, onSelect 
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -1353,7 +1376,7 @@ function DateGroup({
       {open && (
         <div className="p-3 space-y-2 bg-gray-50/50 dark:bg-gray-800/20">
           {tasks.map((t) => (
-            <TaskRow key={t._id} task={t} onMove={onMove} onDelete={onDelete} onEdit={onEdit} onPreviewThumbnail={onPreviewThumbnail} onOpenDetail={onOpenDetail} onDownloadVoiceOver={onDownloadVoiceOver} />
+            <TaskRow key={t._id} task={t} onMove={onMove} onDelete={onDelete} onEdit={onEdit} onPreviewThumbnail={onPreviewThumbnail} onOpenDetail={onOpenDetail} onDownloadVoiceOver={onDownloadVoiceOver} voiceOverDownloadingIds={voiceOverDownloadingIds} />
           ))}
           {tasks.length === 0 && (
             <div className="py-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[10px] text-gray-400">
@@ -1810,6 +1833,7 @@ export default function ProductionHub() {
   const [selectedDateKeys, setSelectedDateKeys] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [voiceOverDownloadingIds, setVoiceOverDownloadingIds] = useState(() => new Set());
   const typeDropdownRef = useRef(null);
 
   const stats = boardStats ?? ZERO_BOARD_STATS;
@@ -2036,11 +2060,21 @@ export default function ProductionHub() {
   }, []);
 
   const handleDownloadVoiceOver = useCallback(async (task) => {
+    const rawId = task?._id;
+    if (rawId == null || rawId === "") return;
+    const idKey = String(rawId);
+    setVoiceOverDownloadingIds((prev) => new Set(prev).add(idKey));
     try {
       await downloadVoiceOverFile(task);
       toast.success("Download started");
     } catch (e) {
       toast.error(e.message || "Download failed");
+    } finally {
+      setVoiceOverDownloadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(idKey);
+        return next;
+      });
     }
   }, []);
 
@@ -2329,6 +2363,7 @@ export default function ProductionHub() {
                   onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
                   onOpenDetail={setDetailModalTask}
                   onDownloadVoiceOver={handleDownloadVoiceOver}
+                  voiceOverDownloadingIds={voiceOverDownloadingIds}
                   defaultOpen={getDateCategory(g.key) === "overdue" || getDateCategory(g.key) === "today"}
                 />
               ))
@@ -2360,6 +2395,7 @@ export default function ProductionHub() {
                   onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
                   onOpenDetail={setDetailModalTask}
                   onDownloadVoiceOver={handleDownloadVoiceOver}
+                  voiceOverDownloadingIds={voiceOverDownloadingIds}
                   defaultOpen={true}
                 />
               ))
@@ -2422,6 +2458,7 @@ export default function ProductionHub() {
                   onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
                   onOpenDetail={setDetailModalTask}
                   onDownloadVoiceOver={handleDownloadVoiceOver}
+                  voiceOverDownloadingIds={voiceOverDownloadingIds}
                   defaultOpen={false}
                   variant="completed"
                   isSelected={selectedDateKeys.includes(g.key === null ? "no-date" : g.key)}
@@ -2450,6 +2487,7 @@ export default function ProductionHub() {
         dateKey={previewModal.dateKey}
         onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
         onDownloadVoiceOver={handleDownloadVoiceOver}
+        voiceOverDownloadingIds={voiceOverDownloadingIds}
       />
       {previewThumbUrl && <ThumbnailModal url={previewThumbUrl} onClose={() => setPreviewThumbUrl(null)} />}
       {detailModalTask && (
@@ -2457,6 +2495,7 @@ export default function ProductionHub() {
           task={detailModalTask}
           onClose={() => setDetailModalTask(null)}
           onDownloadVoiceOver={handleDownloadVoiceOver}
+          voiceOverDownloadingIds={voiceOverDownloadingIds}
         />
       )}
     </AdminLayout>
