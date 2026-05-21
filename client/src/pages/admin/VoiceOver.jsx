@@ -84,6 +84,14 @@ function hasVoiceOver(task) {
   return Boolean(String(task?.voiceOverStoredName ?? "").trim());
 }
 
+/** Tasks with script first, then title A–Z */
+function sortVoiceOverTasksForDisplay(a, b) {
+  const sa = hasScript(a) ? 1 : 0;
+  const sb = hasScript(b) ? 1 : 0;
+  if (sa !== sb) return sb - sa;
+  return String(a.title || "").localeCompare(String(b.title || ""), undefined, { sensitivity: "base" });
+}
+
 function sanitizeFilenameBase(title) {
   const s = String(title || "script")
     .replace(/[/\\?%*:|"<>]/g, "")
@@ -117,6 +125,52 @@ function PlatformIcon({ platform, size = 14 }) {
   const meta = PLATFORM_META[platform] || PLATFORM_META.website;
   const Icon = meta.icon;
   return <Icon size={size} className={`${meta.color} flex-shrink-0`} />;
+}
+
+/** Icon action: clear enabled vs disabled (dashed / muted) for Voice-over row toolbar */
+function VoToolbarIconButton({
+  type = "button",
+  disabled,
+  busy,
+  onClick,
+  title,
+  ariaLabel,
+  children,
+  variant,
+}) {
+  const tones = {
+    indigo:
+      "enabled:border-indigo-300 enabled:dark:border-indigo-600 enabled:bg-gradient-to-b enabled:from-indigo-50 enabled:to-white enabled:dark:from-indigo-950/60 enabled:dark:to-gray-900 enabled:text-indigo-800 enabled:dark:text-indigo-100 enabled:shadow-sm enabled:hover:border-indigo-400 enabled:hover:shadow-md enabled:hover:dark:border-indigo-500 enabled:active:scale-[0.97]",
+    violet:
+      "enabled:border-violet-300 enabled:dark:border-violet-600 enabled:bg-gradient-to-b enabled:from-violet-50 enabled:to-white enabled:dark:from-violet-950/50 enabled:dark:to-gray-900 enabled:text-violet-800 enabled:dark:text-violet-100 enabled:shadow-sm enabled:hover:border-violet-400 enabled:hover:shadow-md enabled:hover:dark:border-violet-500 enabled:active:scale-[0.97]",
+    emerald:
+      "enabled:border-emerald-300 enabled:dark:border-emerald-600 enabled:bg-gradient-to-b enabled:from-emerald-50 enabled:to-white enabled:dark:from-emerald-950/45 enabled:dark:to-gray-900 enabled:text-emerald-800 enabled:dark:text-emerald-100 enabled:shadow-sm enabled:hover:border-emerald-400 enabled:hover:shadow-md enabled:hover:dark:border-emerald-500 enabled:active:scale-[0.97]",
+    emeraldOutline:
+      "enabled:border-emerald-300 enabled:dark:border-emerald-600 enabled:bg-white enabled:dark:bg-gray-900/80 enabled:text-emerald-800 enabled:dark:text-emerald-200 enabled:shadow-sm enabled:hover:bg-emerald-50 enabled:hover:dark:bg-emerald-950/50 enabled:hover:border-emerald-400 enabled:active:scale-[0.97]",
+    dangerGhost:
+      "enabled:border border-transparent enabled:text-red-600 enabled:dark:text-red-400 enabled:bg-transparent enabled:hover:bg-red-50 enabled:hover:dark:bg-red-950/35 enabled:hover:border-red-200/80 enabled:dark:hover:border-red-900/50 enabled:active:scale-[0.97]",
+  };
+  const disabledLook =
+    "cursor-not-allowed border border-dashed border-gray-300 bg-gray-100 text-gray-400 shadow-none dark:border-gray-600 dark:bg-gray-800/70 dark:text-gray-500";
+
+  const base =
+    "inline-flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900";
+
+  const stateClass = disabled || busy ? disabledLook : tones[variant];
+
+  return (
+    <button
+      type={type}
+      disabled={disabled || busy}
+      aria-busy={busy || undefined}
+      aria-label={ariaLabel}
+      title={title}
+      onClick={onClick}
+      className={`${base} ${stateClass}`}
+    >
+      {children}
+    </button>
+  );
 }
 
 function ScriptViewModal({ task, onClose }) {
@@ -159,9 +213,9 @@ function ScriptViewModal({ task, onClose }) {
             <X size={18} />
           </button>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 py-4">
+        <div className="flex-1 min-h-[12rem] max-h-[min(52vh,28rem)] min-w-0 overflow-y-scroll vo-script-scrollbar rounded-lg mx-3 mb-1 border border-gray-200/90 dark:border-gray-600/80 bg-gray-50/80 dark:bg-gray-950/40 px-3 py-3">
           {body ? (
-            <pre className="whitespace-pre-wrap break-words text-[13px] sm:text-sm leading-relaxed text-gray-800 dark:text-gray-100 font-sans">
+            <pre className="whitespace-pre-wrap break-words text-[13px] sm:text-sm leading-relaxed text-gray-800 dark:text-gray-100 font-sans pr-1">
               {body}
             </pre>
           ) : (
@@ -335,6 +389,23 @@ function VoiceOverTaskRow({
     }
   };
 
+  const scriptActionsLocked = !scriptOk || rowBlocking || scriptDownloadBusy;
+  const canUploadVo = scriptOk && !busyUpload && !rowBlocking;
+  const uploadLabelTitle = !scriptOk
+    ? "Add a script to this task in Production Hub before uploading voice-over"
+    : busyUpload
+      ? "Uploading…"
+      : rowBlocking
+        ? "Wait for the current action to finish"
+        : "Upload voice-over (audio file)";
+
+  const uploadIdleClasses = canUploadVo
+    ? "cursor-pointer border-2 border-emerald-400/90 dark:border-emerald-500 bg-gradient-to-b from-emerald-50 to-white dark:from-emerald-950/50 dark:to-gray-900 text-emerald-800 dark:text-emerald-100 shadow-sm hover:shadow-md hover:border-emerald-500 dark:hover:border-emerald-400 active:scale-[0.97]"
+    : "cursor-not-allowed border border-dashed border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/70 text-gray-400 dark:text-gray-500 shadow-none";
+
+  const uploadBusyClasses =
+    "pointer-events-none cursor-wait border-2 border-emerald-300 dark:border-emerald-600 bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-200 shadow-inner";
+
   return (
     <>
     {scriptModalOpen && <ScriptViewModal task={task} onClose={() => setScriptModalOpen(false)} />}
@@ -367,88 +438,100 @@ function VoiceOverTaskRow({
         )}
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2">{task.title}</p>
-          <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
-            <PlatformIcon platform={platform} size={12} />
-            {task.channelName && <span className="truncate">{task.channelName}</span>}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 min-w-0">
+            {scriptOk ? (
+              <span className="inline-flex items-center rounded-md border border-emerald-200/90 bg-emerald-50/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+                Script ready
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-md border border-dashed border-amber-300/90 bg-amber-50/80 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/35 dark:text-amber-100">
+                Needs script
+              </span>
+            )}
+            {scriptOk && voOk && (
+              <span className="inline-flex items-center rounded-md border border-teal-200/90 bg-teal-50/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-teal-900 dark:border-teal-800/60 dark:bg-teal-950/40 dark:text-teal-100">
+                Voice-over ready
+              </span>
+            )}
+            {voOk && (
+              <span
+                className="min-w-0 max-w-[11rem] sm:max-w-[14rem] truncate rounded-md border border-gray-200/90 bg-gray-50/90 px-1.5 py-0.5 text-[10px] font-medium text-gray-700 dark:border-gray-600/80 dark:bg-gray-800/80 dark:text-gray-200"
+                title={task.voiceOverOriginalName || "Uploaded file"}
+              >
+                {task.voiceOverOriginalName || "Uploaded file"}
+              </span>
+            )}
           </div>
-          {voOk && (
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 truncate" title={task.voiceOverOriginalName}>
-              VO: {task.voiceOverOriginalName || "Uploaded file"}
-            </p>
-          )}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 sm:flex-shrink-0 sm:justify-end">
-        <button
-          type="button"
-          disabled={!scriptOk || rowBlocking || scriptDownloadBusy}
+      <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0 sm:justify-end">
+        <VoToolbarIconButton
+          variant="indigo"
+          disabled={scriptActionsLocked}
           onClick={() => setScriptModalOpen(true)}
-          title="View script"
-          aria-label="View script"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-100 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+          title={!scriptOk ? "No script on this task" : "View script"}
+          ariaLabel="View script"
         >
-          <Eye size={16} />
-        </button>
-        <button
-          type="button"
-          disabled={!scriptOk || rowBlocking || scriptDownloadBusy}
-          aria-busy={scriptDownloadBusy}
+          <Eye size={16} aria-hidden />
+        </VoToolbarIconButton>
+        <VoToolbarIconButton
+          variant="violet"
+          disabled={scriptActionsLocked}
+          busy={scriptDownloadBusy}
           onClick={handleDownloadScriptTxt}
           title="Download script as .txt"
-          aria-label="Download script"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50 text-violet-800 dark:bg-violet-950/50 dark:text-violet-200 hover:bg-violet-100 dark:hover:bg-violet-900/40 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+          ariaLabel="Download script"
         >
           {scriptDownloadBusy ? (
             <Loader2 size={16} className="animate-spin shrink-0" aria-hidden />
           ) : (
             <Download size={16} aria-hidden />
           )}
-        </button>
+        </VoToolbarIconButton>
 
         <label
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors ${
-            busyUpload || rowBlocking ? "pointer-events-none opacity-50" : "cursor-pointer"
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200 ${
+            busyUpload ? uploadBusyClasses : uploadIdleClasses
           }`}
-          title={busyUpload ? "Uploading…" : rowBlocking ? "Please wait…" : "Upload voice-over (audio file)"}
+          title={uploadLabelTitle}
         >
-          {busyUpload ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Upload size={16} aria-hidden />}
+          {busyUpload ? <Loader2 size={16} className="animate-spin shrink-0" aria-hidden /> : <Upload size={16} aria-hidden />}
           <input
             type="file"
             accept={VOICE_OVER_ACCEPT}
             className="sr-only"
-            disabled={busyUpload || rowBlocking}
+            disabled={!canUploadVo || busyUpload}
+            aria-label={uploadLabelTitle}
             onChange={handleVoiceFileChange}
           />
         </label>
 
         {voOk && (
           <>
-            <button
-              type="button"
+            <VoToolbarIconButton
+              variant="emeraldOutline"
               disabled={rowBlocking}
-              aria-busy={busyVoDownload}
+              busy={busyVoDownload}
               onClick={() => onVoiceOverDownload?.(task)}
               title="Download uploaded voice-over file"
-              aria-label="Download uploaded voice-over file"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-50 disabled:cursor-wait transition-colors"
+              ariaLabel="Download uploaded voice-over file"
             >
               {busyVoDownload ? (
                 <Loader2 size={16} className="animate-spin shrink-0" aria-hidden />
               ) : (
                 <FileAudio size={16} aria-hidden />
               )}
-            </button>
-            <button
-              type="button"
+            </VoToolbarIconButton>
+            <VoToolbarIconButton
+              variant="dangerGhost"
               disabled={rowBlocking}
               onClick={() => setDeleteModalOpen(true)}
               title="Remove voice-over"
-              aria-label="Remove voice-over"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 transition-colors"
+              ariaLabel="Remove voice-over"
             >
-              <Trash2 size={16} />
-            </button>
+              <Trash2 size={16} aria-hidden />
+            </VoToolbarIconButton>
           </>
         )}
       </div>
@@ -556,7 +639,7 @@ export default function VoiceOver() {
       map[key].push(t);
     });
     Object.values(map).forEach((arr) => {
-      arr.sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
+      arr.sort(sortVoiceOverTasksForDisplay);
     });
     const keys = Object.keys(map).sort((a, b) => a.localeCompare(b));
     return keys.map((key) => ({ key, tasks: map[key] }));
@@ -567,15 +650,12 @@ export default function VoiceOver() {
   return (
     <AdminLayout
       title="Voice-over"
-      titleInfo="Scheduled Production Hub tasks by date — view or download scripts and upload voice-over audio files"
+      titleInfo="Scheduled Production Hub tasks by date — tasks with a script appear first. View or download scripts; upload voice-over only when a script exists on the task."
       icon={Mic}
       contentFit
     >
       <div className="flex flex-col h-full min-h-0 max-w-5xl mx-auto w-full gap-3 px-1 sm:px-0 pb-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xl">
-            Only scheduled tasks (with a date) from Production Hub. Upload replaces any existing voice-over. Supported audio: {voiceOverFileTypeHint()}.
-          </p>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
             onClick={load}

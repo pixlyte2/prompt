@@ -77,6 +77,41 @@ html, body, #root {
   @apply bg-gray-200/50 dark:bg-gray-700/50 rounded-full transition-colors hover:bg-gray-300 dark:hover:bg-gray-600;
 }
 
+/* Voice-over script modal: always-visible scrollbar so users see scroll bounds */
+.vo-script-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184) rgb(226 232 240);
+}
+.dark .vo-script-scrollbar {
+  scrollbar-color: rgb(100 116 139) rgb(30 41 55);
+}
+.vo-script-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+.vo-script-scrollbar::-webkit-scrollbar-track {
+  margin: 6px 0;
+  border-radius: 9999px;
+  background: rgb(226 232 240);
+}
+.dark .vo-script-scrollbar::-webkit-scrollbar-track {
+  background: rgb(30 41 55);
+}
+.vo-script-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgb(148 163 184);
+  border: 2px solid rgb(226 232 240);
+}
+.dark .vo-script-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(100 116 139);
+  border: 2px solid rgb(30 41 55);
+}
+.vo-script-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(100 116 139);
+}
+.dark .vo-script-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(148 163 184);
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
