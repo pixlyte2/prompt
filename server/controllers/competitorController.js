@@ -63,8 +63,42 @@ function extractVideos(items, channel) {
     .map((item) => {
       const v = item?.richItemRenderer?.content?.videoRenderer || item?.richItemRenderer?.content?.reelItemRenderer;
       const s = item?.richItemRenderer?.content?.shortsLockupViewModel;
+      const l = item?.richItemRenderer?.content?.lockupViewModel;
 
-      if (!v && !s) return null;
+      if (!v && !s && !l) return null;
+
+      if (l) {
+        const videoId = l.contentId;
+        if (!videoId) return null;
+
+        const metadataModel = l.metadata?.lockupMetadataViewModel;
+        const title = metadataModel?.title?.content || "";
+        
+        const metadataParts = metadataModel?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts || [];
+        const viewText = metadataParts[0]?.text?.content || "";
+        const publishedText = metadataParts[1]?.text?.content || "";
+        const isLive = viewText.toLowerCase().includes("watching") || viewText.toLowerCase().includes("live");
+
+        const overlays = l.contentImage?.thumbnailViewModel?.overlays || [];
+        const bottomOverlay = overlays.find(o => o.thumbnailBottomOverlayViewModel)?.thumbnailBottomOverlayViewModel;
+        const durationText = bottomOverlay?.badges?.[0]?.thumbnailBadgeViewModel?.text || "";
+
+        return {
+          videoId,
+          title,
+          views: isLive ? 0 : parseViewCount(viewText),
+          viewsText: viewText,
+          publishedText: publishedText,
+          publishedAt: parseRelativeTime(publishedText),
+          duration: durationText,
+          thumbnail:
+            l.contentImage?.thumbnailViewModel?.image?.sources?.slice(-1)[0]?.url ||
+            `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          channelName: channel.name,
+          channelHandle: channel.handle,
+          isLive,
+        };
+      }
 
       if (s) {
         const videoId = s.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId;
