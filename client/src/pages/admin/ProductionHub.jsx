@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import { toast } from "react-hot-toast";
 import {
   LayoutDashboard,
@@ -33,9 +33,14 @@ import {
   Image,
   ScrollText,
   Mic,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Music,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
-import api from "../../services/api";
+import api, { httpClient } from "../../services/api";
 import { downloadVoiceOverFile, uploadVoiceOverFile } from "../../utils/voiceOverDownload";
 import { VOICE_OVER_ACCEPT, isVoiceOverFileAllowed, voiceOverFileTypeHint } from "../../constants/voiceOverFileTypes";
 
@@ -450,13 +455,15 @@ function hasTaskScript(task) {
 function hasTaskVoiceOver(task) {
   return Boolean(String(task?.voiceOverStoredName ?? "").trim());
 }
+
 /* ─── Notes / script / voice-over detail modal ─── */
-function TaskDetailModal({ task, onClose, onDownloadVoiceOver, voiceOverDownloadingIds }) {
+function TaskDetailModal({ task, onClose, onDownloadVoiceOver, voiceOverDownloadingIds, playingTaskId, audioPlaying, audioLoading, onPlayToggle }) {
   if (!task) return null;
   const notesBody = String(task.notes ?? "").trim();
   const scriptBody = String(task.script ?? "").trim();
   const hasVoice = hasTaskVoiceOver(task);
   const voiceDownloading = voiceOverDownloadingIds?.has(String(task._id)) ?? false;
+  const isPlayingThisTask = playingTaskId === String(task._id);
   const titleBits = [];
   if (notesBody) titleBits.push("Notes");
   if (scriptBody) titleBits.push("Script");
@@ -508,15 +515,36 @@ function TaskDetailModal({ task, onClose, onDownloadVoiceOver, voiceOverDownload
             <section>
               <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Voice-over</h4>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[12px] text-gray-700 dark:text-gray-200 truncate max-w-[240px]" title={task.voiceOverOriginalName || ""}>
+                <span className="text-[12px] text-gray-700 dark:text-gray-200 truncate max-w-[200px]" title={task.voiceOverOriginalName || ""}>
                   {task.voiceOverOriginalName || "Uploaded file"}
                 </span>
+                
+                <button
+                  type="button"
+                  disabled={audioLoading && isPlayingThisTask}
+                  onClick={() => onPlayToggle?.(task)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    isPlayingThisTask && audioPlaying
+                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20"
+                      : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700"
+                  }`}
+                >
+                  {audioLoading && isPlayingThisTask ? (
+                    <Loader2 size={12} className="animate-spin shrink-0" aria-hidden />
+                  ) : isPlayingThisTask && audioPlaying ? (
+                    <Pause size={12} className="shrink-0" />
+                  ) : (
+                    <PlayCircle size={12} className="shrink-0" />
+                  )}
+                  <span>{isPlayingThisTask && audioPlaying ? "Playing" : "Listen"}</span>
+                </button>
+
                 <button
                   type="button"
                   disabled={voiceDownloading}
                   aria-busy={voiceDownloading}
                   onClick={() => onDownloadVoiceOver?.(task)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-70 disabled:cursor-wait disabled:pointer-events-none"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-70 disabled:cursor-wait disabled:pointer-events-none shadow-sm"
                 >
                   {voiceDownloading ? (
                     <Loader2 size={12} className="animate-spin shrink-0" aria-hidden />
@@ -544,7 +572,10 @@ function TaskDetailModal({ task, onClose, onDownloadVoiceOver, voiceOverDownload
 }
 
 /* ─── Inline Row for a single task ─── */
-function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenDetail, onDownloadVoiceOver, voiceOverDownloadingIds }) {
+const TaskRow = memo(function TaskRow({ 
+  task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenDetail, onDownloadVoiceOver, voiceOverDownloadingIds,
+  playingTaskId, audioPlaying, audioLoading, onPlayToggle
+}) {
   const handleDragStart = (e) => {
     e.dataTransfer.setData("taskId", task._id);
     e.dataTransfer.effectAllowed = "move";
@@ -556,7 +587,7 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenDet
   const thumb = getTaskThumbnail(task);
   const ytId = task.videoId || extractYoutubeId(task.url);
   const platMeta = PLATFORM_META[platform] || PLATFORM_META.website;
-  const voiceDownloading = voiceOverDownloadingIds?.has(String(task._id)) ?? false;
+  const isPlayingThisTask = playingTaskId === String(task._id);
 
   const handleStatusClick = () => {
     const next = NEXT_STATUS[task.status];
@@ -612,21 +643,26 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenDet
       {hasTaskVoiceOver(task) && (
         <button
           type="button"
-          disabled={voiceDownloading}
-          aria-busy={voiceDownloading}
+          disabled={audioLoading && isPlayingThisTask}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            onDownloadVoiceOver?.(task);
+            onPlayToggle?.(task);
           }}
-          className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-800 border border-emerald-200/90 dark:bg-emerald-900/35 dark:text-emerald-100 dark:border-emerald-700/60 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/55 hover:border-emerald-300 dark:hover:border-emerald-500 transition-colors min-h-[26px] ${voiceDownloading ? "opacity-80 cursor-wait pointer-events-none" : "cursor-pointer"}`}
-          title="Voice-over — tap to download"
-          aria-label="Download voice-over"
+          className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all min-h-[26px] ${
+            isPlayingThisTask && audioPlaying
+              ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-md shadow-indigo-500/20 active:scale-95 cursor-pointer"
+              : "bg-emerald-50 text-emerald-800 border border-emerald-200/90 dark:bg-emerald-900/35 dark:text-emerald-100 dark:border-emerald-700/60 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/55 hover:border-emerald-300 dark:hover:border-emerald-500 active:scale-95 cursor-pointer"
+          }`}
+          title={isPlayingThisTask && audioPlaying ? "Voice-over — playing (click to pause)" : "Voice-over — listen inline"}
+          aria-label={isPlayingThisTask && audioPlaying ? "Pause voice-over" : "Listen to voice-over"}
         >
-          {voiceDownloading ? (
+          {audioLoading && isPlayingThisTask ? (
             <Loader2 size={14} className="flex-shrink-0 opacity-90 animate-spin" aria-hidden />
+          ) : isPlayingThisTask && audioPlaying ? (
+            <Pause size={14} className="flex-shrink-0" />
           ) : (
-            <Mic size={14} className="flex-shrink-0 opacity-90" aria-hidden />
+            <Play size={14} className="flex-shrink-0" />
           )}
           <span>VO</span>
         </button>
@@ -781,7 +817,7 @@ function TaskRow({ task, onMove, onDelete, onEdit, onPreviewThumbnail, onOpenDet
       </div>
     </div>
   );
-}
+});
 
 /* ─── Preview Modal ─── */
 function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDownloadVoiceOver, voiceOverDownloadingIds }) {
@@ -1164,9 +1200,10 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
   );
 }
 /* ─── Date Group ─── */
-function DateGroup({ 
+const DateGroup = memo(function DateGroup({ 
   dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, onPreviewThumbnail, onOpenDetail, onDownloadVoiceOver, voiceOverDownloadingIds, defaultOpen, variant,
-  isSelected, onSelect 
+  isSelected, onSelect,
+  playingTaskId, audioPlaying, audioLoading, onPlayToggle
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [isOver, setIsOver] = useState(false);
@@ -1376,7 +1413,21 @@ function DateGroup({
       {open && (
         <div className="p-3 space-y-2 bg-gray-50/50 dark:bg-gray-800/20">
           {tasks.map((t) => (
-            <TaskRow key={t._id} task={t} onMove={onMove} onDelete={onDelete} onEdit={onEdit} onPreviewThumbnail={onPreviewThumbnail} onOpenDetail={onOpenDetail} onDownloadVoiceOver={onDownloadVoiceOver} voiceOverDownloadingIds={voiceOverDownloadingIds} />
+            <TaskRow 
+              key={t._id} 
+              task={t} 
+              onMove={onMove} 
+              onDelete={onDelete} 
+              onEdit={onEdit} 
+              onPreviewThumbnail={onPreviewThumbnail} 
+              onOpenDetail={onOpenDetail} 
+              onDownloadVoiceOver={onDownloadVoiceOver} 
+              voiceOverDownloadingIds={voiceOverDownloadingIds}
+              playingTaskId={playingTaskId}
+              audioPlaying={audioPlaying}
+              audioLoading={audioLoading}
+              onPlayToggle={onPlayToggle}
+            />
           ))}
           {tasks.length === 0 && (
             <div className="py-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[10px] text-gray-400">
@@ -1388,7 +1439,7 @@ function DateGroup({
     </div>
 
   );
-}
+});
 
 /* ─── Add / Edit Content Modal ─── */
 const PLATFORM_OPTIONS = [
@@ -1496,8 +1547,8 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
       } else if (markVoiceOverRemoved && taskId) {
         await api.delete(`/video-tasks/${taskId}/voice-over`);
       }
-      await onSaved?.();
       onClose();
+      void onSaved?.();
     } catch (err) {
       const msg = err.response?.data?.message || (isEdit ? "Failed to update" : "Failed to add");
       setError(msg);
@@ -1836,6 +1887,160 @@ export default function ProductionHub() {
   const [voiceOverDownloadingIds, setVoiceOverDownloadingIds] = useState(() => new Set());
   const typeDropdownRef = useRef(null);
 
+  // Custom Audio Player State
+  const audioRef = useRef(null);
+  const [playingTaskId, setPlayingTaskId] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioLoading, setAudioLoading] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioVolume, setAudioVolume] = useState(0.8);
+  const [audioMuted, setAudioMuted] = useState(false);
+
+  const handleStopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    setPlayingTaskId(null);
+    setAudioPlaying(false);
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      setAudioUrl(null);
+    }
+  }, [audioUrl]);
+
+  const handleTogglePlay = useCallback(async (task) => {
+    const taskKey = String(task._id);
+    
+    if (playingTaskId === taskKey) {
+      if (audioRef.current) {
+        if (audioPlaying) {
+          audioRef.current.pause();
+        } else {
+          audioRef.current.play().catch(() => {});
+        }
+      }
+      return;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      setAudioUrl(null);
+    }
+
+    setPlayingTaskId(taskKey);
+    setAudioLoading(true);
+    setAudioProgress(0);
+    setAudioCurrentTime(0);
+    setAudioDuration(0);
+
+    try {
+      const res = await httpClient.get(`/video-tasks/${task._id}/voice-over`, {
+        responseType: "blob",
+        timeout: 120_000,
+      });
+      const blob = res.data;
+      const u = URL.createObjectURL(blob);
+      setAudioUrl(u);
+    } catch (e) {
+      toast.error("Failed to load audio stream");
+      setPlayingTaskId(null);
+      setAudioLoading(false);
+    }
+  }, [playingTaskId, audioUrl, audioPlaying]);
+
+  const handleSeek = useCallback((percentage) => {
+    if (audioRef.current && audioDuration) {
+      const newTime = (percentage / 100) * audioDuration;
+      audioRef.current.currentTime = newTime;
+      setAudioProgress(percentage);
+      setAudioCurrentTime(newTime);
+    }
+  }, [audioDuration]);
+
+  const handleVolumeChange = useCallback((v) => {
+    setAudioVolume(v);
+    if (audioRef.current) {
+      audioRef.current.volume = v;
+    }
+  }, []);
+
+  const handleToggleMute = useCallback(() => {
+    setAudioMuted((m) => {
+      const nextMuted = !m;
+      if (audioRef.current) {
+        audioRef.current.muted = nextMuted;
+      }
+      return nextMuted;
+    });
+  }, []);
+
+  // Cleanup audioUrl on unmount
+  useEffect(() => {
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, [audioUrl]);
+
+  // Sync state changes with native HTML5 audio element
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handlePlay = () => setAudioPlaying(true);
+    const handlePause = () => setAudioPlaying(false);
+    const handleTimeUpdate = () => {
+      if (audio.duration) {
+        setAudioCurrentTime(audio.currentTime);
+        setAudioProgress((audio.currentTime / audio.duration) * 100);
+      }
+    };
+    const handleLoadedMetadata = () => {
+      setAudioDuration(audio.duration);
+      setAudioLoading(false);
+      audio.play().catch(() => {});
+    };
+    const handleEnded = () => {
+      setAudioPlaying(false);
+      setAudioProgress(100);
+    };
+
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("ended", handleEnded);
+    };
+  }, [audioUrl]);
+
+  const activePlayingTask = useMemo(() => {
+    if (!playingTaskId) return null;
+    const allTasks = [...datedTasks, ...backlogTasks, ...completedTasks];
+    return allTasks.find((t) => String(t._id) === playingTaskId);
+  }, [datedTasks, backlogTasks, completedTasks, playingTaskId]);
+
+  const formatTime = (sec) => {
+    if (Number.isNaN(sec) || sec === Infinity) return "0:00";
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  };
+
   const stats = boardStats ?? ZERO_BOARD_STATS;
 
   const loadInitialBoard = useCallback(async () => {
@@ -1937,19 +2142,32 @@ export default function ProductionHub() {
 
   const syncBoardAfterMutation = useCallback(async () => {
     try {
-      const [statsRes, datedRes] = await Promise.all([
+      const promises = [
         api.get("/video-tasks/stats"),
         api.get("/video-tasks?bucket=schedule"),
-      ]);
-      setBoardStats(statsRes.data);
-      setDatedTasks(datedRes.data);
+      ];
+      let backlogIndex = -1;
+      let completedIndex = -1;
+
       if (backlogLoaded) {
-        const { data } = await api.get("/video-tasks?bucket=backlog");
-        setBacklogTasks(data);
+        promises.push(api.get("/video-tasks?bucket=backlog"));
+        backlogIndex = promises.length - 1;
       }
       if (completedLoaded) {
-        const { data } = await api.get("/video-tasks?bucket=completed");
-        setCompletedTasks(data);
+        promises.push(api.get("/video-tasks?bucket=completed"));
+        completedIndex = promises.length - 1;
+      }
+
+      const results = await Promise.all(promises);
+
+      setBoardStats(results[0].data);
+      setDatedTasks(results[1].data);
+
+      if (backlogIndex !== -1) {
+        setBacklogTasks(results[backlogIndex].data);
+      }
+      if (completedIndex !== -1) {
+        setCompletedTasks(results[completedIndex].data);
       }
     } catch {
       toast.error("Failed to refresh board");
@@ -2057,6 +2275,10 @@ export default function ProductionHub() {
 
   const handlePreviewClose = useCallback(() => {
     setPreviewModal({ open: false, tasks: [], dateKey: null });
+  }, []);
+
+  const handlePreviewThumbnail = useCallback((url) => {
+    setPreviewThumbUrl(url);
   }, []);
 
   const handleDownloadVoiceOver = useCallback(async (task) => {
@@ -2360,11 +2582,15 @@ export default function ProductionHub() {
                   onEdit={handleEdit}
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
-                  onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
+                  onPreviewThumbnail={handlePreviewThumbnail}
                   onOpenDetail={setDetailModalTask}
                   onDownloadVoiceOver={handleDownloadVoiceOver}
                   voiceOverDownloadingIds={voiceOverDownloadingIds}
                   defaultOpen={getDateCategory(g.key) === "overdue" || getDateCategory(g.key) === "today"}
+                  playingTaskId={playingTaskId}
+                  audioPlaying={audioPlaying}
+                  audioLoading={audioLoading}
+                  onPlayToggle={handleTogglePlay}
                 />
               ))
             )}
@@ -2392,11 +2618,15 @@ export default function ProductionHub() {
                   onEdit={handleEdit}
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
-                  onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
+                  onPreviewThumbnail={handlePreviewThumbnail}
                   onOpenDetail={setDetailModalTask}
                   onDownloadVoiceOver={handleDownloadVoiceOver}
                   voiceOverDownloadingIds={voiceOverDownloadingIds}
                   defaultOpen={true}
+                  playingTaskId={playingTaskId}
+                  audioPlaying={audioPlaying}
+                  audioLoading={audioLoading}
+                  onPlayToggle={handleTogglePlay}
                 />
               ))
             )}
@@ -2455,7 +2685,7 @@ export default function ProductionHub() {
                   onEdit={handleEdit}
                   onPreview={handlePreview}
                   onDropTask={handleDropTask}
-                  onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
+                  onPreviewThumbnail={handlePreviewThumbnail}
                   onOpenDetail={setDetailModalTask}
                   onDownloadVoiceOver={handleDownloadVoiceOver}
                   voiceOverDownloadingIds={voiceOverDownloadingIds}
@@ -2463,6 +2693,10 @@ export default function ProductionHub() {
                   variant="completed"
                   isSelected={selectedDateKeys.includes(g.key === null ? "no-date" : g.key)}
                   onSelect={handleSelectDate}
+                  playingTaskId={playingTaskId}
+                  audioPlaying={audioPlaying}
+                  audioLoading={audioLoading}
+                  onPlayToggle={handleTogglePlay}
                 />
               ))
             )}
@@ -2485,7 +2719,7 @@ export default function ProductionHub() {
         onClose={handlePreviewClose}
         tasks={previewModal.tasks}
         dateKey={previewModal.dateKey}
-        onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
+        onPreviewThumbnail={handlePreviewThumbnail}
         onDownloadVoiceOver={handleDownloadVoiceOver}
         voiceOverDownloadingIds={voiceOverDownloadingIds}
       />
@@ -2496,7 +2730,106 @@ export default function ProductionHub() {
           onClose={() => setDetailModalTask(null)}
           onDownloadVoiceOver={handleDownloadVoiceOver}
           voiceOverDownloadingIds={voiceOverDownloadingIds}
+          playingTaskId={playingTaskId}
+          audioPlaying={audioPlaying}
+          audioLoading={audioLoading}
+          onPlayToggle={handleTogglePlay}
         />
+      )}
+
+      <audio ref={audioRef} src={audioUrl || ""} className="hidden" />
+
+      {/* Premium floating custom audio player widget */}
+      {activePlayingTask && (
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[80] bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-4 flex flex-col gap-3 animate-in slide-in-from-bottom duration-300">
+          
+          {/* Header Info */}
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
+                <Music size={18} className={audioPlaying ? "animate-pulse" : ""} />
+              </div>
+              <div className="min-w-0 text-left">
+                <p className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">Now Playing</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white truncate" title={activePlayingTask.title}>
+                  {activePlayingTask.title}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleStopAudio}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title="Close player"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Progress bar and Scrubber */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between text-[10px] font-bold text-gray-500 dark:text-gray-400">
+              <span>{formatTime(audioCurrentTime)}</span>
+              <span>{formatTime(audioDuration)}</span>
+            </div>
+            <div className="relative group/progress flex items-center h-2">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={audioProgress}
+                onChange={(e) => handleSeek(Number(e.target.value))}
+                className="w-full h-1 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:accent-blue-400 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Player controls bar */}
+          <div className="flex items-center justify-between">
+            {/* Play/Pause controls */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleTogglePlay(activePlayingTask)}
+                disabled={audioLoading}
+                className="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {audioLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : audioPlaying ? (
+                  <Pause size={16} />
+                ) : (
+                  <Play size={16} className="ml-0.5" />
+                )}
+              </button>
+              
+              <button
+                onClick={() => handleDownloadVoiceOver(activePlayingTask)}
+                className="p-2 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-805 transition-colors active:scale-95"
+                title="Download Audio"
+              >
+                <Download size={16} />
+              </button>
+            </div>
+
+            {/* Volume controls */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleToggleMute}
+                className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                {audioMuted || audioVolume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={audioMuted ? 0 : audioVolume}
+                onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                className="w-16 h-1 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
       )}
     </AdminLayout>
   );

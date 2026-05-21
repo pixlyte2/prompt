@@ -58,6 +58,10 @@ const videoTaskSchema = new mongoose.Schema(
 );
 
 videoTaskSchema.index({ status: 1, channelType: 1 });
+videoTaskSchema.index({ scheduledDate: 1 });
+videoTaskSchema.index({ status: 1, scheduledDate: 1 });
+videoTaskSchema.index({ status: 1, completedAt: -1, updatedAt: -1 });
+videoTaskSchema.index({ status: 1, updatedAt: -1 });
 
 /**
  * One-shot migration: rewrite the legacy assignee value `soundarya` to

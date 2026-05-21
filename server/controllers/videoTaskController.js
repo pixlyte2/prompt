@@ -44,50 +44,133 @@ function localDateKey(d) {
  */
 exports.getTaskStats = async (req, res) => {
   try {
-    const tasks = await VideoTask.find(
-      {},
-      { status: 1, scheduledDate: 1 },
-    ).lean();
-
     const todayKey = localDateKey(new Date());
     const weekEnd = new Date();
     weekEnd.setDate(weekEnd.getDate() + 7);
     const weekEndKey = localDateKey(weekEnd);
 
-    let overdue = 0;
-    let today = 0;
-    let thisWeek = 0;
-    let backlog = 0;
-    let scheduled = 0;
-    let completed = 0;
+    const offsetMinutes = -new Date().getTimezoneOffset();
+    const hours = Math.floor(Math.abs(offsetMinutes) / 60);
+    const minutes = Math.abs(offsetMinutes) % 60;
+    const sign = offsetMinutes >= 0 ? "+" : "-";
+    const tzOffset = `${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 
-    for (const t of tasks) {
-      if (t.status === "completed") {
-        completed += 1;
-        continue;
+    const [stats] = await VideoTask.aggregate([
+      {
+        $project: {
+          status: 1,
+          dateKey: {
+            $cond: {
+              if: { $eq: [{ $type: "$scheduledDate" }, "date"] },
+              then: { $dateToString: { format: "%Y-%m-%d", date: "$scheduledDate", timezone: tzOffset } },
+              else: ""
+            }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          completed: {
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] }
+          },
+          overdue: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$status", "completed"] },
+                    { $ne: ["$dateKey", ""] },
+                    { $lt: ["$dateKey", todayKey] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          today: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$status", "completed"] },
+                    { $eq: ["$dateKey", todayKey] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          thisWeek: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$status", "completed"] },
+                    { $ne: ["$dateKey", ""] },
+                    { $gte: ["$dateKey", todayKey] },
+                    { $lte: ["$dateKey", weekEndKey] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          backlog: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$status", "completed"] },
+                    { $eq: ["$dateKey", ""] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          scheduled: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$status", "completed"] },
+                    { $ne: ["$dateKey", ""] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
       }
-      const k = t.scheduledDate ? localDateKey(t.scheduledDate) : "";
-      if (!t.scheduledDate || k === "") {
-        backlog += 1;
-      } else {
-        scheduled += 1;
-        if (k < todayKey) overdue += 1;
-        if (k === todayKey) today += 1;
-        if (k >= todayKey && k <= weekEndKey) thisWeek += 1;
-      }
-    }
+    ]);
 
-    const active = tasks.length - completed;
+    const result = stats ? {
+      overdue: stats.overdue,
+      today: stats.today,
+      thisWeek: stats.thisWeek,
+      backlog: stats.backlog,
+      scheduled: stats.scheduled,
+      completed: stats.completed,
+      active: stats.total - stats.completed
+    } : {
+      overdue: 0,
+      today: 0,
+      thisWeek: 0,
+      backlog: 0,
+      scheduled: 0,
+      completed: 0,
+      active: 0
+    };
 
-    res.json({
-      overdue,
-      today,
-      thisWeek,
-      backlog,
-      scheduled,
-      completed,
-      active,
-    });
+    res.json(result);
   } catch (err) {
     console.error("getTaskStats error:", err.message);
     res.status(500).json({ message: "Failed to load task stats" });
