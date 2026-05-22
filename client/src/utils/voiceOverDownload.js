@@ -50,12 +50,21 @@ export async function downloadVoiceOverFile(task) {
 /**
  * @param {string} taskId
  * @param {File} file
+ * @param {function(number): void} [onProgress]
  */
-export async function uploadVoiceOverFile(taskId, file) {
+export async function uploadVoiceOverFile(taskId, file, onProgress) {
   try {
     const fd = new FormData();
     fd.append("file", file);
-    await api.post(`/video-tasks/${taskId}/voice-over`, fd, { timeout: 120_000 });
+    await api.post(`/video-tasks/${taskId}/voice-over`, fd, {
+      timeout: 120_000,
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onProgress(percentCompleted);
+        }
+      }
+    });
   } catch (e) {
     const msg = e.response?.data?.message;
     throw new Error(typeof msg === "string" ? msg : e.message || "Upload failed");

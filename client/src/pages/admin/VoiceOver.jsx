@@ -300,6 +300,8 @@ function VoiceOverTaskRow({
   audioPlaying,
   audioLoading,
   onPlayToggle,
+  uploadProgress,
+  setUploadProgress,
 }) {
   const [scriptModalOpen, setScriptModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -327,14 +329,73 @@ function VoiceOverTaskRow({
       return;
     }
     setUploadingTaskId(taskKey);
+    setUploadProgress(0);
+
+    const startTime = Date.now();
+    let intervalId;
+    
+    // Simulated smooth progress up to 99% over 5 seconds
+    const duration = 5000; // 5 seconds
+    const intervalTime = 50; // Update every 50ms
+    const totalSteps = duration / intervalTime;
+    let currentStep = 0;
+
+    intervalId = setInterval(() => {
+      currentStep++;
+      if (currentStep >= totalSteps) {
+        clearInterval(intervalId);
+        setUploadProgress(99);
+      } else {
+        const pct = Math.min(Math.round((currentStep / totalSteps) * 99), 99);
+        setUploadProgress(pct);
+      }
+    }, intervalTime);
+
     try {
+      // Run the upload request
       await uploadVoiceOverFile(task._id, file);
+
+      // Clear the simulation interval
+      clearInterval(intervalId);
+
+      // Calculate how much time is remaining to reach 5 seconds
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, duration - elapsed);
+
+      if (remaining > 0) {
+        // Animate the remaining progress smoothly to 100% over the remaining time
+        const startProgress = currentStep >= totalSteps ? 99 : Math.round((currentStep / totalSteps) * 99);
+        const stepsLeft = Math.ceil(remaining / 50);
+        let currentStepLeft = 0;
+
+        await new Promise((resolve) => {
+          const finalInterval = setInterval(() => {
+            currentStepLeft++;
+            if (currentStepLeft >= stepsLeft) {
+              clearInterval(finalInterval);
+              setUploadProgress(100);
+              resolve();
+            } else {
+              const progressDiff = 100 - startProgress;
+              const nextPct = Math.round(startProgress + (currentStepLeft / stepsLeft) * progressDiff);
+              setUploadProgress(Math.min(nextPct, 100));
+            }
+          }, 50);
+        });
+      } else {
+        setUploadProgress(100);
+        // Small delay to let the user see the 100% before hiding
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+
       toast.success("Voice-over uploaded");
       await onReload();
     } catch (err) {
+      clearInterval(intervalId);
       toast.error(err.message || "Upload failed");
     } finally {
       setUploadingTaskId(null);
+      setUploadProgress(0);
     }
   };
 
@@ -394,166 +455,185 @@ function VoiceOverTaskRow({
         />
       )}
       
-      <div className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/40 hover:bg-white dark:hover:bg-gray-900/60 shadow-sm hover:shadow-md transition-all duration-300">
-        
-        {/* Media and Text Container */}
-        <div className="flex items-start gap-2.5 sm:gap-4 min-w-0 flex-1">
-          {thumb ? (
-            <a
-              href={taskUrl || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-shrink-0 w-16 h-10 sm:w-20 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 relative ring-1 ring-black/5 block group-hover:scale-105 transition-transform"
-            >
-              <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
-              <span className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                <ExternalLink size={12} className="drop-shadow" />
-              </span>
-            </a>
-          ) : (
-            <div className="flex-shrink-0 w-16 h-10 sm:w-20 sm:h-12 rounded-lg sm:rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200/60 dark:border-gray-700/60">
-              <PlatformIcon platform={platform} size={18} />
-            </div>
-          )}
-          
-          <div className="min-w-0 flex-1 pt-0.5">
-            <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
-              {task.title}
-            </h3>
+      <div className="group flex flex-col p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/40 hover:bg-white dark:hover:bg-gray-900/60 shadow-sm hover:shadow-md transition-all duration-300">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
+          {/* Media and Text Container */}
+          <div className="flex items-start gap-2.5 sm:gap-4 min-w-0 flex-1">
+            {thumb ? (
+              <a
+                href={taskUrl || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0 w-16 h-10 sm:w-20 sm:h-12 rounded-lg sm:rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 relative ring-1 ring-black/5 block group-hover:scale-105 transition-transform"
+              >
+                <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+                <span className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                  <ExternalLink size={12} className="drop-shadow" />
+                </span>
+              </a>
+            ) : (
+              <div className="flex-shrink-0 w-16 h-10 sm:w-20 sm:h-12 rounded-lg sm:rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200/60 dark:border-gray-700/60">
+                <PlatformIcon platform={platform} size={18} />
+              </div>
+            )}
             
-            {/* Badges list */}
-            <div className="mt-1 sm:mt-2 flex flex-wrap items-center gap-1">
-              {scriptOk ? (
-                <span className="inline-flex items-center rounded-md sm:rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-950/60 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                  Script Ready
-                </span>
-              ) : (
-                <span className="inline-flex items-center rounded-md sm:rounded-lg border border-dashed border-amber-300 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-955/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                  Needs Script
-                </span>
-              )}
+            <div className="min-w-0 flex-1 pt-0.5">
+              <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+                {task.title}
+              </h3>
               
-              {scriptOk && voOk && (
-                <span className="inline-flex items-center rounded-md sm:rounded-lg border border-indigo-200 bg-indigo-50 dark:border-indigo-950/60 dark:bg-indigo-950/40 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
-                  VO Ready
-                </span>
-              )}
-              
-              {voOk && (
-                <span
-                  className="min-w-0 max-w-[10rem] sm:max-w-[12rem] truncate rounded-md sm:rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/80 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold text-gray-600 dark:text-gray-300"
-                  title={task.voiceOverOriginalName || "Uploaded file"}
-                >
-                  🎧 {task.voiceOverOriginalName || "Uploaded file"}
-                </span>
-              )}
+              {/* Badges list */}
+              <div className="mt-1 sm:mt-2 flex flex-wrap items-center gap-1">
+                {scriptOk ? (
+                  <span className="inline-flex items-center rounded-md sm:rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-950/60 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                    Script Ready
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-md sm:rounded-lg border border-dashed border-amber-300 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-955/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                    Needs Script
+                  </span>
+                )}
+                
+                {scriptOk && voOk && (
+                  <span className="inline-flex items-center rounded-md sm:rounded-lg border border-indigo-200 bg-indigo-50 dark:border-indigo-950/60 dark:bg-indigo-950/40 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+                    VO Ready
+                  </span>
+                )}
+                
+                {voOk && (
+                  <span
+                    className="min-w-0 max-w-[10rem] sm:max-w-[12rem] truncate rounded-md sm:rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/80 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold text-gray-600 dark:text-gray-300"
+                    title={task.voiceOverOriginalName || "Uploaded file"}
+                  >
+                    🎧 {task.voiceOverOriginalName || "Uploaded file"}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Actions Container */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-105 sm:pt-0 sm:border-0 sm:justify-end shrink-0">
-          
-          {/* Custom inline stream play trigger */}
-          {voOk && (
+          {/* Actions Container */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-105 sm:pt-0 sm:border-0 sm:justify-end shrink-0">
+            
+            {/* Custom inline stream play trigger */}
+            {voOk && (
+              <button
+                type="button"
+                onClick={() => onPlayToggle?.(task)}
+                disabled={rowBlocking}
+                className={`h-8 px-2.5 sm:h-9 sm:px-3 inline-flex items-center justify-center gap-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
+                  isPlayingThisTask
+                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 active:scale-95"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95"
+                }`}
+              >
+                {audioLoading && isPlayingThisTask ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : isPlayingThisTask && audioPlaying ? (
+                  <Pause size={12} />
+                ) : (
+                  <Play size={12} />
+                )}
+                <span>{isPlayingThisTask && audioPlaying ? "Playing" : "Listen"}</span>
+              </button>
+            )}
+
+            {/* Script view button */}
             <button
               type="button"
-              onClick={() => onPlayToggle?.(task)}
-              disabled={rowBlocking}
-              className={`h-8 px-2.5 sm:h-9 sm:px-3 inline-flex items-center justify-center gap-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
-                isPlayingThisTask
-                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 active:scale-95"
-                  : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95"
-              }`}
+              disabled={scriptActionsLocked}
+              onClick={() => setScriptModalOpen(true)}
+              className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-800 hover:bg-gray-55 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed text-gray-600 dark:text-gray-300 active:scale-95"
+              title={!scriptOk ? "No script on this task" : "View script"}
+              aria-label="View script"
             >
-              {audioLoading && isPlayingThisTask ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : isPlayingThisTask && audioPlaying ? (
-                <Pause size={12} />
-              ) : (
-                <Play size={12} />
-              )}
-              <span>{isPlayingThisTask && audioPlaying ? "Playing" : "Listen"}</span>
+              <Eye size={14} />
             </button>
-          )}
 
-          {/* Script view button */}
-          <button
-            type="button"
-            disabled={scriptActionsLocked}
-            onClick={() => setScriptModalOpen(true)}
-            className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-800 hover:bg-gray-55 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed text-gray-600 dark:text-gray-300 active:scale-95"
-            title={!scriptOk ? "No script on this task" : "View script"}
-            aria-label="View script"
-          >
-            <Eye size={14} />
-          </button>
+            {/* Script download button */}
+            <button
+              type="button"
+              disabled={scriptActionsLocked}
+              onClick={handleDownloadScriptTxt}
+              className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-800 hover:bg-gray-55 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed text-gray-600 dark:text-gray-300 active:scale-95"
+              title="Download script as .txt"
+              aria-label="Download script"
+            >
+              {scriptDownloadBusy ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Download size={14} />
+              )}
+            </button>
 
-          {/* Script download button */}
-          <button
-            type="button"
-            disabled={scriptActionsLocked}
-            onClick={handleDownloadScriptTxt}
-            className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-800 hover:bg-gray-55 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed text-gray-600 dark:text-gray-300 active:scale-95"
-            title="Download script as .txt"
-            aria-label="Download script"
-          >
-            {scriptDownloadBusy ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Download size={14} />
+            {/* Audio Upload element wrapper */}
+            <label
+              className={`h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 ${
+                busyUpload ? uploadBusyClasses : uploadIdleClasses
+              }`}
+              title={uploadLabelTitle}
+            >
+              {busyUpload ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              <input
+                type="file"
+                accept={VOICE_OVER_ACCEPT}
+                className="sr-only"
+                disabled={!canUploadVo || busyUpload}
+                onChange={handleVoiceFileChange}
+                aria-label={uploadLabelTitle}
+              />
+            </label>
+
+            {/* Optional Audio Actions (Download, Delete) */}
+            {voOk && (
+              <>
+                <button
+                  type="button"
+                  disabled={rowBlocking}
+                  onClick={() => onVoiceOverDownload?.(task)}
+                  className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-800 hover:bg-gray-55 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed text-gray-600 dark:text-gray-300 active:scale-95"
+                  title="Download voice-over audio file"
+                  aria-label="Download voice-over"
+                >
+                  {busyVoDownload ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <FileAudio size={14} />
+                  )}
+                </button>
+                
+                <button
+                  type="button"
+                  disabled={rowBlocking}
+                  onClick={() => setDeleteModalOpen(true)}
+                  className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-red-200/50 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-955/20 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Remove voice-over"
+                  aria-label="Remove voice-over"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </>
             )}
-          </button>
-
-          {/* Audio Upload element wrapper */}
-          <label
-            className={`h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 ${
-              busyUpload ? uploadBusyClasses : uploadIdleClasses
-            }`}
-            title={uploadLabelTitle}
-          >
-            {busyUpload ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-            <input
-              type="file"
-              accept={VOICE_OVER_ACCEPT}
-              className="sr-only"
-              disabled={!canUploadVo || busyUpload}
-              onChange={handleVoiceFileChange}
-              aria-label={uploadLabelTitle}
-            />
-          </label>
-
-          {/* Optional Audio Actions (Download, Delete) */}
-          {voOk && (
-            <>
-              <button
-                type="button"
-                disabled={rowBlocking}
-                onClick={() => onVoiceOverDownload?.(task)}
-                className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-800 hover:bg-gray-55 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed text-gray-600 dark:text-gray-300 active:scale-95"
-                title="Download voice-over audio file"
-                aria-label="Download voice-over"
-              >
-                {busyVoDownload ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <FileAudio size={14} />
-                )}
-              </button>
-              
-              <button
-                type="button"
-                disabled={rowBlocking}
-                onClick={() => setDeleteModalOpen(true)}
-                className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-red-200/50 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-955/20 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Remove voice-over"
-                aria-label="Remove voice-over"
-              >
-                <Trash2 size={14} />
-              </button>
-            </>
-          )}
+          </div>
         </div>
+        {busyUpload && (
+          <div className="w-full mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800/60">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 animate-pulse">
+                <Loader2 size={12} className="animate-spin" /> Uploading voice-over...
+              </span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                {uploadProgress}%
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800/80 rounded-full overflow-hidden shadow-inner">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-150 ease-out"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
@@ -574,6 +654,8 @@ function DateSection({
   audioPlaying,
   audioLoading,
   onPlayToggle,
+  uploadProgress,
+  setUploadProgress,
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -609,6 +691,8 @@ function DateSection({
               audioPlaying={audioPlaying}
               audioLoading={audioLoading}
               onPlayToggle={onPlayToggle}
+              uploadProgress={uploadProgress}
+              setUploadProgress={setUploadProgress}
             />
           ))}
         </div>
@@ -621,6 +705,7 @@ export default function VoiceOver() {
   const [scheduleTasks, setScheduleTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadingTaskId, setUploadingTaskId] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingTaskId, setDeletingTaskId] = useState(null);
   const [voiceOverDownloadingIds, setVoiceOverDownloadingIds] = useState(() => new Set());
 
@@ -802,15 +887,18 @@ export default function VoiceOver() {
     };
   }, [audioUrl]);
 
-  // Computed: KPI metrics (always computed based on raw scheduleTasks)
+  // Computed: KPI metrics (computed based on selected date if date is selected, otherwise all tasks)
   const metrics = useMemo(() => {
-    const list = scheduleTasks || [];
+    let list = scheduleTasks || [];
+    if (filterDate) {
+      list = list.filter((t) => toDateKey(t.scheduledDate) === filterDate);
+    }
     const total = list.length;
     const missingScript = list.filter((t) => !hasScript(t)).length;
     const awaitingVo = list.filter((t) => hasScript(t) && !hasVoiceOver(t)).length;
     const voCompleted = list.filter((t) => hasScript(t) && hasVoiceOver(t)).length;
     return { total, missingScript, awaitingVo, voCompleted };
-  }, [scheduleTasks]);
+  }, [scheduleTasks, filterDate]);
 
   // Computed: Filtered Tasks
   const filteredTasks = useMemo(() => {
@@ -818,7 +906,6 @@ export default function VoiceOver() {
       if (filterDate) {
         const taskDate = toDateKey(t.scheduledDate);
         if (taskDate !== filterDate) return false;
-        if (hasVoiceOver(t)) return false;
       }
 
       const q = searchQuery.toLowerCase().trim();
@@ -932,9 +1019,9 @@ export default function VoiceOver() {
               >
                 {[
                   { value: "all", label: `All (${metrics.total})` },
-                  { value: "no-script", label: `Needs Script (${metrics.missingScript})` },
+                  { value: "no-script", label: `Script Pending (${metrics.missingScript})` },
                   { value: "no-vo", label: `VO Pending (${metrics.awaitingVo})` },
-                  { value: "vo-ready", label: `VO Uploaded (${metrics.voCompleted})` },
+                  { value: "vo-ready", label: `VO Complete (${metrics.voCompleted})` },
                 ].map((f) => (
                   <option key={f.value} value={f.value}>
                     {f.label}
@@ -950,9 +1037,9 @@ export default function VoiceOver() {
             <div className="hidden sm:flex items-center gap-1 sm:gap-1.5">
               {[
                 { value: "all", label: `All (${metrics.total})` },
-                { value: "no-script", label: `Needs Script (${metrics.missingScript})` },
+                { value: "no-script", label: `Script Pending (${metrics.missingScript})` },
                 { value: "no-vo", label: `VO Pending (${metrics.awaitingVo})` },
-                { value: "vo-ready", label: `VO Uploaded (${metrics.voCompleted})` },
+                { value: "vo-ready", label: `VO Complete (${metrics.voCompleted})` },
               ].map((f) => (
                 <button
                   key={f.value}
@@ -1017,6 +1104,8 @@ export default function VoiceOver() {
                 audioPlaying={audioPlaying}
                 audioLoading={audioLoading}
                 onPlayToggle={handleTogglePlay}
+                uploadProgress={uploadProgress}
+                setUploadProgress={setUploadProgress}
               />
             ))}
           </div>
