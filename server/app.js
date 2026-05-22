@@ -88,6 +88,7 @@ const startServer = async () => {
 
   // One-shot data migrations (idempotent on subsequent boots)
   await VideoTask.migrateLegacyAssignees();
+  await VideoTask.initializeCustomVideoIds();
 
   if (process.env.NODE_ENV !== "production") {
     const PORT = process.env.PORT || 5000;

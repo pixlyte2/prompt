@@ -606,69 +606,7 @@ const TaskRow = memo(function TaskRow({
         <StatusCheckbox status={task.status} onClick={handleStatusClick} />
       </div>
 
-      {/* Notes — opens detail modal */}
-      {hasTaskNotes(task) && (
-        <button
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenDetail?.(task);
-          }}
-          className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-sky-50 text-sky-800 border border-sky-200/90 dark:bg-sky-900/35 dark:text-sky-100 dark:border-sky-700/60 shadow-sm hover:bg-sky-100 dark:hover:bg-sky-900/55 hover:border-sky-300 dark:hover:border-sky-500 transition-colors cursor-pointer min-h-[26px]"
-          title="Notes — tap to read"
-          aria-label="Open notes"
-        >
-          <FileText size={14} className="flex-shrink-0 opacity-90" aria-hidden />
-          <span>Notes</span>
-        </button>
-      )}
-      {/* Script — opens same detail modal */}
-      {hasTaskScript(task) && (
-        <button
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenDetail?.(task);
-          }}
-          className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-violet-50 text-violet-800 border border-violet-200/90 dark:bg-violet-900/35 dark:text-violet-100 dark:border-violet-700/60 shadow-sm hover:bg-violet-100 dark:hover:bg-violet-900/55 hover:border-violet-300 dark:hover:border-violet-500 transition-colors cursor-pointer min-h-[26px]"
-          title="Script — tap to read"
-          aria-label="Open script"
-        >
-          <ScrollText size={14} className="flex-shrink-0 opacity-90" aria-hidden />
-          <span>Script</span>
-        </button>
-      )}
-      {hasTaskVoiceOver(task) && (
-        <button
-          type="button"
-          disabled={audioLoading && isPlayingThisTask}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPlayToggle?.(task);
-          }}
-          className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all min-h-[26px] ${
-            isPlayingThisTask && audioPlaying
-              ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-md shadow-indigo-500/20 active:scale-95 cursor-pointer"
-              : "bg-emerald-50 text-emerald-800 border border-emerald-200/90 dark:bg-emerald-900/35 dark:text-emerald-100 dark:border-emerald-700/60 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/55 hover:border-emerald-300 dark:hover:border-emerald-500 active:scale-95 cursor-pointer"
-          }`}
-          title={isPlayingThisTask && audioPlaying ? "Voice-over — playing (click to pause)" : "Voice-over — listen inline"}
-          aria-label={isPlayingThisTask && audioPlaying ? "Pause voice-over" : "Listen to voice-over"}
-        >
-          {audioLoading && isPlayingThisTask ? (
-            <Loader2 size={14} className="flex-shrink-0 opacity-90 animate-spin" aria-hidden />
-          ) : isPlayingThisTask && audioPlaying ? (
-            <Pause size={14} className="flex-shrink-0" />
-          ) : (
-            <Play size={14} className="flex-shrink-0" />
-          )}
-          <span>VO</span>
-        </button>
-      )}
-
-      {/* Actions (visible on hover/active) */}
+      {/* Actions (Edit Icon, Delete Icon) */}
       <div className="flex-shrink-0 flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity mr-0.5">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(task); }}
@@ -686,7 +624,14 @@ const TaskRow = memo(function TaskRow({
         </button>
       </div>
 
-      {/* Thumbnail / Platform icon */}
+      {/* Video ID Big Pill */}
+      {task.customVideoId && (
+        <span className="flex-shrink-0 inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700/60 shadow-sm min-h-[28px]">
+          ID: {task.customVideoId}
+        </span>
+      )}
+
+      {/* Thumbnail / Platform icon (video Image) */}
       {thumb ? (
         <a
           href={taskUrl || "#"}
@@ -746,6 +691,71 @@ const TaskRow = memo(function TaskRow({
           })()}
         </div>
       </div>
+
+      {/* Script — opens same detail modal */}
+      {hasTaskScript(task) && (
+        <button
+          type="button"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenDetail?.(task);
+          }}
+          className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-violet-50 text-violet-800 border border-violet-200/90 dark:bg-violet-900/35 dark:text-violet-100 dark:border-violet-700/60 shadow-sm hover:bg-violet-100 dark:hover:bg-violet-900/55 hover:border-violet-300 dark:hover:border-violet-500 transition-colors cursor-pointer min-h-[26px]"
+          title="Script — tap to read"
+          aria-label="Open script"
+        >
+          <ScrollText size={14} className="flex-shrink-0 opacity-90" aria-hidden />
+          <span>Script</span>
+        </button>
+      )}
+
+      {/* Voice-over (VO) */}
+      {hasTaskVoiceOver(task) && (
+        <button
+          type="button"
+          disabled={audioLoading && isPlayingThisTask}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlayToggle?.(task);
+          }}
+          className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all min-h-[26px] ${
+            isPlayingThisTask && audioPlaying
+              ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-md shadow-indigo-500/20 active:scale-95 cursor-pointer"
+              : "bg-emerald-50 text-emerald-800 border border-emerald-200/90 dark:bg-emerald-900/35 dark:text-emerald-100 dark:border-emerald-700/60 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/55 hover:border-emerald-300 dark:hover:border-emerald-500 active:scale-95 cursor-pointer"
+          }`}
+          title={isPlayingThisTask && audioPlaying ? "Voice-over — playing (click to pause)" : "Voice-over — listen inline"}
+          aria-label={isPlayingThisTask && audioPlaying ? "Pause voice-over" : "Listen to voice-over"}
+        >
+          {audioLoading && isPlayingThisTask ? (
+            <Loader2 size={14} className="flex-shrink-0 opacity-90 animate-spin" aria-hidden />
+          ) : isPlayingThisTask && audioPlaying ? (
+            <Pause size={14} className="flex-shrink-0" />
+          ) : (
+            <Play size={14} className="flex-shrink-0" />
+          )}
+          <span>VO</span>
+        </button>
+      )}
+
+      {/* Notes — opens detail modal */}
+      {hasTaskNotes(task) && (
+        <button
+          type="button"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenDetail?.(task);
+          }}
+          className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-sky-50 text-sky-800 border border-sky-200/90 dark:bg-sky-900/35 dark:text-sky-100 dark:border-sky-700/60 shadow-sm hover:bg-sky-100 dark:hover:bg-sky-900/55 hover:border-sky-300 dark:hover:border-sky-500 transition-colors cursor-pointer min-h-[26px]"
+          title="Notes — tap to read"
+          aria-label="Open notes"
+        >
+          <FileText size={14} className="flex-shrink-0 opacity-90" aria-hidden />
+          <span>Notes</span>
+        </button>
+      )}
 
       {/* Content format pills */}
       {task.contentFormat && (
@@ -889,11 +899,21 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
     const bAssigned = getAssignedToString(b);
     
     // Empty assignments go to the end
-    if (!aAssigned && !bAssigned) return 0;
+    if (!aAssigned && !bAssigned) {
+      const idA = a.customVideoId != null ? Number(a.customVideoId) : Infinity;
+      const idB = b.customVideoId != null ? Number(b.customVideoId) : Infinity;
+      if (idA !== idB) return idA - idB;
+      return 0;
+    }
     if (!aAssigned) return 1;
     if (!bAssigned) return -1;
     
-    return aAssigned.localeCompare(bAssigned);
+    const cmp = aAssigned.localeCompare(bAssigned);
+    if (cmp !== 0) return cmp;
+
+    const idA = a.customVideoId != null ? Number(a.customVideoId) : Infinity;
+    const idB = b.customVideoId != null ? Number(b.customVideoId) : Infinity;
+    return idA - idB;
   });
 
   const formatAssignedTo = (assignedTo) => {
@@ -1052,6 +1072,9 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
             <thead className="bg-gray-50 dark:bg-gray-800/50 sticky top-0">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  Video ID
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
                   Channel Type
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
@@ -1085,6 +1108,15 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
                 const voiceDownloading = voiceOverDownloadingIds?.has(String(task._id)) ?? false;
                 return (
                 <tr key={task._id} className={index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800/30"}>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                    {task.customVideoId ? (
+                      <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700/60 shadow-sm min-h-[26px]">
+                        ID: {task.customVideoId}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                     <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
                       {task.channelType}
@@ -2342,6 +2374,11 @@ export default function ProductionHub() {
         const aAss = (a.assignedTo && a.assignedTo.length > 0) ? a.assignedTo[0].toLowerCase() : "zzzz";
         const bAss = (b.assignedTo && b.assignedTo.length > 0) ? b.assignedTo[0].toLowerCase() : "zzzz";
         if (aAss !== bAss) return aAss.localeCompare(bAss);
+        
+        const idA = a.customVideoId != null ? Number(a.customVideoId) : Infinity;
+        const idB = b.customVideoId != null ? Number(b.customVideoId) : Infinity;
+        if (idA !== idB) return idA - idB;
+
         return STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
       })
     );
@@ -2358,6 +2395,11 @@ export default function ProductionHub() {
       const aAss = (a.assignedTo && a.assignedTo.length > 0) ? a.assignedTo[0].toLowerCase() : "zzzz";
       const bAss = (b.assignedTo && b.assignedTo.length > 0) ? b.assignedTo[0].toLowerCase() : "zzzz";
       if (aAss !== bAss) return aAss.localeCompare(bAss);
+
+      const idA = a.customVideoId != null ? Number(a.customVideoId) : Infinity;
+      const idB = b.customVideoId != null ? Number(b.customVideoId) : Infinity;
+      if (idA !== idB) return idA - idB;
+
       return STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
     });
     return [{ key: null, tasks: list }];
@@ -2376,6 +2418,11 @@ export default function ProductionHub() {
         const aAss = (a.assignedTo && a.assignedTo.length > 0) ? a.assignedTo[0].toLowerCase() : "zzzz";
         const bAss = (b.assignedTo && b.assignedTo.length > 0) ? b.assignedTo[0].toLowerCase() : "zzzz";
         if (aAss !== bAss) return aAss.localeCompare(bAss);
+
+        const idA = a.customVideoId != null ? Number(a.customVideoId) : Infinity;
+        const idB = b.customVideoId != null ? Number(b.customVideoId) : Infinity;
+        if (idA !== idB) return idA - idB;
+
         return new Date(b.completedAt || b.updatedAt) - new Date(a.completedAt || a.updatedAt);
       })
     );

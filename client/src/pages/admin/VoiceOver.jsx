@@ -92,9 +92,9 @@ function hasVoiceOver(task) {
 }
 
 function sortVoiceOverTasksForDisplay(a, b) {
-  const sa = hasScript(a) ? 1 : 0;
-  const sb = hasScript(b) ? 1 : 0;
-  if (sa !== sb) return sb - sa;
+  const idA = a.customVideoId != null ? Number(a.customVideoId) : Infinity;
+  const idB = b.customVideoId != null ? Number(b.customVideoId) : Infinity;
+  if (idA !== idB) return idA - idB;
   return String(a.title || "").localeCompare(String(b.title || ""), undefined, { sensitivity: "base" });
 }
 
@@ -484,6 +484,11 @@ function VoiceOverTaskRow({
               
               {/* Badges list */}
               <div className="mt-1 sm:mt-2 flex flex-wrap items-center gap-1">
+                {task.customVideoId && (
+                  <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 dark:border-blue-950/80 dark:bg-blue-950/40 px-2.5 py-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-400 shadow-sm">
+                    ID: {task.customVideoId}
+                  </span>
+                )}
                 {scriptOk ? (
                   <span className="inline-flex items-center rounded-md sm:rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-950/60 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                     Script Ready

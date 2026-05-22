@@ -293,36 +293,34 @@ exports.updateTask = async (req, res) => {
       }
     }
 
-    const update = {};
+    const task = await VideoTask.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
     if (status) {
-      update.status = status;
-      if (status === "completed") update.completedAt = new Date();
-      else update.completedAt = null;
+      task.status = status;
+      if (status === "completed") task.completedAt = new Date();
+      else task.completedAt = null;
     }
     if (scheduledDate !== undefined) {
-      update.scheduledDate = scheduledDate ? new Date(scheduledDate) : null;
+      task.scheduledDate = scheduledDate ? new Date(scheduledDate) : null;
     }
-    if (notes !== undefined) update.notes = notes;
-    if (script !== undefined) update.script = script;
-    if (title !== undefined) update.title = title;
-    if (url !== undefined) update.url = url;
-    if (videoId !== undefined) update.videoId = videoId;
-    if (platform !== undefined) update.platform = platform;
-    if (contentFormat !== undefined) update.contentFormat = contentFormat;
-    if (assignedTo !== undefined) update.assignedTo = assignedTo;
-    if (channelType !== undefined) update.channelType = channelType;
-    if (channelName !== undefined) update.channelName = channelName;
-    if (channelHandle !== undefined) update.channelHandle = channelHandle;
-    if (thumbnail !== undefined) update.thumbnail = thumbnail;
-    if (views !== undefined) update.views = views;
-    if (viewsText !== undefined) update.viewsText = viewsText;
-    if (duration !== undefined) update.duration = duration;
+    if (notes !== undefined) task.notes = notes;
+    if (script !== undefined) task.script = script;
+    if (title !== undefined) task.title = title;
+    if (url !== undefined) task.url = url;
+    if (videoId !== undefined) task.videoId = videoId;
+    if (platform !== undefined) task.platform = platform;
+    if (contentFormat !== undefined) task.contentFormat = contentFormat;
+    if (assignedTo !== undefined) task.assignedTo = assignedTo;
+    if (channelType !== undefined) task.channelType = channelType;
+    if (channelName !== undefined) task.channelName = channelName;
+    if (channelHandle !== undefined) task.channelHandle = channelHandle;
+    if (thumbnail !== undefined) task.thumbnail = thumbnail;
+    if (views !== undefined) task.views = views;
+    if (viewsText !== undefined) task.viewsText = viewsText;
+    if (duration !== undefined) task.duration = duration;
 
-    const task = await VideoTask.findByIdAndUpdate(req.params.id, update, {
-      new: true,
-      runValidators: true,
-    });
-    if (!task) return res.status(404).json({ message: "Task not found" });
+    await task.save();
     res.json(task);
   } catch (err) {
     console.error("updateTask error:", err.message);

@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const videoTaskSchema = new mongoose.Schema(
   {
     videoId: { type: String, default: "" },
+    customVideoId: { type: Number },
     title: { type: String, required: true },
     thumbnail: String,
     channelName: String,
@@ -57,6 +58,17 @@ const videoTaskSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+videoTaskSchema.pre("save", async function() {
+  if (!this.customVideoId) {
+    const maxTask = await this.constructor.findOne(
+      { customVideoId: { $ne: null } },
+      { customVideoId: 1 }
+    ).sort({ customVideoId: -1 });
+    
+    this.customVideoId = maxTask && maxTask.customVideoId ? maxTask.customVideoId + 1 : 111;
+  }
+});
+
 videoTaskSchema.index({ status: 1, channelType: 1 });
 videoTaskSchema.index({ scheduledDate: 1 });
 videoTaskSchema.index({ status: 1, scheduledDate: 1 });
@@ -81,6 +93,35 @@ videoTaskSchema.statics.migrateLegacyAssignees = async function migrateLegacyAss
     return result.modifiedCount || 0;
   } catch (err) {
     console.error("VideoTask assignee migration failed:", err.message);
+    return 0;
+  }
+};
+
+videoTaskSchema.statics.initializeCustomVideoIds = async function initializeCustomVideoIds() {
+  try {
+    const tasks = await this.find({ customVideoId: null }).sort({ createdAt: 1 });
+    if (tasks.length === 0) return 0;
+    
+    const maxTask = await this.findOne(
+      { customVideoId: { $ne: null } },
+      { customVideoId: 1 }
+    ).sort({ customVideoId: -1 });
+    
+    let nextId = maxTask && maxTask.customVideoId ? maxTask.customVideoId + 1 : 111;
+    
+    let updatedCount = 0;
+    for (const task of tasks) {
+      task.customVideoId = nextId++;
+      await task.save();
+      updatedCount++;
+    }
+    
+    if (updatedCount > 0) {
+      console.log(`🔁 VideoTask migration: initialized customVideoIds for ${updatedCount} task(s)`);
+    }
+    return updatedCount;
+  } catch (err) {
+    console.error("VideoTask customVideoId initialization failed:", err.message);
     return 0;
   }
 };
