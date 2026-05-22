@@ -455,7 +455,7 @@ function VoiceOverTaskRow({
         />
       )}
       
-      <div className="group flex flex-col p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/40 hover:bg-white dark:hover:bg-gray-900/60 shadow-sm hover:shadow-md transition-all duration-300">
+      <div className="group flex flex-col p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/40 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 hover:border-blue-400/60 dark:hover:border-blue-700/60 shadow-sm hover:shadow-md transition-all duration-300">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
           {/* Media and Text Container */}
           <div className="flex items-start gap-2.5 sm:gap-4 min-w-0 flex-1">
@@ -967,8 +967,9 @@ export default function VoiceOver() {
       titleInfo="A high-performance workspace for recording, streaming, and managing Voice-over assets."
       icon={Mic}
       contentFit
+      noPadding
     >
-      <div className="flex flex-col h-full min-h-0 max-w-5xl mx-auto w-full gap-3 sm:gap-4 px-2 sm:px-0 pb-20">
+      <div className={`flex flex-col h-full min-h-0 overflow-hidden max-w-5xl mx-auto w-full gap-3 sm:gap-4 px-3 sm:px-4 pt-2 ${activePlayingTask ? "pb-28" : "pb-4"}`}>
         
         {/* Search and Action Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 sm:p-4 bg-white/70 dark:bg-gray-900/60 backdrop-blur border border-gray-200/80 dark:border-gray-800/80 rounded-xl sm:rounded-2xl">

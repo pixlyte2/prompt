@@ -73,7 +73,7 @@ export default function AdminLayout({
         />
         <div
           className={`flex-1 flex flex-col min-h-0 min-w-0 ${
-            contentFit ? "overflow-y-auto md:overflow-hidden" : "overflow-y-auto"
+            contentFit ? "overflow-hidden" : "overflow-y-auto"
           } ${noPadding ? "" : "p-3 sm:p-4 md:p-4"}`}
         >
           {children}

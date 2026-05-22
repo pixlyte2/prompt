@@ -599,7 +599,7 @@ const TaskRow = memo(function TaskRow({
     <div
       draggable
       onDragStart={handleDragStart}
-      className="group flex items-center gap-2 px-2.5 py-1 sm:py-1 bg-white dark:bg-gray-800/80 rounded-lg border border-gray-100 dark:border-gray-700/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 hover:shadow-sm cursor-grab active:cursor-grabbing"
+      className="group flex items-center gap-2 px-2.5 py-1 sm:py-1 bg-white dark:bg-gray-800/80 rounded-lg border border-gray-100 dark:border-gray-700/50 hover:border-blue-400/60 dark:hover:border-blue-700/60 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 transition-all duration-300 hover:shadow-sm cursor-grab active:cursor-grabbing"
     >
       {/* Checkbox */}
       <div className="scale-100 flex-shrink-0">
@@ -1107,7 +1107,7 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
               {sortedTasks.map((task, index) => {
                 const voiceDownloading = voiceOverDownloadingIds?.has(String(task._id)) ?? false;
                 return (
-                <tr key={task._id} className={index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800/30"}>
+                <tr key={task._id} className={`${index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800/30"} hover:bg-blue-100/70 dark:hover:bg-blue-900/40 transition-colors`}>
                   <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                     {task.customVideoId ? (
                       <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700/60 shadow-sm min-h-[26px]">
