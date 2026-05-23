@@ -115,7 +115,8 @@ function downloadScriptTxt(task, dateKey) {
   const base = sanitizeFilenameBase(task.title);
   const dk = dateKey || "schedule";
   const name = `${base}-${dk}.txt`;
-  const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
+  // Prepend UTF-8 BOM (\uFEFF) so mobile viewers recognize UTF-8 encoding and render Tamil fonts correctly
+  const blob = new Blob(["\uFEFF" + body], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -894,20 +895,19 @@ export default function VoiceOver() {
 
   // Computed: KPI metrics (computed based on selected date if date is selected, otherwise all tasks)
   const metrics = useMemo(() => {
-    let list = scheduleTasks || [];
+    let list = (scheduleTasks || []).filter(hasScript);
     if (filterDate) {
       list = list.filter((t) => toDateKey(t.scheduledDate) === filterDate);
     }
     const total = list.length;
-    const missingScript = list.filter((t) => !hasScript(t)).length;
-    const awaitingVo = list.filter((t) => hasScript(t) && !hasVoiceOver(t)).length;
-    const voCompleted = list.filter((t) => hasScript(t) && hasVoiceOver(t)).length;
-    return { total, missingScript, awaitingVo, voCompleted };
+    const awaitingVo = list.filter((t) => !hasVoiceOver(t)).length;
+    const voCompleted = list.filter((t) => hasVoiceOver(t)).length;
+    return { total, awaitingVo, voCompleted };
   }, [scheduleTasks, filterDate]);
 
   // Computed: Filtered Tasks
   const filteredTasks = useMemo(() => {
-    return (scheduleTasks || []).filter((t) => {
+    return (scheduleTasks || []).filter(hasScript).filter((t) => {
       if (filterDate) {
         const taskDate = toDateKey(t.scheduledDate);
         if (taskDate !== filterDate) return false;
@@ -920,12 +920,10 @@ export default function VoiceOver() {
 
       if (!matchSearch) return false;
 
-      const scriptOk = hasScript(t);
       const voOk = hasVoiceOver(t);
 
-      if (statusFilter === "no-script") return !scriptOk;
-      if (statusFilter === "no-vo") return scriptOk && !voOk;
-      if (statusFilter === "vo-ready") return scriptOk && voOk;
+      if (statusFilter === "no-vo") return !voOk;
+      if (statusFilter === "vo-ready") return voOk;
 
       return true;
     });
@@ -1025,7 +1023,6 @@ export default function VoiceOver() {
               >
                 {[
                   { value: "all", label: `All (${metrics.total})` },
-                  { value: "no-script", label: `Script Pending (${metrics.missingScript})` },
                   { value: "no-vo", label: `VO Pending (${metrics.awaitingVo})` },
                   { value: "vo-ready", label: `VO Complete (${metrics.voCompleted})` },
                 ].map((f) => (
@@ -1043,7 +1040,6 @@ export default function VoiceOver() {
             <div className="hidden sm:flex items-center gap-1 sm:gap-1.5">
               {[
                 { value: "all", label: `All (${metrics.total})` },
-                { value: "no-script", label: `Script Pending (${metrics.missingScript})` },
                 { value: "no-vo", label: `VO Pending (${metrics.awaitingVo})` },
                 { value: "vo-ready", label: `VO Complete (${metrics.voCompleted})` },
               ].map((f) => (
