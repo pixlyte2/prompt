@@ -58,7 +58,7 @@ function parseRelativeTime(text) {
   return new Date(now - n * (ms[unit] || 0)).toISOString();
 }
 
-function extractVideos(items, channel) {
+function extractVideos(items, channel, videoFormat) {
   return items
     .map((item) => {
       const v = item?.richItemRenderer?.content?.videoRenderer || item?.richItemRenderer?.content?.reelItemRenderer;
@@ -97,6 +97,7 @@ function extractVideos(items, channel) {
           channelName: channel.name,
           channelHandle: channel.handle,
           isLive,
+          videoFormat: videoFormat || "long",
         };
       }
 
@@ -123,6 +124,7 @@ function extractVideos(items, channel) {
           channelName: channel.name,
           channelHandle: channel.handle,
           isLive: viewParts,
+          videoFormat: videoFormat || "short",
         };
       }
 
@@ -147,6 +149,7 @@ function extractVideos(items, channel) {
         channelName: channel.name,
         channelHandle: channel.handle,
         isLive,
+        videoFormat: videoFormat || "long",
       };
     })
     .filter(Boolean);
@@ -223,7 +226,7 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
 
   const items = activeTab?.tabRenderer?.content?.richGridRenderer?.contents || [];
 
-  let videos = extractVideos(items, channel);
+  let videos = extractVideos(items, channel, videoFormat);
 
   // Filter for 'Long' format: only videos less than 9 minutes (540 seconds)
   if (videoFormat === "long") {
@@ -242,7 +245,7 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
   while (videos.length < maxVideos && contToken) {
     try {
       const moreItems = await fetchContinuation(contToken, apiKey);
-      let newVideos = extractVideos(moreItems, channel);
+      let newVideos = extractVideos(moreItems, channel, videoFormat);
       if (newVideos.length === 0) break;
 
       if (videoFormat === "long") {
@@ -269,8 +272,9 @@ async function seedDefaultType() {
   }
 }
 
-async function fetchVideosForType(typeId) {
-  const cached = cacheMap.get(typeId);
+async function fetchVideosForType(typeId, videoFormat) {
+  const cacheKey = videoFormat && videoFormat !== "all" ? `${typeId}_${videoFormat}` : typeId;
+  const cached = cacheMap.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached;
 
   const type = await CompetitorType.findById(typeId).lean();
@@ -278,7 +282,12 @@ async function fetchVideosForType(typeId) {
 
   const maxVideos = type.videosPerChannel || 30;
   const results = await Promise.allSettled(
-    type.channels.map((ch) => scrapeChannel(ch, maxVideos, ch.videoFormat || "long")),
+    type.channels.map((ch) => {
+      const formatToScrape = (videoFormat === "long" || videoFormat === "short")
+        ? videoFormat
+        : (ch.videoFormat || "long");
+      return scrapeChannel(ch, maxVideos, formatToScrape);
+    }),
   );
 
   const videos = results
@@ -286,27 +295,36 @@ async function fetchVideosForType(typeId) {
     .flatMap((r) => r.value);
 
   const entry = { videos, channels: type.channels, ts: Date.now() };
-  cacheMap.set(typeId, entry);
+  cacheMap.set(cacheKey, entry);
   return entry;
 }
 
 exports.clearCache = (typeId) => {
-  if (typeId) cacheMap.delete(typeId);
-  else cacheMap.clear();
+  if (typeId) {
+    for (const key of cacheMap.keys()) {
+      if (key === typeId || key.startsWith(`${typeId}_`)) {
+        cacheMap.delete(key);
+      }
+    }
+  } else {
+    cacheMap.clear();
+  }
 };
 
 exports.getCompetitorVideos = async (req, res) => {
   try {
     await seedDefaultType();
 
-    const { typeId, force } = req.query;
+    const { typeId, force, videoFormat } = req.query;
     if (!typeId) {
       return res.status(400).json({ message: "typeId query parameter is required" });
     }
 
-    if (force === "true") cacheMap.delete(typeId);
+    if (force === "true") {
+      exports.clearCache(typeId);
+    }
 
-    const result = await fetchVideosForType(typeId);
+    const result = await fetchVideosForType(typeId, videoFormat);
     if (!result) {
       return res.status(404).json({ message: "Competitor type not found" });
     }
