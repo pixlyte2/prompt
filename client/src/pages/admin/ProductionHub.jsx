@@ -600,231 +600,261 @@ const TaskRow = memo(function TaskRow({
     <div
       draggable
       onDragStart={handleDragStart}
-      className="group flex items-center gap-2 px-2.5 py-1 sm:py-1 bg-white dark:bg-gray-800/80 rounded-lg border border-gray-100 dark:border-gray-700/50 hover:border-blue-400/60 dark:hover:border-blue-700/60 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 transition-all duration-300 hover:shadow-sm cursor-grab active:cursor-grabbing"
+      className="group flex flex-col sm:flex-row sm:items-center gap-2 px-2.5 py-2 sm:py-1 bg-white dark:bg-gray-800/80 rounded-lg border border-gray-100 dark:border-gray-700/50 hover:border-blue-400/60 dark:hover:border-blue-700/60 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 transition-all duration-300 hover:shadow-sm cursor-grab active:cursor-grabbing"
     >
-      {/* Checkbox */}
-      <div className="scale-100 flex-shrink-0">
-        <StatusCheckbox status={task.status} onClick={handleStatusClick} />
-      </div>
+      {/* Group 1: Main Info (Checkbox, Edit/Delete Actions, Thumbnail, Title/Channel/Views) */}
+      <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto sm:flex-1 sm:contents">
+        {/* Checkbox */}
+        <div className="scale-100 flex-shrink-0">
+          <StatusCheckbox status={task.status} onClick={handleStatusClick} />
+        </div>
 
-      {/* Actions (Edit Icon, Delete Icon) */}
-      <div className="flex-shrink-0 flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity mr-0.5">
-        <button
-          onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-          className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
-          title="Edit"
-        >
-          <Pencil size={18} />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); if (confirm("Delete this task?")) onDelete(task._id); }}
-          className="p-1.5 rounded-lg text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-          title="Delete"
-        >
-          <Trash2 size={18} />
-        </button>
-      </div>
+        {/* Actions (Edit Icon, Delete Icon) - Left on desktop, Right-aligned on mobile */}
+        <div className="flex-shrink-0 flex items-center gap-0.5 opacity-60 sm:opacity-40 group-hover:opacity-100 transition-opacity ml-auto sm:ml-0 order-last sm:order-none">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+            className="p-1 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
+            title="Edit"
+          >
+            <Pencil className="w-[16px] h-[16px] sm:w-[18px] sm:h-[18px]" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); if (confirm("Delete this task?")) onDelete(task._id); }}
+            className="p-1 rounded-lg text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+            title="Delete"
+          >
+            <Trash2 className="w-[16px] h-[16px] sm:w-[18px] sm:h-[18px]" />
+          </button>
+        </div>
 
-      {/* Video ID Big Pill */}
-      {task.customVideoId && (
-        <span className="flex-shrink-0 inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700/60 shadow-sm min-h-[28px]">
-          ID: {task.customVideoId}
-        </span>
-      )}
+        {/* Video ID Big Pill on desktop */}
+        {task.customVideoId && (
+          <span className="hidden sm:inline-flex flex-shrink-0 items-center justify-center px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700/60 shadow-sm min-h-[28px]">
+            ID: {task.customVideoId}
+          </span>
+        )}
 
-      {/* Thumbnail / Platform icon (video Image) */}
-      {thumb ? (
-        <a
-          href={taskUrl || "#"}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-shrink-0 w-12 h-7 sm:w-14 sm:h-8 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 relative group/thumb shadow-sm"
-        >
-          <img src={thumb} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-110" loading="lazy" />
-          <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors flex items-center justify-center">
-            <ExternalLink size={14} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity" />
+        {/* Thumbnail / Platform icon (video Image) */}
+        {thumb ? (
+          <a
+            href={taskUrl || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 w-10 h-6 sm:w-12 sm:h-7.5 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 relative group/thumb shadow-sm"
+          >
+            <img src={thumb} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-110" loading="lazy" />
+            <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors flex items-center justify-center">
+              <ExternalLink size={12} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity" />
+            </div>
+            {task.duration && (
+              <span className="absolute bottom-0 right-0 px-1 py-0.5 bg-black/75 text-[9px] font-semibold text-white rounded-tl">
+                {task.duration}
+              </span>
+            )}
+          </a>
+        ) : (
+          <a
+            href={taskUrl || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex-shrink-0 w-9 h-5.5 sm:w-10 sm:h-6.5 rounded flex items-center justify-center ${platMeta.bg}`}
+          >
+            <PlatformIcon platform={platform} size={14} />
+          </a>
+        )}
+
+        {/* Title + channel */}
+        <div className="flex-1 min-w-0">
+          <p className={`text-[11px] sm:text-[11px] font-semibold leading-tight truncate ${task.status === "completed" ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}>
+            {task.title}
+          </p>
+          <div className="flex items-center gap-1 mt-0.5 opacity-80 scale-90 sm:scale-95 origin-left">
+            <PlatformIcon platform={platform} size={7} />
+            {task.channelName && (
+              <span className="text-[7.5px] text-gray-500 dark:text-gray-400 truncate max-w-[8rem]">
+                {task.channelName}
+              </span>
+            )}
+            {/* Views count pill inline on desktop */}
+            {(() => {
+              const viewsN = parseViewsCount(task);
+              const viewsShort = viewsN != null ? formatViewsKL(viewsN) : null;
+              if (!viewsShort) return null;
+              return (
+                <>
+                  <span className="hidden sm:inline-block w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
+                  <span
+                    className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-tight shadow-sm min-h-[26px] ${VIEWS_PILL}`}
+                    title={`${viewsN.toLocaleString("en-IN")} views`}
+                  >
+                    <Eye size={11} className="flex-shrink-0 opacity-90" />
+                    {viewsShort}
+                  </span>
+                </>
+              );
+            })()}
           </div>
-          {task.duration && (
-            <span className="absolute bottom-0 right-0 px-1 py-0.5 bg-black/75 text-[9px] font-semibold text-white rounded-tl">
-              {task.duration}
-            </span>
-          )}
-        </a>
-      ) : (
-        <a
-          href={taskUrl || "#"}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`flex-shrink-0 w-10 h-6 sm:w-12 sm:h-7.5 rounded flex items-center justify-center ${platMeta.bg}`}
-        >
-          <PlatformIcon platform={platform} size={16} />
-        </a>
-      )}
-
-      {/* Title + channel */}
-      <div className="flex-1 min-w-0">
-        <p className={`text-[10px] sm:text-[11px] font-semibold leading-tight truncate ${task.status === "completed" ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}>
-          {task.title}
-        </p>
-        <div className="flex items-center gap-1 mt-0.5 opacity-80 scale-95 origin-left">
-          <PlatformIcon platform={platform} size={7} />
-          {task.channelName && (
-            <span className="text-[7.5px] text-gray-500 dark:text-gray-400 truncate max-w-[8rem]">
-              {task.channelName}
-            </span>
-          )}
-          {(() => {
-            const viewsN = parseViewsCount(task);
-            const viewsShort = viewsN != null ? formatViewsKL(viewsN) : null;
-            if (!viewsShort) return null;
-            return (
-              <>
-                <span className="w-0.5 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
-                <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-tight shadow-sm min-h-[26px] ${VIEWS_PILL}`}
-                  title={`${viewsN.toLocaleString("en-IN")} views`}
-                >
-                  <Eye size={11} className="flex-shrink-0 opacity-90" />
-                  {viewsShort}
-                </span>
-              </>
-            );
-          })()}
         </div>
       </div>
 
-      {/* Script — opens same detail modal */}
-      {hasTaskScript(task) && (
-        <button
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenDetail?.(task);
-          }}
-          className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-violet-50 text-violet-800 border border-violet-200/90 dark:bg-violet-900/35 dark:text-violet-100 dark:border-violet-700/60 shadow-sm hover:bg-violet-100 dark:hover:bg-violet-900/55 hover:border-violet-300 dark:hover:border-violet-500 transition-colors cursor-pointer min-h-[26px]"
-          title="Script — tap to read"
-          aria-label="Open script"
-        >
-          <ScrollText size={14} className="flex-shrink-0 opacity-90" aria-hidden />
-          <span>Script</span>
-        </button>
-      )}
+      {/* Group 2: Pills (Script, VO, Notes, Format, HD/SD, Assignees, Status, Undo) */}
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto pl-8 sm:pl-0 sm:contents">
+        {/* Custom Video ID Pill on mobile */}
+        {task.customVideoId && (
+          <span className="inline-flex sm:hidden flex-shrink-0 items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700/60 shadow-sm min-h-[22px]">
+            ID: {task.customVideoId}
+          </span>
+        )}
 
-      {/* Voice-over (VO) */}
-      {hasTaskVoiceOver(task) && (
-        <button
-          type="button"
-          disabled={audioLoading && isPlayingThisTask}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPlayToggle?.(task);
-          }}
-          className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all min-h-[26px] ${
-            isPlayingThisTask && audioPlaying
-              ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-md shadow-indigo-500/20 active:scale-95 cursor-pointer"
-              : "bg-emerald-50 text-emerald-800 border border-emerald-200/90 dark:bg-emerald-900/35 dark:text-emerald-100 dark:border-emerald-700/60 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/55 hover:border-emerald-300 dark:hover:border-emerald-500 active:scale-95 cursor-pointer"
-          }`}
-          title={isPlayingThisTask && audioPlaying ? "Voice-over — playing (click to pause)" : "Voice-over — listen inline"}
-          aria-label={isPlayingThisTask && audioPlaying ? "Pause voice-over" : "Listen to voice-over"}
-        >
-          {audioLoading && isPlayingThisTask ? (
-            <Loader2 size={14} className="flex-shrink-0 opacity-90 animate-spin" aria-hidden />
-          ) : isPlayingThisTask && audioPlaying ? (
-            <Pause size={14} className="flex-shrink-0" />
-          ) : (
-            <Play size={14} className="flex-shrink-0" />
-          )}
-          <span>VO</span>
-        </button>
-      )}
-
-      {/* Notes — opens detail modal */}
-      {hasTaskNotes(task) && (
-        <button
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenDetail?.(task);
-          }}
-          className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-sky-50 text-sky-800 border border-sky-200/90 dark:bg-sky-900/35 dark:text-sky-100 dark:border-sky-700/60 shadow-sm hover:bg-sky-100 dark:hover:bg-sky-900/55 hover:border-sky-300 dark:hover:border-sky-500 transition-colors cursor-pointer min-h-[26px]"
-          title="Notes — tap to read"
-          aria-label="Open notes"
-        >
-          <FileText size={14} className="flex-shrink-0 opacity-90" aria-hidden />
-          <span>Notes</span>
-        </button>
-      )}
-
-      {/* Content format pills */}
-      {task.contentFormat && (
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).map(fmt => (
+        {/* Views count pill on mobile */}
+        {(() => {
+          const viewsN = parseViewsCount(task);
+          const viewsShort = viewsN != null ? formatViewsKL(viewsN) : null;
+          if (!viewsShort) return null;
+          return (
             <span
-              key={fmt}
-              className={`inline-flex items-center text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full shadow-sm border border-transparent min-h-[26px] ${FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+              className={`inline-flex sm:hidden items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-tight shadow-sm min-h-[22px] ${VIEWS_PILL}`}
+              title={`${viewsN.toLocaleString("en-IN")} views`}
             >
-              {FORMAT_OPTIONS.find((f) => f.value === fmt)?.label || fmt}
+              <Eye size={10} className="flex-shrink-0 opacity-90" />
+              {viewsShort}
             </span>
-          ))}
-        </div>
-      )}
+          );
+        })()}
 
-      {/* Thumbnail pill */}
-      {ytId && (
-        <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300/90 flex-shrink-0 shadow-sm border border-amber-100/50 dark:border-amber-800/30 min-h-[26px]">
+        {/* Script — opens same detail modal */}
+        {hasTaskScript(task) && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(ytId, 'hd')); }}
-            className="text-[12px] font-bold uppercase tracking-wide hover:text-amber-800 dark:hover:text-amber-100 transition-colors"
-            title="High Definition"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetail?.(task);
+            }}
+            className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wide bg-violet-50 text-violet-800 border border-violet-200/90 dark:bg-violet-900/35 dark:text-violet-100 dark:border-violet-700/60 shadow-sm hover:bg-violet-100 dark:hover:bg-violet-900/55 hover:border-violet-300 dark:hover:border-violet-500 transition-colors cursor-pointer min-h-[22px] sm:min-h-[26px]"
+            title="Script — tap to read"
+            aria-label="Open script"
           >
-            HD
-          </button>
-          <div className="w-px h-3.5 bg-amber-200/60 dark:bg-amber-700/50" />
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(ytId, 'sd')); }}
-            className="text-[12px] font-bold uppercase tracking-wide hover:text-amber-800 dark:hover:text-amber-100 transition-colors"
-            title="Standard Definition"
-          >
-            SD
-          </button>
-        </div>
-      )}
-
-      {/* Assigned Users — now at the end! */}
-      {task.assignedTo && task.assignedTo.length > 0 && (
-        <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
-          {task.assignedTo.map((name) => (
-            <span
-              key={name}
-              className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide border border-transparent shadow-sm min-h-[26px] ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
-            >
-              {getAssigneeDisplayName(name)}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Status text */}
-      <span className={`hidden md:inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full flex-shrink-0 shadow-sm border border-transparent min-h-[26px] ${meta.pill}`}>
-        {meta.label}
-      </span>
-
-      {/* Move Actions (Undo) */}
-      <div className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        {PREV_STATUS[task.status] && (
-          <button
-            onClick={() => onMove(task._id, PREV_STATUS[task.status])}
-            className="px-2 py-1 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            title={`Back to ${STATUS_META[PREV_STATUS[task.status]].label}`}
-          >
-            Undo
+            <ScrollText size={12} className="flex-shrink-0 opacity-90 sm:w-3.5 sm:h-3.5" aria-hidden />
+            <span>Script</span>
           </button>
         )}
+
+        {/* Voice-over (VO) */}
+        {hasTaskVoiceOver(task) && (
+          <button
+            type="button"
+            disabled={audioLoading && isPlayingThisTask}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPlayToggle?.(task);
+            }}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wide transition-all min-h-[22px] sm:min-h-[26px] ${
+              isPlayingThisTask && audioPlaying
+                ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-md shadow-indigo-500/20 active:scale-95 cursor-pointer"
+                : "bg-emerald-50 text-emerald-800 border border-emerald-200/90 dark:bg-emerald-900/35 dark:text-emerald-100 dark:border-emerald-700/60 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/55 hover:border-emerald-300 dark:hover:border-emerald-500 active:scale-95 cursor-pointer"
+            }`}
+            title={isPlayingThisTask && audioPlaying ? "Voice-over — playing (click to pause)" : "Voice-over — listen inline"}
+            aria-label={isPlayingThisTask && audioPlaying ? "Pause voice-over" : "Listen to voice-over"}
+          >
+            {audioLoading && isPlayingThisTask ? (
+              <Loader2 size={12} className="flex-shrink-0 opacity-90 animate-spin sm:w-3.5 sm:h-3.5" aria-hidden />
+            ) : isPlayingThisTask && audioPlaying ? (
+              <Pause size={12} className="flex-shrink-0 sm:w-3.5 sm:h-3.5" />
+            ) : (
+              <Play size={12} className="flex-shrink-0 sm:w-3.5 sm:h-3.5" />
+            )}
+            <span>VO</span>
+          </button>
+        )}
+
+        {/* Notes — opens detail modal */}
+        {hasTaskNotes(task) && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetail?.(task);
+            }}
+            className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wide bg-sky-50 text-sky-800 border border-sky-200/90 dark:bg-sky-900/35 dark:text-sky-100 dark:border-sky-700/60 shadow-sm hover:bg-sky-100 dark:hover:bg-sky-900/55 hover:border-sky-300 dark:hover:border-sky-500 transition-colors cursor-pointer min-h-[22px] sm:min-h-[26px]"
+            title="Notes — tap to read"
+            aria-label="Open notes"
+          >
+            <FileText size={12} className="flex-shrink-0 opacity-90 sm:w-3.5 sm:h-3.5" aria-hidden />
+            <span>Notes</span>
+          </button>
+        )}
+
+        {/* Content format pills */}
+        {task.contentFormat && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).map(fmt => (
+              <span
+                key={fmt}
+                className={`inline-flex items-center text-[9px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm border border-transparent min-h-[22px] sm:min-h-[26px] ${FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+              >
+                {FORMAT_OPTIONS.find((f) => f.value === fmt)?.label || fmt}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Thumbnail pill (HD/SD buttons) */}
+        {ytId && (
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300/90 flex-shrink-0 shadow-sm border border-amber-100/50 dark:border-amber-800/30 min-h-[22px] sm:min-h-[26px]">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(ytId, 'hd')); }}
+              className="text-[9px] sm:text-[12px] font-bold uppercase tracking-wide hover:text-amber-800 dark:hover:text-amber-100 transition-colors"
+              title="High Definition"
+            >
+              HD
+            </button>
+            <div className="w-px h-3.5 bg-amber-200/60 dark:bg-amber-700/50" />
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(ytId, 'sd')); }}
+              className="text-[9px] sm:text-[12px] font-bold uppercase tracking-wide hover:text-amber-800 dark:hover:text-amber-100 transition-colors"
+              title="Standard Definition"
+            >
+              SD
+            </button>
+          </div>
+        )}
+
+        {/* Assigned Users */}
+        {task.assignedTo && task.assignedTo.length > 0 && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {task.assignedTo.map((name) => (
+              <span
+                key={name}
+                className={`inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide border border-transparent shadow-sm min-h-[22px] sm:min-h-[26px] ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+              >
+                {getAssigneeDisplayName(name)}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Status text */}
+        <span className={`hidden md:inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full flex-shrink-0 shadow-sm border border-transparent min-h-[26px] ${meta.pill}`}>
+          {meta.label}
+        </span>
+
+        {/* Move Actions (Undo) */}
+        <div className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          {PREV_STATUS[task.status] && (
+            <button
+              onClick={() => onMove(task._id, PREV_STATUS[task.status])}
+              className="px-2 py-1 rounded-lg text-[12px] font-semibold text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title={`Back to ${STATUS_META[PREV_STATUS[task.status]].label}`}
+            >
+              Undo
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -2453,7 +2483,7 @@ export default function ProductionHub() {
 
   return (
     <AdminLayout title="Production Hub" titleInfo="Track & manage scheduled content" icon={LayoutDashboard} contentFit noPadding>
-      <div className="flex flex-col h-full min-h-0 overflow-hidden w-full gap-1.5 sm:gap-2 px-3 sm:px-4 pt-2 pb-4">
+      <div className="flex flex-col h-full min-h-0 overflow-y-auto sm:overflow-hidden w-full gap-1.5 sm:gap-2 px-3 sm:px-4 pt-2 pb-4 custom-scrollbar">
 
         {/* Stats & Search Ribbon */}
         {showStatsRibbon && (
@@ -2612,7 +2642,7 @@ export default function ProductionHub() {
             </button>
           </div>
         ) : viewMode === "schedule" ? (
-          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 pb-20 sm:pb-2 custom-scrollbar">
             {scheduleDateGroups.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <CheckCircle2 size={32} className="text-emerald-400 mb-3" />
@@ -2644,7 +2674,7 @@ export default function ProductionHub() {
             )}
           </div>
         ) : viewMode === "backlog" ? (
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 pb-20 sm:pb-2 custom-scrollbar">
             {tabBusy && !backlogLoaded ? (
               <div className="flex flex-col items-center justify-center py-24 gap-3">
                 <Loader2 size={28} className="animate-spin text-blue-500" />
@@ -2680,7 +2710,7 @@ export default function ProductionHub() {
             )}
           </div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1 pb-20 sm:pb-1.5 custom-scrollbar">
             {tabBusy && !completedLoaded ? (
               <div className="flex flex-col items-center justify-center py-24 gap-3">
                 <Loader2 size={28} className="animate-spin text-emerald-500" />
@@ -2751,7 +2781,8 @@ export default function ProductionHub() {
             </>
             )}
           </div>
-        )}
+        )
+      }
       </div>
 
       <ContentModal
