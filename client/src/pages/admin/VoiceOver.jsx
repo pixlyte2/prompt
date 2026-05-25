@@ -964,10 +964,11 @@ export default function VoiceOver() {
       title="Voice-over Console"
       titleInfo="A high-performance workspace for recording, streaming, and managing Voice-over assets."
       icon={Mic}
-      contentFit
-      noPadding
+      contentFit={true}
+      noPadding={true}
     >
-      <div className={`flex flex-col h-full min-h-0 overflow-hidden max-w-5xl mx-auto w-full gap-3 sm:gap-4 px-3 sm:px-4 pt-2 ${activePlayingTask ? "pb-28" : "pb-4"}`}>
+      <div className="h-full w-full overflow-hidden flex flex-col relative">
+        <div className={`flex flex-col h-full min-h-0 overflow-hidden w-full max-w-[1600px] mx-auto custom-scrollbar px-3 sm:px-4 pt-2 ${activePlayingTask ? "pb-28" : "pb-4"} gap-1.5`}>
         
         {/* Search and Action Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 sm:p-4 bg-white/70 dark:bg-gray-900/60 backdrop-blur border border-gray-200/80 dark:border-gray-800/80 rounded-xl sm:rounded-2xl">
@@ -1209,6 +1210,7 @@ export default function VoiceOver() {
           </div>
         </div>
       )}
+      </div>
     </AdminLayout>
   );
 }

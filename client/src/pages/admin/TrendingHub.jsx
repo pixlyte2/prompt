@@ -246,7 +246,6 @@ const COMP_SORTS = [
 ];
 
 const COMP_FORMATS = [
-  { value: "all", label: "All Formats" },
   { value: "long", label: "Long Videos" },
   { value: "short", label: "Short Videos" },
 ];
@@ -629,92 +628,133 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
 }
 
 function CompetitorVideoCard({ video, onSchedule, onPreviewThumbnail }) {
+  const channelInitial = video.channelName ? video.channelName.charAt(0).toUpperCase() : "?";
+
   return (
-    <div className="group flex flex-col rounded-2xl border border-white/40 dark:border-gray-700/50 bg-white/60 dark:bg-gray-800/40 backdrop-blur-xl overflow-hidden hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1 transition-all duration-300">
-      <a
-        href={`https://www.youtube.com/watch?v=${video.videoId}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block relative overflow-hidden"
-      >
-        <div className="relative aspect-[16/10] bg-gray-100 dark:bg-gray-800">
+    <div className="group relative flex flex-col rounded-2xl border border-gray-100 dark:border-gray-850 bg-white dark:bg-gray-900/60 backdrop-blur-xl overflow-hidden hover:shadow-[0_20px_45px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_20px_45px_rgba(0,0,0,0.35)] hover:-translate-y-1.5 transition-all duration-500 ease-out">
+      
+      {/* Thumbnail Container */}
+      <div className="relative aspect-video bg-gray-100 dark:bg-gray-900 overflow-hidden">
+        <a
+          href={`https://www.youtube.com/watch?v=${video.videoId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full h-full"
+        >
           <img
             src={video.thumbnail}
             alt=""
-            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out"
             loading="lazy"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          {video.duration && (
-            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-semibold tracking-wide text-white shadow-sm border border-white/10">
-              {video.duration}
-            </span>
-          )}
-          {video.isLive && (
-            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-red-600/90 backdrop-blur-md text-[10px] font-bold text-white inline-flex items-center gap-1.5 shadow-sm border border-red-400/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> LIVE
-            </span>
-          )}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-             <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/90 transform scale-75 group-hover:scale-100 transition-all duration-300 border border-white/20">
-                <Play size={18} className="ml-0.5" />
+          {/* Overlay Gradient on Hover */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          
+          {/* Animated Play Button Icon */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-95 group-hover:scale-100">
+             <div className="w-11 h-11 rounded-full bg-white/95 dark:bg-gray-950/95 text-red-600 dark:text-red-500 flex items-center justify-center shadow-lg shadow-black/30 border border-white/25 transform hover:scale-110 active:scale-95 transition-all duration-300">
+                <Play size={18} fill="currentColor" className="ml-0.5" />
              </div>
           </div>
+        </a>
+
+        {/* Floating Badges */}
+        {video.duration && (
+          <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[9px] font-bold tracking-wider text-white shadow-sm border border-white/10 uppercase">
+            {video.duration}
+          </span>
+        )}
+        
+        {video.isLive && (
+          <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-md bg-rose-600/90 backdrop-blur-md text-[9px] font-black text-white inline-flex items-center gap-1 shadow-md border border-rose-400/30 animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-white" /> LIVE
+          </span>
+        )}
+
+        {/* Quick Actions (Floating Add-to-Board Button on Hover) */}
+        {onSchedule && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onSchedule(video); }}
+            className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-white/95 dark:bg-gray-900/95 text-gray-700 dark:text-gray-200 hover:text-white hover:bg-gradient-to-br hover:from-blue-650 hover:to-indigo-600 shadow-md border border-gray-100 dark:border-gray-800 opacity-0 group-hover:opacity-100 transform translate-y-[-5px] group-hover:translate-y-0 transition-all duration-300 z-10 hover:scale-105"
+            title="Schedule this video"
+          >
+            <CalendarPlus size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* Details Container */}
+      <div className="flex-1 p-3 flex flex-col justify-between bg-gradient-to-b from-transparent to-gray-50/50 dark:to-gray-950/20">
+        
+        {/* Title */}
+        <div>
+          <a
+            href={`https://www.youtube.com/watch?v=${video.videoId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <h4 className="text-[11px] sm:text-xs font-bold text-gray-800 dark:text-gray-100 line-clamp-2 leading-snug mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200" title={video.title}>
+              {video.title}
+            </h4>
+          </a>
         </div>
-      </a>
-      <div className="flex-1 p-2 flex flex-col">
-        <h4 className="text-[10px] sm:text-[11px] font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors drop-shadow-sm">
-          {video.title}
-        </h4>
-        <div className="mt-auto flex flex-col gap-1.5 text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400">
-          <div className="flex items-center justify-between">
-            <span className="font-extrabold text-[10px] sm:text-[11px] text-gray-900 dark:text-gray-100 inline-flex items-center gap-1">
-              <Eye size={10} className="text-blue-500 dark:text-blue-400" /> {video.viewsText || formatViews(video.views)}
-            </span>
-            <div className="flex items-center gap-1">
-              {onSchedule && (
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onSchedule(video); }}
-                  className="p-1 rounded-lg bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:text-white hover:bg-gradient-to-br hover:from-blue-500 hover:to-indigo-600 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
-                  title="Schedule this video"
-                >
-                  <CalendarPlus size={12} />
-                </button>
-              )}
-            </div>
-          </div>
+
+        {/* Channel & Stats Footer */}
+        <div className="mt-auto pt-2 border-t border-gray-100/70 dark:border-gray-800/50 space-y-2">
           
-          <div className="flex items-center justify-between gap-1 mt-0.5">
-            <span className="font-semibold text-gray-700 dark:text-gray-300 truncate max-w-[5rem] sm:max-w-[7rem] bg-gray-100/80 dark:bg-gray-700/80 px-1.5 py-0.5 rounded border border-gray-200/50 dark:border-gray-600/50">
-              {video.channelName}
-            </span>
+          {/* Channel Name & Preview Controls */}
+          <div className="flex items-center justify-between gap-2">
             
-            <div className="flex items-center gap-1 ml-auto">
+            {/* Channel Avatar + Name */}
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 text-white flex items-center justify-center text-[9px] font-black shadow-sm flex-shrink-0">
+                {channelInitial}
+              </div>
+              <span className="font-bold text-gray-600 dark:text-gray-300 truncate text-[10px]" title={video.channelName}>
+                {video.channelName}
+              </span>
+            </div>
+
+            {/* HD/SD Preview Buttons */}
+            <div className="flex items-center gap-1 flex-shrink-0">
               <button 
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(video.videoId, 'hd')); }}
-                className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 hover:bg-blue-500 hover:text-white transition-all"
+                className="text-[8px] font-black px-1.5 py-0.5 rounded bg-blue-50/80 hover:bg-blue-600 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:text-white border border-blue-100/50 dark:border-blue-900/30 transition-all cursor-pointer uppercase tracking-wider"
+                title="Preview HD Thumbnail"
               >
                 HD
               </button>
               <button 
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onPreviewThumbnail(getThumbnailUrl(video.videoId, 'sd')); }}
-                className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700/50 hover:bg-gray-500 hover:text-white transition-all"
+                className="text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-50/80 hover:bg-gray-600 dark:bg-gray-800/40 text-gray-500 dark:text-gray-400 hover:text-white border border-gray-200/50 dark:border-gray-700/30 transition-all cursor-pointer uppercase tracking-wider"
+                title="Preview SD Thumbnail"
               >
                 SD
               </button>
             </div>
+
           </div>
-          
-          <div className="flex items-center justify-between text-[9px] opacity-60">
-             <div className="flex items-center gap-1">
-               <Clock size={9} /> {video.publishedText}
-             </div>
+
+          {/* Stats (Views & Time) */}
+          <div className="flex items-center justify-between text-[9px] text-gray-505 dark:text-gray-400 font-medium">
+            <span className="inline-flex items-center gap-1 text-gray-700 dark:text-gray-300 font-bold bg-gray-50/60 dark:bg-gray-800/40 px-1.5 py-0.5 rounded">
+              <Eye size={10} className="text-blue-500" />
+              {video.viewsText || formatViews(video.views)}
+            </span>
+            <span className="inline-flex items-center gap-1 opacity-80">
+              <Clock size={10} className="text-amber-500" />
+              {video.publishedText}
+            </span>
           </div>
+
         </div>
+
       </div>
+
     </div>
   );
 }
@@ -788,18 +828,6 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
     }
   };
 
-  const handleUpdateChannelFormat = async (typeId, channelHandle, format) => {
-    setBusy(`format-${typeId}-${channelHandle}`);
-    try {
-      const { data } = await api.put(`/competitor-types/${typeId}/channels/${channelHandle}`, { videoFormat: format });
-      setTypes((prev) => prev.map((t) => (t._id === typeId ? data : t)));
-      onTypesChanged();
-    } catch {
-      toast.error("Failed to update format");
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const handleDeleteType = async (typeId) => {
     if (!confirm("Delete this type and all its channels?")) return;
@@ -978,16 +1006,7 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
                             <div key={ch.handle} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800/40 group">
                               <Youtube size={12} className="text-red-500 flex-shrink-0" />
                               <span className="text-xs font-medium text-gray-800 dark:text-gray-200 flex-1 truncate">{ch.name}</span>
-                              <span className="text-[10px] text-gray-400 dark:text-gray-500">@{ch.handle}</span>
-                              <select
-                                value={ch.videoFormat || "long"}
-                                onChange={(e) => handleUpdateChannelFormat(type._id, ch.handle, e.target.value)}
-                                disabled={busy === `format-${type._id}-${ch.handle}`}
-                                className="ml-auto px-1.5 py-0.5 text-[10px] rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none disabled:opacity-50"
-                              >
-                                <option value="long">Long</option>
-                                <option value="short">Short</option>
-                              </select>
+                              <span className="text-[10px] text-gray-400 dark:text-gray-500 mr-1.5">@{ch.handle}</span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveChannel(type._id, ch.handle)}
@@ -1016,14 +1035,6 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
                             onKeyDown={(e) => e.key === "Enter" && handleAddChannel(type._id)}
                             className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                           />
-                          <select
-                            value={chInput.videoFormat || "long"}
-                            onChange={(e) => setNewChannels((prev) => ({ ...prev, [type._id]: { ...chInput, videoFormat: e.target.value } }))}
-                            className="w-20 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                          >
-                            <option value="long">Long</option>
-                            <option value="short">Short</option>
-                          </select>
                           <button
                             type="button"
                             onClick={() => handleAddChannel(type._id)}
@@ -1120,7 +1131,7 @@ function CompetitorWatch() {
   const [showViewDropdown, setShowViewDropdown] = useState(false);
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [compFormat, setCompFormat] = useState("all");
+  const [compFormat, setCompFormat] = useState("long");
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const typeDropdownRef = useRef(null);
@@ -1220,24 +1231,8 @@ function CompetitorWatch() {
   // Auto-default format on first load of category channels or channel selection
   useEffect(() => {
     if (activeType && channels.length > 0) {
-      const isNewType = lastLoadedTypeRef.current !== activeType;
-      const isNewChannel = lastLoadedChannelRef.current !== activeChannel;
-
-      if (isNewType || isNewChannel) {
-        lastLoadedTypeRef.current = activeType;
-        lastLoadedChannelRef.current = activeChannel;
-
-        if (activeChannel === "all") {
-          const formats = channels.map(c => c.videoFormat || "long");
-          const allSame = formats.length > 0 && formats.every(f => f === formats[0]);
-          setCompFormat(allSame ? formats[0] : "all");
-        } else {
-          const selectedChannelObj = channels.find(c => c.handle === activeChannel);
-          if (selectedChannelObj) {
-            setCompFormat(selectedChannelObj.videoFormat || "long");
-          }
-        }
-      }
+      lastLoadedTypeRef.current = activeType;
+      lastLoadedChannelRef.current = activeChannel;
     }
   }, [activeType, channels, activeChannel]);
 
@@ -1429,10 +1424,6 @@ function CompetitorWatch() {
                         onClick={() => {
                           setActiveType(t._id);
                           setActiveChannel("all");
-                          const categoryChannels = t.channels || [];
-                          const formats = categoryChannels.map(c => c.videoFormat || "long");
-                          const allSame = formats.length > 0 && formats.every(f => f === formats[0]);
-                          setCompFormat(allSame ? formats[0] : "all");
                           setShowTypeDropdown(false);
                         }}
                         className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-bold transition-all ${
@@ -1476,9 +1467,6 @@ function CompetitorWatch() {
                   <button
                     onClick={() => {
                       setActiveChannel("all");
-                      const formats = channels.map(c => c.videoFormat || "long");
-                      const allSame = formats.length > 0 && formats.every(f => f === formats[0]);
-                      setCompFormat(allSame ? formats[0] : "all");
                       setShowChannelDropdown(false);
                     }}
                     className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800/40 dark:text-white"
@@ -1490,8 +1478,10 @@ function CompetitorWatch() {
                       <button
                         key={ch.handle}
                         onClick={() => {
+                          if (activeChannel === "all") {
+                            setCompFormat("long");
+                          }
                           setActiveChannel(ch.handle);
-                          setCompFormat(ch.videoFormat || "long");
                           setShowChannelDropdown(false);
                         }}
                         className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800/40 truncate dark:text-white"
@@ -1773,7 +1763,7 @@ function CompetitorWatch() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-3 sm:gap-4 pt-6 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-5 pt-6 text-xs">
             {filtered.map((video) => (
               <CompetitorVideoCard 
                 key={`${video.channelHandle}-${video.videoId}`} 
