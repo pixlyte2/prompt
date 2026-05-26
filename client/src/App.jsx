@@ -19,7 +19,7 @@ import PromptTypes from "./pages/admin/PromptTypes";
 import TrendingHub from "./pages/admin/TrendingHub";
 import ProductionHub from "./pages/admin/ProductionHub";
 import VoiceOver from "./pages/admin/VoiceOver";
-import YouTubeVideoInspector from "./pages/admin/YouTubeVideoInspector";
+import YouTubeAnalytics from "./pages/admin/YouTubeAnalytics";
 
 export default function App() {
   return (
@@ -166,10 +166,10 @@ export default function App() {
         />
 
         <Route
-          path="/admin/youtube-inspector"
+          path="/admin/youtube-analytics"
           element={
             <PrivateRoute allowedRoles={["admin"]}>
-              <YouTubeVideoInspector />
+              <YouTubeAnalytics />
             </PrivateRoute>
           }
         />

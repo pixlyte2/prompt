@@ -289,6 +289,7 @@ function DeleteVoiceOverModal({ task, onClose, onConfirm, loading }) {
 
 function VoiceOverTaskRow({
   task,
+  index,
   dateKey,
   onReload,
   uploadingTaskId,
@@ -460,6 +461,9 @@ function VoiceOverTaskRow({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
           {/* Media and Text Container */}
           <div className="flex items-start gap-2.5 sm:gap-4 min-w-0 flex-1">
+            <div className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-md bg-gray-100 dark:bg-gray-800 text-[10px] font-black text-gray-500 mt-1 sm:mt-3.5">
+              {index + 1}
+            </div>
             {thumb ? (
               <a
                 href={taskUrl || "#"}
@@ -681,10 +685,11 @@ function DateSection({
       </button>
       {open && (
         <div className="p-2 sm:p-4 space-y-2 sm:space-y-3 border-t border-gray-100 dark:border-gray-800/80 bg-gray-50/30 dark:bg-gray-950/10">
-          {tasks.map((t) => (
+          {tasks.map((t, idx) => (
             <VoiceOverTaskRow
               key={t._id}
               task={t}
+              index={idx}
               dateKey={dateKey}
               onReload={onReload}
               uploadingTaskId={uploadingTaskId}

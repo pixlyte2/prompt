@@ -30,6 +30,19 @@ function parseViewCount(text) {
   return Math.round(num);
 }
 
+function parseSubscriberCount(text) {
+  if (!text) return 0;
+  const cleaned = text.replace(/subscribers/i, "").trim();
+  const m = cleaned.match(/([\d.]+)\s*([KMB])?/i);
+  if (!m) return parseInt(cleaned, 10) || 0;
+  const num = parseFloat(m[1]);
+  const suffix = (m[2] || "").toUpperCase();
+  if (suffix === "K") return Math.round(num * 1_000);
+  if (suffix === "M") return Math.round(num * 1_000_000);
+  if (suffix === "B") return Math.round(num * 1_000_000_000);
+  return Math.round(num);
+}
+
 function parseDuration(text) {
   if (!text || text.toLowerCase().includes("short") || text.toLowerCase().includes("live")) return 0;
   const parts = text.split(":").map(Number);
@@ -199,17 +212,36 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
   const res = await fetch(url, {
     headers: { "User-Agent": UA, "Accept-Language": "en" },
   });
-  if (!res.ok) return [];
+  if (!res.ok) return { videos: [], subscribers: 0, handle: channel.handle };
 
   const html = await res.text();
   const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});/s);
-  if (!match) return [];
+  if (!match) return { videos: [], subscribers: 0, handle: channel.handle };
 
   let data;
   try {
     data = JSON.parse(match[1]);
   } catch {
-    return [];
+    return { videos: [], subscribers: 0, handle: channel.handle };
+  }
+
+  // Parse subscriber count
+  let subscribers = 0;
+  const header = data?.header?.c4TabbedHeaderRenderer || data?.header?.pageHeaderRenderer;
+  if (header) {
+    let subText = "";
+    if (header.subscriberCountText?.simpleText) {
+      subText = header.subscriberCountText.simpleText;
+    } else if (header.contentMetadata?.metadataRows) {
+      const parts = header.contentMetadata.metadataRows[0]?.metadataParts || [];
+      const part = parts.find(p => p.text?.content?.toLowerCase().includes("subscriber"));
+      if (part) {
+        subText = part.text.content;
+      }
+    }
+    if (subText) {
+      subscribers = parseSubscriberCount(subText);
+    }
   }
 
   const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
@@ -262,7 +294,7 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
     }
   }
 
-  return videos.slice(0, maxVideos);
+  return { videos: videos.slice(0, maxVideos), subscribers, handle: channel.handle };
 }
 
 async function seedDefaultType() {
@@ -273,7 +305,7 @@ async function seedDefaultType() {
 }
 
 async function fetchVideosForType(typeId, videoFormat) {
-  const cacheKey = videoFormat && videoFormat !== "all" ? `${typeId}_${videoFormat}` : typeId;
+  const cacheKey = videoFormat ? `${typeId}_${videoFormat}` : typeId;
   const cached = cacheMap.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached;
 
@@ -281,20 +313,44 @@ async function fetchVideosForType(typeId, videoFormat) {
   if (!type) return null;
 
   const maxVideos = type.videosPerChannel || 30;
-  const results = await Promise.allSettled(
-    type.channels.map((ch) => {
-      const formatToScrape = (videoFormat === "long" || videoFormat === "short")
-        ? videoFormat
-        : (ch.videoFormat || "long");
-      return scrapeChannel(ch, maxVideos, formatToScrape);
-    }),
-  );
 
-  const videos = results
-    .filter((r) => r.status === "fulfilled")
-    .flatMap((r) => r.value);
+  const promises = type.channels.flatMap((ch) => {
+    if (videoFormat === "all") {
+      return [
+        scrapeChannel(ch, maxVideos, "long"),
+        scrapeChannel(ch, maxVideos, "short")
+      ];
+    }
+    const formatToScrape = (videoFormat === "long" || videoFormat === "short")
+      ? videoFormat
+      : (ch.videoFormat || "long");
+    return [scrapeChannel(ch, maxVideos, formatToScrape)];
+  });
 
-  const entry = { videos, channels: type.channels, ts: Date.now() };
+  const results = await Promise.allSettled(promises);
+
+  const videos = [];
+  const subsMap = {};
+
+  results.forEach((r) => {
+    if (r.status === "fulfilled" && r.value) {
+      const { videos: chanVideos, subscribers, handle } = r.value;
+      if (chanVideos) {
+        videos.push(...chanVideos);
+      }
+      if (subscribers && handle) {
+        const lowerH = handle.toLowerCase();
+        subsMap[lowerH] = Math.max(subsMap[lowerH] || 0, subscribers);
+      }
+    }
+  });
+
+  const channelsWithSubs = type.channels.map((ch) => ({
+    ...ch,
+    subscribers: subsMap[ch.handle.toLowerCase()] || 0,
+  }));
+
+  const entry = { videos, channels: channelsWithSubs, ts: Date.now() };
   cacheMap.set(cacheKey, entry);
   return entry;
 }

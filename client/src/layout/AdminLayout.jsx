@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import AssistantWidget from "../components/AssistantWidget";
-import { BarChart3, Users, FileText, MessageSquare, HelpCircle, TrendingUp, LayoutDashboard, Youtube, Mic } from "lucide-react";
+import { BarChart3, Users, FileText, MessageSquare, HelpCircle, TrendingUp, LayoutDashboard, Youtube, Mic, LineChart } from "lucide-react";
 import { getRole } from "../utils/api";
 
 const adminMenu = [
@@ -13,7 +13,7 @@ const adminMenu = [
   { label: "Trending Hub", path: "/admin/trending-hub", icon: TrendingUp },
   { label: "Production Hub", path: "/admin/production-hub", icon: LayoutDashboard },
   { label: "Voice-over", path: "/admin/voice-over", icon: Mic },
-  { label: "YouTube inspector", path: "/admin/youtube-inspector", icon: Youtube },
+  { label: "YouTube Analytics", path: "/admin/youtube-analytics", icon: LineChart },
   { label: "Help", path: "/admin/help", icon: HelpCircle }
 ];
 
