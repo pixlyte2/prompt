@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "docs:check": "echo Please review docs/ before making changes - Requirements: ../docs/requirements/ UI: ../docs/ui/ UX: ../docs/ux/",
+    "pre-dev": "npm run docs:check && npm run dev"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
