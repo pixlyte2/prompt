@@ -602,8 +602,8 @@ function YouTubeAnalytics() {
           )}
         </aside>
 
-        {/* Main */}
-        <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden">
+        {/* Main — mobile: whole column scrolls; lg+: header/KPIs fixed, charts pane scrolls */}
+        <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar">
           {!activeChannel ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
               <Youtube size={48} className="text-red-500 mb-4" />
@@ -620,7 +620,7 @@ function YouTubeAnalytics() {
           ) : (
             <>
               {/* Header toolbar */}
-              <header className="flex-shrink-0 flex flex-wrap items-center gap-3 pb-3 border-b border-slate-200/60 dark:border-slate-800">
+              <header className="flex flex-wrap items-center gap-3 pb-3 border-b border-slate-200/60 dark:border-slate-800 lg:flex-shrink-0">
                 <button
                   type="button"
                   onClick={toggleChannelPanel}
@@ -817,7 +817,7 @@ function YouTubeAnalytics() {
 
               {/* KPIs */}
               <div
-                className={`flex-shrink-0 grid gap-3 py-3 ${
+                className={`grid gap-3 py-3 lg:flex-shrink-0 ${
                   isShortChannel ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 lg:grid-cols-4"
                 }`}
               >
@@ -836,8 +836,8 @@ function YouTubeAnalytics() {
                 ))}
               </div>
 
-              {/* Charts scroll area */}
-              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 pb-4 space-y-4">
+              {/* Charts — scroll in inner pane on desktop only */}
+              <div className="pr-1 pb-4 space-y-4 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:custom-scrollbar">
                 {/* First chart: last 30 uploads (vertical bars — upload # on X, views on Y) */}
                 <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 overflow-hidden shadow-sm">
                   <ChartCard
@@ -1147,7 +1147,7 @@ function YouTubeAnalytics() {
                   </div>
                   <div className="max-h-[360px] overflow-y-auto custom-scrollbar">
                     <table className="w-full text-xs">
-                      <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/95 z-10">
+                      <thead className="bg-slate-50 dark:bg-slate-800/95 lg:sticky lg:top-0 lg:z-10">
                         <tr className="text-[10px] font-bold uppercase text-slate-500 text-left">
                           <th className="py-2.5 pl-4">Video</th>
                           <th className="py-2.5 text-right">Views</th>

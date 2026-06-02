@@ -84,7 +84,7 @@ export default function Topbar({ title = "Dashboard", icon: Icon, onCacheClear, 
         />
       )}
       <div
-        className={`sticky top-0 border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors duration-300 bg-white dark:bg-gray-800 ${
+        className={`relative lg:sticky lg:top-0 border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors duration-300 bg-white dark:bg-gray-800 ${
           showUserMenu ? "z-50" : "z-30"
         }`}
       >

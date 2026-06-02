@@ -4,12 +4,11 @@ import { toast } from "react-hot-toast";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
 import api from "../services/api";
-import { decryptData } from "../utils/encryption";
 import { renderMarkdown } from "../utils/markdown";
 import { useDarkMode } from "../contexts/DarkModeContext";
 import HistoryModal from "./HistoryModal";
 
-export default function AIChatManager() {
+export default function AIChatManager({ injectedSource }) {
   const [prompts, setPrompts] = useState([]);
   const [selectedPrompt, setSelectedPrompt] = useState("");
   const [sourceText, setSourceText] = useState("");
@@ -57,6 +56,13 @@ export default function AIChatManager() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    const text = injectedSource?.text;
+    if (!text || !String(text).trim()) return;
+    setSourceText(String(text).trim());
+    setChatTab("source");
+  }, [injectedSource?.id]);
 
   useEffect(() => {
     updateFinalizedPrompt();

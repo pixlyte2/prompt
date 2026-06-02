@@ -1,14 +1,26 @@
-import { useState } from "react";
-import { MessageSquare, Settings, ShieldCheck } from "lucide-react";
+import { useState, useCallback } from "react";
+import { MessageSquare, Settings, ShieldCheck, Library } from "lucide-react";
+import { toast } from "react-hot-toast";
 import AIChatManager from "./AIChatManager";
 import SettingsManager from "./SettingsManager";
 import ContentValidator from "./ContentValidator";
+import ScriptLibrary from "./ScriptLibrary";
 
 export default function AIChatTabs() {
   const [activeTab, setActiveTab] = useState("chat");
+  const [injectedSource, setInjectedSource] = useState(null);
+
+  const handleGenerateFromLibrary = useCallback((script) => {
+    const text = String(script ?? "").trim();
+    if (!text) return;
+    setInjectedSource({ text, id: Date.now() });
+    setActiveTab("chat");
+    toast.success("Script copied — opened in Source Input");
+  }, []);
 
   const tabs = [
     { key: "chat", label: "AI Chat", icon: MessageSquare },
+    { key: "script-library", label: "Script Library", icon: Library },
     { key: "content-guard", label: "Content Guard", icon: ShieldCheck },
     { key: "settings", label: "Settings", icon: Settings },
   ];
@@ -33,9 +45,20 @@ export default function AIChatTabs() {
         ))}
       </div>
 
-      {/* Tab Content */}
-      <div className="flex-1 min-h-0">
-        {activeTab === "chat" && <AIChatManager />}
+      {/* Tab content — AI Chat & Script Library stay mounted (hidden) to preserve scroll, filters, and selections */}
+      <div className="flex-1 min-h-0 min-w-0">
+        <div
+          className={`h-full min-h-0 flex flex-col ${activeTab === "chat" ? "" : "hidden"}`}
+          aria-hidden={activeTab !== "chat"}
+        >
+          <AIChatManager injectedSource={injectedSource} />
+        </div>
+        <div
+          className={`h-full min-h-0 flex flex-col ${activeTab === "script-library" ? "" : "hidden"}`}
+          aria-hidden={activeTab !== "script-library"}
+        >
+          <ScriptLibrary onGenerate={handleGenerateFromLibrary} />
+        </div>
         {activeTab === "content-guard" && <ContentValidator />}
         {activeTab === "settings" && <SettingsManager />}
       </div>
