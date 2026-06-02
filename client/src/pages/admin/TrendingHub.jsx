@@ -977,19 +977,19 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
                           <input
                             type="number"
                             min={1}
-                            max={200}
+                            max={500}
                             value={type.videosPerChannel}
                             onChange={(e) => {
-                              const v = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 200);
+                              const v = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 500);
                               setTypes((prev) => prev.map((t) => (t._id === type._id ? { ...t, videosPerChannel: v } : t)));
                             }}
                             onBlur={(e) => {
-                              const v = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 200);
+                              const v = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 500);
                               handleUpdateVpc(type._id, v);
                             }}
                             className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                           />
-                          <span className="text-[10px] text-gray-400">(max 200)</span>
+                          <span className="text-[10px] text-gray-400">(max 500)</span>
                           <button
                             type="button"
                             onClick={() => handleDeleteType(type._id)}
@@ -1067,9 +1067,9 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
                     <input
                       type="number"
                       min={1}
-                      max={200}
+                      max={500}
                       value={newTypeVpc}
-                      onChange={(e) => setNewTypeVpc(Math.min(Math.max(parseInt(e.target.value) || 1, 1), 200))}
+                      onChange={(e) => setNewTypeVpc(Math.min(Math.max(parseInt(e.target.value) || 1, 1), 500))}
                       className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                     />
                   </div>

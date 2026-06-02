@@ -5,10 +5,12 @@ const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 const cacheMap = new Map();
+/** Max recent videos per channel (YouTube Analytics & single-channel scrape). */
+const CHANNEL_VIDEO_CAP = 500;
 
 const DEFAULT_SEED = {
   name: "News",
-  videosPerChannel: 200,
+  videosPerChannel: 500,
   channels: [
     { handle: "PolimerNews", name: "Polimer News" },
     { handle: "Sunnewstamil", name: "Sun News" },
@@ -32,15 +34,158 @@ function parseViewCount(text) {
 
 function parseSubscriberCount(text) {
   if (!text) return 0;
-  const cleaned = text.replace(/subscribers/i, "").trim();
+  const raw = String(text).trim();
+  const lower = raw.toLowerCase();
+
+  const parseNum = (s) => parseFloat(String(s).replace(/,/g, ""));
+
+  const billionWord = lower.match(/([\d.,]+)\s*billion/i);
+  if (billionWord) {
+    const n = parseNum(billionWord[1]);
+    if (!Number.isNaN(n)) return Math.round(n * 1_000_000_000);
+  }
+  const millionWord = lower.match(/([\d.,]+)\s*million/i);
+  if (millionWord) {
+    const n = parseNum(millionWord[1]);
+    if (!Number.isNaN(n)) return Math.round(n * 1_000_000);
+  }
+  const thousandWord = lower.match(/([\d.,]+)\s*thousand/i);
+  if (thousandWord) {
+    const n = parseNum(thousandWord[1]);
+    if (!Number.isNaN(n)) return Math.round(n * 1_000);
+  }
+
+  const cleaned = raw
+    .replace(/subscribers?/gi, "")
+    .replace(/,/g, "")
+    .trim();
   const m = cleaned.match(/([\d.]+)\s*([KMB])?/i);
-  if (!m) return parseInt(cleaned, 10) || 0;
-  const num = parseFloat(m[1]);
+  if (!m) {
+    const plain = parseNum(cleaned);
+    return Number.isNaN(plain) ? 0 : Math.round(plain);
+  }
+  const num = parseNum(m[1]);
+  if (Number.isNaN(num)) return 0;
   const suffix = (m[2] || "").toUpperCase();
   if (suffix === "K") return Math.round(num * 1_000);
   if (suffix === "M") return Math.round(num * 1_000_000);
   if (suffix === "B") return Math.round(num * 1_000_000_000);
   return Math.round(num);
+}
+
+/** Pull subscriber count from ytInitialData or raw HTML (YouTube layout varies). */
+function extractSubscribersFromYtData(data, html) {
+  const tryText = (raw) => {
+    if (!raw) return 0;
+    const t =
+      typeof raw === "string"
+        ? raw
+        : raw.simpleText ||
+          (Array.isArray(raw.runs) ? raw.runs.map((r) => r.text || "").join("") : "") ||
+          raw.accessibility?.accessibilityData?.label ||
+          raw.content;
+    return parseSubscriberCount(t);
+  };
+
+  const header =
+    data?.header?.c4TabbedHeaderRenderer ||
+    data?.header?.pageHeaderRenderer ||
+    data?.header?.pageHeaderViewModel?.metadata?.contentMetadataViewModel;
+  if (header) {
+    let n = tryText(header.subscriberCountText);
+    if (n > 0) return n;
+    const rows = header.metadataRows || header.contentMetadataViewModel?.metadataRows || [];
+    for (const row of rows) {
+      for (const part of row.metadataParts || []) {
+        const content = part.text?.content || part.text?.simpleText || "";
+        if (/subscriber/i.test(content)) {
+          n = parseSubscriberCount(content);
+          if (n > 0) return n;
+        }
+      }
+    }
+  }
+
+  const meta = data?.metadata?.channelMetadataRenderer;
+  if (meta) {
+    const n = tryText(meta.subscriberCountText);
+    if (n > 0) return n;
+  }
+
+  const stack = [data];
+  const seen = new Set();
+  let depth = 0;
+  while (stack.length && depth < 80) {
+    depth += 1;
+    const node = stack.pop();
+    if (!node || typeof node !== "object") continue;
+    if (seen.has(node)) continue;
+    seen.add(node);
+
+    if (node.subscriberCountText) {
+      const n = tryText(node.subscriberCountText);
+      if (n > 0) return n;
+    }
+
+    if (typeof node.simpleText === "string" && /subscriber/i.test(node.simpleText)) {
+      const n = parseSubscriberCount(node.simpleText);
+      if (n > 0) return n;
+    }
+
+    if (Array.isArray(node)) {
+      for (const item of node) stack.push(item);
+    } else {
+      for (const key of Object.keys(node)) stack.push(node[key]);
+    }
+  }
+
+  if (html) {
+    const patterns = [
+      /"subscriberCountText"\s*:\s*\{[^}]*"simpleText"\s*:\s*"([^"]+)"/i,
+      /"subscriberCountText"\s*:\s*\{[^}]*"label"\s*:\s*"([^"]*subscriber[^"]*)"/i,
+      /([\d.,]+\s*[KMBkmb]?)\s*subscribers/i,
+    ];
+    for (const re of patterns) {
+      const m = html.match(re);
+      if (m) {
+        const n = parseSubscriberCount(m[1]);
+        if (n > 0) return n;
+      }
+    }
+  }
+
+  return 0;
+}
+
+async function fetchChannelPageSubscribers(handle, skipUrl = null) {
+  const urls = [
+    `https://www.youtube.com/@${handle}`,
+    `https://www.youtube.com/@${handle}/about`,
+    `https://www.youtube.com/@${handle}/videos`,
+  ].filter((u) => u !== skipUrl);
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": UA, "Accept-Language": "en" },
+      });
+      if (!res.ok) continue;
+      const html = await res.text();
+      const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});/s);
+      if (!match) continue;
+      let pageData;
+      try {
+        pageData = JSON.parse(match[1]);
+      } catch {
+        continue;
+      }
+      const subs = extractSubscribersFromYtData(pageData, html);
+      if (subs > 0) return subs;
+    } catch {
+      /* try next URL */
+    }
+  }
+  return 0;
 }
 
 function parseDuration(text) {
@@ -225,23 +370,9 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
     return { videos: [], subscribers: 0, handle: channel.handle };
   }
 
-  // Parse subscriber count
-  let subscribers = 0;
-  const header = data?.header?.c4TabbedHeaderRenderer || data?.header?.pageHeaderRenderer;
-  if (header) {
-    let subText = "";
-    if (header.subscriberCountText?.simpleText) {
-      subText = header.subscriberCountText.simpleText;
-    } else if (header.contentMetadata?.metadataRows) {
-      const parts = header.contentMetadata.metadataRows[0]?.metadataParts || [];
-      const part = parts.find(p => p.text?.content?.toLowerCase().includes("subscriber"));
-      if (part) {
-        subText = part.text.content;
-      }
-    }
-    if (subText) {
-      subscribers = parseSubscriberCount(subText);
-    }
+  let subscribers = extractSubscribersFromYtData(data, html);
+  if (!subscribers) {
+    subscribers = await fetchChannelPageSubscribers(channel.handle, url);
   }
 
   const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
@@ -260,12 +391,9 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
 
   let videos = extractVideos(items, channel, videoFormat);
 
-  // Filter for 'Long' format: only videos less than 9 minutes (540 seconds)
+  // Long tab: drop Shorts rows only (do not cap duration — news long-form is often 10+ min)
   if (videoFormat === "long") {
-    videos = videos.filter((v) => {
-      const sec = parseDuration(v.duration);
-      return sec > 0 && sec < 540;
-    });
+    videos = videos.filter((v) => v.duration !== "Short");
   }
 
   if (videos.length === 0 && videoFormat !== "long") {
@@ -281,10 +409,7 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
       if (newVideos.length === 0) break;
 
       if (videoFormat === "long") {
-        newVideos = newVideos.filter((v) => {
-          const sec = parseDuration(v.duration);
-          return sec > 0 && sec < 540;
-        });
+        newVideos = newVideos.filter((v) => v.duration !== "Short");
       }
 
       videos = videos.concat(newVideos);
@@ -304,21 +429,51 @@ async function seedDefaultType() {
   }
 }
 
-async function fetchVideosForType(typeId, videoFormat) {
-  const cacheKey = videoFormat ? `${typeId}_${videoFormat}` : typeId;
+function normalizeChannelHandle(handle) {
+  return String(handle || "")
+    .trim()
+    .replace(/^@/, "")
+    .toLowerCase();
+}
+
+async function fetchVideosForType(typeId, videoFormat, channelHandleFilter = null) {
+  const handleKey = channelHandleFilter ? normalizeChannelHandle(channelHandleFilter) : "";
+  const cacheKey = handleKey
+    ? `${typeId}_${videoFormat || "all"}_${handleKey}`
+    : videoFormat
+      ? `${typeId}_${videoFormat}`
+      : typeId;
   const cached = cacheMap.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached;
 
   const type = await CompetitorType.findById(typeId).lean();
   if (!type) return null;
 
-  const maxVideos = type.videosPerChannel || 30;
+  const maxVideos = handleKey
+    ? CHANNEL_VIDEO_CAP
+    : Math.min(type.videosPerChannel || 30, CHANNEL_VIDEO_CAP);
 
-  const promises = type.channels.flatMap((ch) => {
+  let channelsToScrape = type.channels || [];
+  if (handleKey) {
+    channelsToScrape = channelsToScrape.filter(
+      (ch) => normalizeChannelHandle(ch.handle) === handleKey,
+    );
+    if (channelsToScrape.length === 0) {
+      const entry = { videos: [], channels: type.channels, ts: Date.now() };
+      cacheMap.set(cacheKey, entry);
+      return entry;
+    }
+  }
+
+  const promises = channelsToScrape.flatMap((ch) => {
+    // Single-channel analytics: one pass, up to 500 newest from the Videos tab
+    if (videoFormat === "all" && handleKey) {
+      return [scrapeChannel(ch, maxVideos, "long")];
+    }
     if (videoFormat === "all") {
       return [
         scrapeChannel(ch, maxVideos, "long"),
-        scrapeChannel(ch, maxVideos, "short")
+        scrapeChannel(ch, maxVideos, "short"),
       ];
     }
     const formatToScrape = (videoFormat === "long" || videoFormat === "short")
@@ -371,7 +526,7 @@ exports.getCompetitorVideos = async (req, res) => {
   try {
     await seedDefaultType();
 
-    const { typeId, force, videoFormat } = req.query;
+    const { typeId, force, videoFormat, channelHandle } = req.query;
     if (!typeId) {
       return res.status(400).json({ message: "typeId query parameter is required" });
     }
@@ -380,7 +535,7 @@ exports.getCompetitorVideos = async (req, res) => {
       exports.clearCache(typeId);
     }
 
-    const result = await fetchVideosForType(typeId, videoFormat);
+    const result = await fetchVideosForType(typeId, videoFormat, channelHandle || null);
     if (!result) {
       return res.status(404).json({ message: "Competitor type not found" });
     }
