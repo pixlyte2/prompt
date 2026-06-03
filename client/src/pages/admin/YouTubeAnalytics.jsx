@@ -52,6 +52,7 @@ import {
   buildViewsDistribution,
   buildLastUploadedPerformance,
   sortVideosByRecent,
+  computeViewsAxisMax,
 } from "../../utils/youtubeAnalyticsData";
 
 const YT_META_PREFIX = "YT_ANALYTICS_META_";
@@ -376,6 +377,10 @@ function YouTubeAnalytics() {
     [videos, isShortChannel],
   );
   const last30Performance = useMemo(() => buildLastUploadedPerformance(videos, 30), [videos]);
+  const last30YMax = useMemo(
+    () => computeViewsAxisMax(last30Performance.maxViews, last30Performance.avgViews),
+    [last30Performance.maxViews, last30Performance.avgViews],
+  );
   const top10ByViews = useMemo(() => buildTopVideosByViews(videos, 10), [videos]);
   const top10MaxViews = top10ByViews[0]?.views || 1;
   const recentVideos = useMemo(() => sortVideosByRecent(videos).slice(0, 25), [videos]);
@@ -602,8 +607,8 @@ function YouTubeAnalytics() {
           )}
         </aside>
 
-        {/* Main — mobile: whole column scrolls; lg+: header/KPIs fixed, charts pane scrolls */}
-        <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar">
+        {/* Main — header, KPIs, and charts scroll together on all breakpoints */}
+        <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
           {!activeChannel ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
               <Youtube size={48} className="text-red-500 mb-4" />
@@ -620,7 +625,7 @@ function YouTubeAnalytics() {
           ) : (
             <>
               {/* Header toolbar */}
-              <header className="flex flex-wrap items-center gap-3 pb-3 border-b border-slate-200/60 dark:border-slate-800 lg:flex-shrink-0">
+              <header className="flex flex-wrap items-center gap-3 pb-3 border-b border-slate-200/60 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={toggleChannelPanel}
@@ -817,7 +822,7 @@ function YouTubeAnalytics() {
 
               {/* KPIs */}
               <div
-                className={`grid gap-3 py-3 lg:flex-shrink-0 ${
+                className={`grid gap-3 py-3 ${
                   isShortChannel ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 lg:grid-cols-4"
                 }`}
               >
@@ -836,8 +841,8 @@ function YouTubeAnalytics() {
                 ))}
               </div>
 
-              {/* Charts — scroll in inner pane on desktop only */}
-              <div className="pr-1 pb-4 space-y-4 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:custom-scrollbar">
+              {/* Charts */}
+              <div className="pr-1 pb-4 space-y-4">
                 {/* First chart: last 30 uploads (vertical bars — upload # on X, views on Y) */}
                 <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 overflow-hidden shadow-sm">
                   <ChartCard
@@ -873,7 +878,14 @@ function YouTubeAnalytics() {
                               return "";
                             }}
                           />
-                          <YAxis tick={{ fontSize: 9 }} tickFormatter={formatCompact} width={48} tickLine={false} />
+                          <YAxis
+                            tick={{ fontSize: 9 }}
+                            tickFormatter={formatCompact}
+                            width={48}
+                            tickLine={false}
+                            domain={[0, last30YMax]}
+                            allowDataOverflow={false}
+                          />
                           <Tooltip
                             contentStyle={tooltipStyle}
                             formatter={(value) => [formatCompact(value), "Views"]}
@@ -1147,7 +1159,7 @@ function YouTubeAnalytics() {
                   </div>
                   <div className="max-h-[360px] overflow-y-auto custom-scrollbar">
                     <table className="w-full text-xs">
-                      <thead className="bg-slate-50 dark:bg-slate-800/95 lg:sticky lg:top-0 lg:z-10">
+                      <thead className="bg-slate-50 dark:bg-slate-800/95">
                         <tr className="text-[10px] font-bold uppercase text-slate-500 text-left">
                           <th className="py-2.5 pl-4">Video</th>
                           <th className="py-2.5 text-right">Views</th>

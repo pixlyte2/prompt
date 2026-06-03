@@ -26,6 +26,18 @@ export function formatCompact(n) {
   return v.toLocaleString("en-US");
 }
 
+/** Y-axis ceiling from peak views — tight scale so max bar sits near the top (not padded to 80K when peak is 63K). */
+export function computeViewsAxisMax(peakViews, extraPeak = 0) {
+  const peak = Math.max(Number(peakViews) || 0, Number(extraPeak) || 0, 1);
+  const padded = peak * 1.06;
+  if (padded >= 1_000_000) return Math.ceil(padded / 50_000) * 50_000;
+  if (padded >= 100_000) return Math.ceil(padded / 10_000) * 10_000;
+  if (padded >= 10_000) return Math.ceil(padded / 2_000) * 2_000;
+  if (padded >= 1_000) return Math.ceil(padded / 200) * 200;
+  if (padded >= 100) return Math.ceil(padded / 20) * 20;
+  return Math.ceil(padded);
+}
+
 export function computeDashboardStats(videos) {
   const list = videos || [];
   const videoCount = list.length;
