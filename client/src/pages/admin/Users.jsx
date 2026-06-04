@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { Plus, Trash2, Users as UsersIcon, Search, Mail, Pencil } from "lucide-react";
+import { Plus, Trash2, Users as UsersIcon, Search, Mail, Pencil, Shield, FileEdit, Eye, Mic } from "lucide-react";
 import api from "../../services/api";
 import AdminLayout from "../../layout/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -203,52 +203,42 @@ export default function Users() {
 
       <div className="space-y-5">
 
-        {/* 🔥 STATS - PRO */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by role">
           {[
-            { label: "Total Users", value: total, filter: "all", color: "blue" },
-            { label: "Admins", value: admins, filter: "admin", color: "purple" },
-            { label: "Content", value: content, filter: "content_manager", color: "green" },
-            { label: "Viewers", value: viewers, filter: "viewer", color: "gray" },
-            { label: "Voice Over", value: voiceOver, filter: "voice_over", color: "emerald" },
-          ].map((item, i) => (
-            <div
-              key={i}
-              onClick={() => setActiveFilter(item.filter)}
-              className={`buffer-card p-4 cursor-pointer transition hover:shadow-md ${
-                activeFilter === item.filter ? "ring-2 ring-blue-500" : ""
-              }`}
-            >
-              <p className="text-xs text-gray-500">{item.label}</p>
-
-              <p className="text-2xl font-semibold mt-1 text-gray-900 dark:text-white">
-                {item.value}
-              </p>
-
-              {/* MINI CHART */}
-              <div className="mt-3 h-8 flex items-end gap-[3px]">
-                {[5, 8, 6, 10, 7, 9, 6].map((h, idx) => (
-                  <div
-                    key={idx}
-                    style={{ height: `${h * 3}px`, width: "100%" }}
-                    className={
-                      item.color === "blue"
-                        ? "bg-blue-400/60"
-                        : item.color === "purple"
-                        ? "bg-purple-400/60"
-                        : item.color === "green"
-                        ? "bg-green-400/60"
-                        : item.color === "emerald"
-                        ? "bg-emerald-400/60"
-                        : "bg-gray-400/60"
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-
+            { label: "All", count: total, filter: "all", icon: UsersIcon, iconBg: "bg-blue-50 dark:bg-blue-950/50", iconFg: "text-blue-600 dark:text-blue-400" },
+            { label: "Admins", count: admins, filter: "admin", icon: Shield, iconBg: "bg-violet-50 dark:bg-violet-950/50", iconFg: "text-violet-600 dark:text-violet-400" },
+            { label: "Content", count: content, filter: "content_manager", icon: FileEdit, iconBg: "bg-emerald-50 dark:bg-emerald-950/50", iconFg: "text-emerald-600 dark:text-emerald-400" },
+            { label: "Viewers", count: viewers, filter: "viewer", icon: Eye, iconBg: "bg-gray-100 dark:bg-gray-700/50", iconFg: "text-gray-600 dark:text-gray-300" },
+            { label: "Voice Over", count: voiceOver, filter: "voice_over", icon: Mic, iconBg: "bg-amber-50 dark:bg-amber-950/50", iconFg: "text-amber-600 dark:text-amber-400" },
+          ].map((item) => {
+            const isActive = activeFilter === item.filter;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.filter}
+                type="button"
+                onClick={() => setActiveFilter(item.filter)}
+                aria-pressed={isActive}
+                className={`buffer-card flex items-center gap-2.5 px-3 py-2.5 min-w-[7.5rem] transition-all hover:shadow-md ${
+                  isActive
+                    ? "ring-2 ring-blue-500 bg-blue-50/80 dark:bg-blue-950/30 shadow-sm"
+                    : "hover:border-gray-300 dark:hover:border-gray-600"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${item.iconBg}`}>
+                  <Icon size={15} className={item.iconFg} />
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {item.label}
+                  </p>
+                  <p className="text-lg font-bold tabular-nums text-gray-900 dark:text-white leading-tight">
+                    {item.count}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {/* SEARCH + ADD */}

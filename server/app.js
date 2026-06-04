@@ -77,7 +77,7 @@ app.use("/api/youtube", youtubeRoutes);
  * 🧪 Health Check
  */
 app.get("/", (req, res) => {
-  res.send("CreatorAI Backend is running 🚀");
+  res.send("Creator AI Backend is running 🚀");
 });
 
 /**

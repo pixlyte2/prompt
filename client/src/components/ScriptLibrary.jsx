@@ -192,7 +192,7 @@ function ScriptLibraryRow({ task, index, onGenerate }) {
   return (
     <>
       {scriptModalOpen && <ScriptViewModal task={task} onClose={() => setScriptModalOpen(false)} />}
-      <div className="group flex flex-col p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/40 hover:bg-violet-50/80 dark:hover:bg-violet-950/30 hover:border-violet-300/60 dark:hover:border-violet-800/60 shadow-sm hover:shadow-md transition-all duration-300">
+      <div className="group flex flex-col p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/40 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 hover:border-blue-400/60 dark:hover:border-blue-700/60 shadow-sm hover:shadow-md transition-all duration-300">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
           <div className="flex items-start gap-2.5 sm:gap-4 min-w-0 flex-1">
             <div className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-md bg-gray-100 dark:bg-gray-800 text-[10px] font-black text-gray-500 mt-1 sm:mt-3.5">
@@ -216,7 +216,7 @@ function ScriptLibraryRow({ task, index, onGenerate }) {
               </div>
             )}
             <div className="min-w-0 flex-1 pt-0.5">
-              <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 leading-snug group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors line-clamp-2">
+              <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                 {task.title}
               </h3>
               <div className="mt-1 sm:mt-2 flex flex-wrap items-center gap-1">
@@ -229,7 +229,7 @@ function ScriptLibraryRow({ task, index, onGenerate }) {
                   Completed
                 </span>
                 {scriptOk ? (
-                  <span className="inline-flex items-center rounded-md sm:rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-950/60 dark:bg-violet-950/40 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-violet-700 dark:text-violet-400">
+                  <span className="inline-flex items-center rounded-md sm:rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-950/60 dark:bg-blue-950/40 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-400">
                     Script Ready
                   </span>
                 ) : (
@@ -255,7 +255,7 @@ function ScriptLibraryRow({ task, index, onGenerate }) {
               type="button"
               disabled={!scriptOk || generating}
               onClick={handleGenerate}
-              className="h-8 px-3 sm:h-9 sm:px-4 inline-flex items-center justify-center gap-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/25 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+              className="buffer-button-primary h-8 px-3 sm:h-9 sm:px-4 inline-flex items-center justify-center gap-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
               title={scriptOk ? "Copy script and open AI Chat Source Input" : "Add a script in Production Hub first"}
             >
               {generating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
@@ -373,7 +373,7 @@ export default function ScriptLibrary({ onGenerate }) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by title or script…"
-                className="w-full pl-8 sm:pl-10 pr-8 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg sm:rounded-xl bg-white dark:bg-gray-955 text-xs sm:text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500 text-gray-900 dark:text-white"
+                className="w-full pl-8 sm:pl-10 pr-8 py-1.5 sm:py-2 border border-gray-200 dark:border-gray-800 rounded-lg sm:rounded-xl bg-white dark:bg-gray-955 text-xs sm:text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-gray-900 dark:text-white"
               />
               {searchQuery && (
                 <button
@@ -385,7 +385,7 @@ export default function ScriptLibrary({ onGenerate }) {
                 </button>
               )}
             </div>
-            <span className="shrink-0 inline-flex items-center rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-900/50 dark:bg-violet-950/40 px-2.5 py-1.5 text-[10px] sm:text-xs font-bold text-violet-700 dark:text-violet-300">
+            <span className="shrink-0 inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/40 px-2.5 py-1.5 text-[10px] sm:text-xs font-bold text-blue-700 dark:text-blue-300">
               Last {SCRIPT_LIBRARY_DAY_WINDOW} days
             </span>
           </div>
@@ -395,7 +395,7 @@ export default function ScriptLibrary({ onGenerate }) {
               onClick={() => setScriptOnly((v) => !v)}
               className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
                 scriptOnly
-                  ? "bg-violet-600 text-white shadow-sm"
+                  ? "bg-blue-600 text-white shadow-sm"
                   : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
               }`}
             >
@@ -418,7 +418,7 @@ export default function ScriptLibrary({ onGenerate }) {
 
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 py-24 text-gray-500">
-            <Loader2 size={28} className="animate-spin text-violet-500" />
+            <Loader2 size={28} className="animate-spin text-blue-600" />
             <p className="text-sm">Loading completed videos…</p>
           </div>
         ) : dateGroups.length === 0 ? (

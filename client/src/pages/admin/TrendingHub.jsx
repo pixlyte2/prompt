@@ -671,12 +671,12 @@ function CompetitorVideoCard({ video, onSchedule, onPreviewThumbnail }) {
           </span>
         )}
 
-        {/* Quick Actions (Floating Add-to-Board Button on Hover) */}
+        {/* Schedule — always visible on thumbnail */}
         {onSchedule && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onSchedule(video); }}
-            className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-white/95 dark:bg-gray-900/95 text-gray-700 dark:text-gray-200 hover:text-white hover:bg-gradient-to-br hover:from-blue-650 hover:to-indigo-600 shadow-md border border-gray-100 dark:border-gray-800 opacity-0 group-hover:opacity-100 transform translate-y-[-5px] group-hover:translate-y-0 transition-all duration-300 z-10 hover:scale-105"
+            className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-white/95 dark:bg-gray-900/95 text-gray-700 dark:text-gray-200 hover:text-white hover:bg-gradient-to-br hover:from-blue-650 hover:to-indigo-600 shadow-md border border-gray-100 dark:border-gray-800 transition-colors duration-200 z-10 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
             title="Schedule this video"
           >
             <CalendarPlus size={14} />

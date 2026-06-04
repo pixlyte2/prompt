@@ -20,7 +20,7 @@ export default function AIChatTabs() {
 
   const tabs = [
     { key: "chat", label: "AI Chat", icon: MessageSquare },
-    { key: "script-library", label: "Script Library", icon: Library },
+    { key: "script-library", label: "Completed Scripts", icon: Library },
     { key: "content-guard", label: "Content Guard", icon: ShieldCheck },
     { key: "settings", label: "Settings", icon: Settings },
   ];
@@ -45,7 +45,7 @@ export default function AIChatTabs() {
         ))}
       </div>
 
-      {/* Tab content — AI Chat & Script Library stay mounted (hidden) to preserve scroll, filters, and selections */}
+      {/* Tab content — AI Chat & Completed Scripts stay mounted (hidden) to preserve scroll, filters, and selections */}
       <div className="flex-1 min-h-0 min-w-0">
         <div
           className={`h-full min-h-0 flex flex-col ${activeTab === "chat" ? "" : "hidden"}`}

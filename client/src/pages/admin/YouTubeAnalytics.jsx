@@ -15,7 +15,6 @@ import {
   Loader2,
   TrendingUp,
   BarChart3,
-  Activity,
   Clapperboard,
   Trophy,
   Play,
@@ -26,8 +25,6 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import {
-  AreaChart,
-  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -35,6 +32,10 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
   Legend,
   ReferenceLine,
 } from "recharts";
@@ -45,8 +46,6 @@ import {
   SCRAPE_VIDEO_CAP,
   formatCompact,
   computeDashboardStats,
-  buildDailyTimeline,
-  buildVideoViewsSeries,
   buildTopVideosByViews,
   buildWeeklyUploads,
   buildViewsDistribution,
@@ -102,24 +101,189 @@ function writeChannelUiMeta(handle, { color }) {
   );
 }
 
-function ChartCard({ title, subtitle, icon: Icon, children, className = "" }) {
+/** Compact KPI strip in chart card header (avoids Y-axis / plot overlap). */
+function ChartHeaderStats({ stats }) {
+  if (!stats?.length) return null;
+  return (
+    <div
+      className="flex flex-nowrap items-center justify-end gap-0.5 sm:gap-1.5 min-w-0 shrink-0 pointer-events-none"
+      aria-label="Chart summary"
+    >
+      {stats.slice(0, 3).map((s) => (
+        <div
+          key={s.label}
+          className="shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 sm:px-2 sm:py-1 bg-slate-50/95 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-600/60"
+        >
+          <p className="text-[7px] sm:text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-none">
+            {s.label}
+          </p>
+          <p className="text-[10px] sm:text-xs font-bold tabular-nums text-slate-900 dark:text-white leading-tight mt-0.5">
+            {s.value}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChartCard({ title, subtitle, icon: Icon, children, className = "", stats, headerExtra }) {
   return (
     <div
       className={`rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 shadow-sm flex flex-col min-h-[260px] ${className}`}
     >
       <div className="px-4 pt-4 pb-2 border-b border-slate-100 dark:border-slate-800/80">
-        <div className="flex items-center gap-2">
-          {Icon && <Icon size={14} className="text-slate-400" />}
-          <div>
-            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100">{title}</h3>
-            {subtitle && <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3 min-w-0">
+          <div className="flex items-start gap-2 min-w-0 flex-1">
+            {Icon && <Icon size={14} className="text-slate-400 flex-shrink-0 mt-0.5" />}
+            <div className="min-w-0">
+              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100">{title}</h3>
+              {subtitle && <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
+            </div>
+          </div>
+          <div className="flex flex-nowrap items-center justify-end gap-1.5 sm:gap-2 min-w-0 shrink-0 sm:max-w-[72%] overflow-x-auto">
+            {headerExtra}
+            <ChartHeaderStats stats={stats} />
           </div>
         </div>
       </div>
-      <div className="flex-1 min-h-[200px] p-3 pt-2">{children}</div>
+      <div className="flex-1 min-h-[200px] p-3 pt-2 pl-4 overflow-visible">{children}</div>
     </div>
   );
 }
+
+const UPLOADS_CHART_TYPE_OPTIONS = [
+  { id: "bar", label: "Bar" },
+  { id: "line", label: "Line" },
+  { id: "area", label: "Area" },
+];
+
+function UploadsChartTypeToggle({ value, onChange }) {
+  return (
+    <div
+      className="inline-flex shrink-0 rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 pointer-events-auto"
+      role="group"
+      aria-label="Chart type"
+    >
+      {UPLOADS_CHART_TYPE_OPTIONS.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => onChange(t.id)}
+          className={`px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-xs transition-colors ${
+            value === t.id ? SEGMENT_ACTIVE : SEGMENT_IDLE
+          }`}
+          aria-pressed={value === t.id}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LastUploadsPerformanceChart({ chartType, items, count, avgViews, yMax, accentHex, tooltipStyle }) {
+  const xAxis = (
+    <XAxis
+      dataKey="chartLabel"
+      tick={{ fontSize: 8, fontWeight: 600 }}
+      tickLine={false}
+      interval={0}
+      angle={-40}
+      textAnchor="end"
+      height={52}
+      tickFormatter={(label) => {
+        const n = parseInt(String(label).replace("#", ""), 10);
+        if (n === 1 || n === count || n % 5 === 0) return label;
+        return "";
+      }}
+    />
+  );
+  const shared = (
+    <>
+      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.12)" />
+      {xAxis}
+      <YAxis
+        tick={{ fontSize: 9 }}
+        tickFormatter={formatCompact}
+        width={Y_AXIS_VIEWS_WIDTH}
+        tickLine={false}
+        domain={[0, yMax]}
+        allowDataOverflow={false}
+      />
+      <Tooltip
+        contentStyle={tooltipStyle}
+        formatter={(value) => [formatCompact(value), "Views"]}
+        labelFormatter={(_, payload) => {
+          const row = payload?.[0]?.payload;
+          return row?.title ? row.title.slice(0, 80) : "";
+        }}
+      />
+      <ReferenceLine y={avgViews} stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 4" />
+    </>
+  );
+
+  if (chartType === "line") {
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={items} margin={CHART_MARGIN_VIEWS}>
+          {shared}
+          <Line
+            type="monotone"
+            dataKey="views"
+            stroke={accentHex}
+            strokeWidth={2}
+            dot={{ r: 3, fill: accentHex, strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  if (chartType === "area") {
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <AreaChart data={items} margin={CHART_MARGIN_VIEWS}>
+          {shared}
+          <Area
+            type="monotone"
+            dataKey="views"
+            stroke={accentHex}
+            strokeWidth={2}
+            fill={accentHex}
+            fillOpacity={0.22}
+            activeDot={{ r: 5 }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={items} margin={CHART_MARGIN_VIEWS}>
+        {shared}
+        <Bar dataKey="views" fill={accentHex} radius={[4, 4, 0, 0]} maxBarSize={28} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/** How many recent uploads to include in charts and KPIs (not scrape cap). */
+const VIDEO_LIMIT_OPTIONS = [10, 25, 30, 50, 75, 100];
+const DEFAULT_VIDEO_LIMIT = 30;
+
+const SEGMENT_ACTIVE =
+  "bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 shadow-sm ring-1 ring-blue-200/80 dark:ring-blue-800/60 font-semibold";
+const SEGMENT_IDLE =
+  "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium";
+
+/** Room for formatCompact Y ticks (e.g. "74.0K") — avoid negative margin.left clipping tspan labels. */
+const CHART_MARGIN_VIEWS = { top: 8, right: 12, left: 4, bottom: 4 };
+const CHART_MARGIN_DUAL_AXIS = { top: 8, right: 12, left: 4, bottom: 4 };
+const CHART_MARGIN_COUNT = { top: 8, right: 12, left: 4, bottom: 4 };
+const Y_AXIS_VIEWS_WIDTH = 52;
+const Y_AXIS_COUNT_WIDTH = 36;
 
 function ScrapeOverlay({ open, channel, statusMessage, elapsedSec, onCancel }) {
   if (!open || !channel) return null;
@@ -162,9 +326,10 @@ function YouTubeAnalytics() {
   const scrapeInFlightRef = useRef(false);
   const activeChannelRef = useRef(null);
   const initialScrapeDoneRef = useRef(new Set());
-  const [dateRange, setDateRange] = useState("28d");
   /** null = use channel config from Trending Hub; otherwise manual long/short scrape */
   const [formatOverride, setFormatOverride] = useState(null);
+  const [videoLimit, setVideoLimit] = useState(DEFAULT_VIDEO_LIMIT);
+  const [uploadsChartType, setUploadsChartType] = useState("bar");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [channelPanelOpen, setChannelPanelOpen] = useState(readChannelPanelOpen);
   const [mobileChannelOpen, setMobileChannelOpen] = useState(false);
@@ -356,34 +521,49 @@ function YouTubeAnalytics() {
     toast("Scrape cancelled", { duration: 2500 });
   }, []);
 
-  const stats = useMemo(() => computeDashboardStats(videos), [videos]);
+  const limitedVideos = useMemo(
+    () => sortVideosByRecent(videos).slice(0, videoLimit),
+    [videos, videoLimit],
+  );
+
+  const stats = useMemo(() => computeDashboardStats(limitedVideos), [limitedVideos]);
+  const scrapedStats = useMemo(() => computeDashboardStats(videos), [videos]);
   const accent = PRESET_COLORS[activeChannel?.color] || PRESET_COLORS.blue;
 
-  const dailyTimeline = useMemo(
-    () => (isShortChannel ? [] : buildDailyTimeline(videos, dateRange)),
-    [videos, dateRange, isShortChannel],
-  );
-
-  const videoViewsSeries = useMemo(
-    () => (isShortChannel ? [] : buildVideoViewsSeries(videos)),
-    [videos, isShortChannel],
-  );
   const weeklyUploads = useMemo(
-    () => (isShortChannel ? [] : buildWeeklyUploads(videos, 10)),
-    [videos, isShortChannel],
+    () => (isShortChannel ? [] : buildWeeklyUploads(limitedVideos, 10)),
+    [limitedVideos, isShortChannel],
   );
   const viewsDistribution = useMemo(
-    () => (isShortChannel ? [] : buildViewsDistribution(videos)),
-    [videos, isShortChannel],
+    () => (isShortChannel ? [] : buildViewsDistribution(limitedVideos)),
+    [limitedVideos, isShortChannel],
   );
-  const last30Performance = useMemo(() => buildLastUploadedPerformance(videos, 30), [videos]);
+
+  const weeklyUploadsSummary = useMemo(() => {
+    if (!weeklyUploads.length) return { uploads: 0, views: 0, weeks: 0 };
+    return {
+      uploads: weeklyUploads.reduce((s, w) => s + (w.uploads || 0), 0),
+      views: weeklyUploads.reduce((s, w) => s + (w.views || 0), 0),
+      weeks: weeklyUploads.length,
+    };
+  }, [weeklyUploads]);
+
+  const viewsDistributionSummary = useMemo(() => {
+    const total = viewsDistribution.reduce((s, b) => s + (b.count || 0), 0);
+    const topBracket = [...viewsDistribution].sort((a, b) => (b.count || 0) - (a.count || 0))[0];
+    return { total, topLabel: topBracket?.label || "—", topCount: topBracket?.count || 0 };
+  }, [viewsDistribution]);
+
+  const last30Performance = useMemo(
+    () => buildLastUploadedPerformance(limitedVideos, videoLimit),
+    [limitedVideos, videoLimit],
+  );
   const last30YMax = useMemo(
     () => computeViewsAxisMax(last30Performance.maxViews, last30Performance.avgViews),
     [last30Performance.maxViews, last30Performance.avgViews],
   );
-  const top10ByViews = useMemo(() => buildTopVideosByViews(videos, 10), [videos]);
+  const top10ByViews = useMemo(() => buildTopVideosByViews(limitedVideos, 10), [limitedVideos]);
   const top10MaxViews = top10ByViews[0]?.views || 1;
-  const recentVideos = useMemo(() => sortVideosByRecent(videos).slice(0, 25), [videos]);
 
   const kpiCards = useMemo(() => {
     const cards = [
@@ -395,31 +575,31 @@ function YouTubeAnalytics() {
         color: "text-violet-500",
       },
       {
-        label: isShortChannel ? "Shorts loaded" : "Videos loaded",
-        value: `${stats.videoCount} / ${SCRAPE_VIDEO_CAP}`,
-        sub: "Most recent public uploads",
+        label: isShortChannel ? "Shorts in sample" : "Videos in sample",
+        value: `${stats.videoCount} / ${videos.length || SCRAPE_VIDEO_CAP}`,
+        sub: `Analyzing newest ${videoLimit} · up to ${SCRAPE_VIDEO_CAP} scraped`,
         icon: Video,
         color: accent.text,
       },
       {
-        label: "Total views (loaded)",
+        label: "Views in sample",
         value: formatCompact(stats.totalViews),
-        sub: `Avg ${formatCompact(stats.avgViews)} / video`,
+        sub: `Avg ${formatCompact(stats.avgViews)} / video · newest ${videoLimit}`,
         icon: Eye,
         color: "text-sky-500",
       },
     ];
     if (!isShortChannel) {
       cards.push({
-        label: "Last 30 days",
-        value: formatCompact(stats.views30d),
-        sub: `${stats.uploads30d} uploads · ${formatCompact(stats.views7d)} views (7d)`,
+        label: "All scraped views",
+        value: formatCompact(scrapedStats.totalViews),
+        sub: `${scrapedStats.videoCount} videos from last refresh`,
         icon: TrendingUp,
         color: "text-emerald-500",
       });
     }
     return cards;
-  }, [activeChannel?.subscribers, isShortChannel, stats, accent.text]);
+  }, [activeChannel?.subscribers, isShortChannel, stats, scrapedStats, accent.text, videoLimit, videos.length]);
 
   const rankBadgeClass = (rank) => {
     if (rank === 1) return "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/30";
@@ -624,199 +804,208 @@ function YouTubeAnalytics() {
             </div>
           ) : (
             <>
-              {/* Header toolbar */}
-              <header className="flex flex-wrap items-center gap-3 pb-3 border-b border-slate-200/60 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={toggleChannelPanel}
-                  className="hidden lg:inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors"
-                  title={channelPanelOpen ? "Collapse channel panel" : "Expand channel panel"}
-                >
-                  {channelPanelOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
-                  {channelPanelOpen ? "Hide channels" : "Channels"}
-                </button>
-
-                {/* Mobile — collapsible channel picker */}
-                <div className="lg:hidden w-full basis-full">
+              {/* Channel header — identity + controls */}
+              <header className="buffer-card overflow-hidden flex-shrink-0 mb-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700/80 min-w-0">
                   <button
                     type="button"
-                    onClick={() => setMobileChannelOpen((o) => !o)}
-                    className="w-full flex items-center justify-between gap-2 h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm"
-                    aria-expanded={mobileChannelOpen}
+                    onClick={toggleChannelPanel}
+                    className="hidden lg:inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+                    title={channelPanelOpen ? "Collapse channel panel" : "Expand channel panel"}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-lg ${accent.bg} text-white text-sm font-bold flex items-center justify-center flex-shrink-0`}
-                      >
-                        {activeChannel.name.charAt(0)}
-                      </div>
-                      <div className="text-left min-w-0">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{activeChannel.name}</p>
-                        <p className="text-[10px] text-slate-500 truncate">@{activeChannel.handle}</p>
-                      </div>
-                    </div>
-                    <ChevronDown
-                      size={18}
-                      className={`flex-shrink-0 text-slate-400 transition-transform duration-200 ${
-                        mobileChannelOpen ? "rotate-180" : ""
-                      }`}
-                    />
+                    {channelPanelOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+                    <span>{channelPanelOpen ? "Hide channels" : "Show channels"}</span>
                   </button>
-                  {mobileChannelOpen && (
-                    <div className="mt-2 p-2 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-900/90 max-h-52 overflow-y-auto custom-scrollbar space-y-1 shadow-inner">
-                      {channels.map((c) => {
-                        const col = PRESET_COLORS[c.color] || PRESET_COLORS.blue;
-                        const active = activeChannel?.handle === c.handle;
+
+                  <div className="lg:hidden w-full min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setMobileChannelOpen((o) => !o)}
+                      className="w-full flex items-center justify-between gap-2 h-11 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50/80 dark:bg-gray-800/80"
+                      aria-expanded={mobileChannelOpen}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={`w-9 h-9 rounded-lg ${accent.bg} text-white text-sm font-bold flex items-center justify-center flex-shrink-0`}
+                        >
+                          {activeChannel.name.charAt(0)}
+                        </div>
+                        <div className="text-left min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{activeChannel.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{activeChannel.handle}</p>
+                        </div>
+                      </div>
+                      <ChevronDown
+                        size={18}
+                        className={`flex-shrink-0 text-gray-400 transition-transform duration-200 ${
+                          mobileChannelOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                    {mobileChannelOpen && (
+                      <div className="mt-2 p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 max-h-52 overflow-y-auto custom-scrollbar space-y-1">
+                        {channels.map((c) => {
+                          const col = PRESET_COLORS[c.color] || PRESET_COLORS.blue;
+                          const active = activeChannel?.handle === c.handle;
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                setActiveChannel(c);
+                                setMobileChannelOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+                                active
+                                  ? "bg-blue-50 dark:bg-blue-950/40 ring-1 ring-blue-200 dark:ring-blue-800"
+                                  : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`w-7 h-7 rounded-md ${col.bg} text-white text-[10px] font-bold flex items-center justify-center`}
+                                >
+                                  {c.name.charAt(0)}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{c.name}</p>
+                                  <p className="text-[10px] text-gray-500 truncate">@{c.handle}</p>
+                                </div>
+                                {c.subscribers > 0 && (
+                                  <span className="text-[10px] font-semibold text-gray-500 tabular-nums">
+                                    {formatCompact(c.subscribers)}
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="hidden lg:flex items-center gap-3 min-w-0 flex-1">
+                    <div
+                      className={`w-11 h-11 rounded-lg ${accent.bg} text-white font-bold flex items-center justify-center text-lg flex-shrink-0`}
+                    >
+                      {activeChannel.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
+                        {activeChannel.name}
+                      </h1>
+                      <a
+                        href={`https://www.youtube.com/@${activeChannel.handle}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-red-600 dark:text-red-400 font-medium inline-flex items-center gap-1 hover:underline"
+                      >
+                        @{activeChannel.handle}
+                        <ExternalLink size={11} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50/60 dark:bg-gray-900/40 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-full sm:w-auto sm:mr-0.5">
+                      Format
+                    </span>
+                    <div
+                      className={`inline-flex rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 ${
+                        refreshing ? "opacity-50 pointer-events-none" : ""
+                      }`}
+                    >
+                      {[
+                        { label: "Long", value: "long" },
+                        { label: "Shorts", value: "short" },
+                      ].map((f) => {
+                        const isActive = activeVideoFormat === f.value;
+                        const isDefault = usingChannelFormatDefault && channelDefaultFormat === f.value;
                         return (
                           <button
-                            key={c.id}
+                            key={f.value}
                             type="button"
-                            onClick={() => {
-                              setActiveChannel(c);
-                              setMobileChannelOpen(false);
-                            }}
-                            className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
-                              active
-                                ? "bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-600 shadow-sm"
-                                : "hover:bg-white/80 dark:hover:bg-slate-800/50"
+                            disabled={refreshing}
+                            onClick={() => setFormatOverride(f.value)}
+                            className={`px-3 py-1.5 rounded-md text-xs transition-colors inline-flex items-center gap-1 ${
+                              isActive ? SEGMENT_ACTIVE : SEGMENT_IDLE
                             }`}
+                            title={
+                              isDefault
+                                ? "Channel default (Trending Hub)"
+                                : `Scrape ${f.label.toLowerCase()} videos`
+                            }
                           >
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-7 h-7 rounded-md ${col.bg} text-white text-[10px] font-bold flex items-center justify-center`}
-                              >
-                                {c.name.charAt(0)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{c.name}</p>
-                                <p className="text-[10px] text-slate-500 truncate">@{c.handle}</p>
-                              </div>
-                              {c.subscribers > 0 && (
-                                <span className="text-[10px] font-semibold text-slate-500 tabular-nums">
-                                  {formatCompact(c.subscribers)}
-                                </span>
-                              )}
-                            </div>
+                            {f.label}
+                            {isDefault && (
+                              <span className="text-[9px] font-bold uppercase text-blue-600 dark:text-blue-400">
+                                default
+                              </span>
+                            )}
                           </button>
                         );
                       })}
                     </div>
-                  )}
-                </div>
-
-                <div className="hidden lg:flex items-center gap-3 min-w-0 flex-1">
-                  <div className={`w-11 h-11 rounded-xl ${accent.bg} text-white font-bold flex items-center justify-center text-lg shadow-md`}>
-                    {activeChannel.name.charAt(0)}
+                    {!usingChannelFormatDefault && (
+                      <button
+                        type="button"
+                        disabled={refreshing}
+                        onClick={() => setFormatOverride(null)}
+                        className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 underline-offset-2 hover:underline px-1"
+                        title={`Revert to channel default (${channelDefaultFormat === "short" ? "Shorts" : "Long"})`}
+                      >
+                        Reset
+                      </button>
+                    )}
                   </div>
-                  <div className="min-w-0">
-                    <h1 className="text-lg font-bold text-slate-900 dark:text-white truncate">{activeChannel.name}</h1>
-                    <a
-                      href={`https://www.youtube.com/@${activeChannel.handle}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-red-600 dark:text-red-400 font-medium inline-flex items-center gap-1 hover:underline"
+
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-full sm:w-auto sm:mr-0.5">
+                      Videos
+                    </span>
+                    <div
+                      className="inline-flex flex-wrap rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                      role="group"
+                      aria-label="Number of videos to analyze"
                     >
-                      @{activeChannel.handle}
-                      <ExternalLink size={11} />
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 ml-auto">
-                  <span
-                    className="px-2.5 py-1.5 rounded-lg text-[10px] font-semibold text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50"
-                    title="Default from Trending Hub → channel source"
-                  >
-                    Config: {channelDefaultFormat === "short" ? "Shorts" : "Long"}
-                  </span>
-                  <div
-                    className={`inline-flex rounded-lg p-0.5 border ${
-                      refreshing ? "opacity-50 pointer-events-none" : ""
-                    } bg-slate-100 dark:bg-slate-800 border-slate-200/80 dark:border-slate-700`}
-                  >
-                    {[
-                      { label: "Long", value: "long" },
-                      { label: "Shorts", value: "short" },
-                    ].map((f) => {
-                      const isActive = activeVideoFormat === f.value;
-                      const isDefault = usingChannelFormatDefault && channelDefaultFormat === f.value;
-                      return (
+                      {VIDEO_LIMIT_OPTIONS.map((n) => (
                         <button
-                          key={f.value}
+                          key={n}
                           type="button"
-                          disabled={refreshing}
-                          onClick={() => setFormatOverride(f.value)}
-                          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors inline-flex items-center gap-1 ${
-                            isActive
-                              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                          onClick={() => setVideoLimit(n)}
+                          className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs tabular-nums transition-colors ${
+                            videoLimit === n ? SEGMENT_ACTIVE : SEGMENT_IDLE
                           }`}
-                          title={
-                            isDefault
-                              ? "Using channel default (Trending Hub)"
-                              : `Scrape ${f.label.toLowerCase()} videos`
-                          }
+                          aria-pressed={videoLimit === n}
                         >
-                          {f.label}
-                          {isDefault && (
-                            <span className="text-[9px] font-bold uppercase text-sky-600 dark:text-sky-400">
-                              default
-                            </span>
-                          )}
+                          {n}
                         </button>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
-                  {!usingChannelFormatDefault && (
+
+                  <div className="flex items-center gap-2 ml-auto flex-shrink-0 w-full sm:w-auto justify-end">
                     <button
                       type="button"
                       disabled={refreshing}
-                      onClick={() => setFormatOverride(null)}
-                      className="px-2 py-1.5 rounded-lg text-[10px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline-offset-2 hover:underline"
-                      title={`Revert to channel default (${channelDefaultFormat === "short" ? "Shorts" : "Long"})`}
+                      onClick={() => loadVideos({ force: true, showToast: true })}
+                      className="buffer-button-primary inline-flex items-center justify-center gap-1.5 text-xs py-2 px-3.5 h-9 disabled:opacity-50"
                     >
-                      Use default
+                      {refreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                      Refresh
                     </button>
-                  )}
-                  {!isShortChannel && (
-                    <>
-                      {[
-                        { label: "7d", value: "7d" },
-                        { label: "28d", value: "28d" },
-                        { label: "90d", value: "90d" },
-                      ].map((r) => (
-                        <button
-                          key={r.value}
-                          type="button"
-                          onClick={() => setDateRange(r.value)}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold ${
-                            dateRange === r.value
-                              ? "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300"
-                              : "text-slate-500"
-                          }`}
-                        >
-                          {r.label}
-                        </button>
-                      ))}
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    disabled={refreshing}
-                    onClick={() => loadVideos({ force: true, showToast: true })}
-                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold disabled:opacity-50"
-                  >
-                    {refreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                    Refresh
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSettingsOpen(true)}
-                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    title="Channel settings"
-                  >
-                    <Settings size={16} />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsOpen(true)}
+                      className="p-2 h-9 w-9 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 flex items-center justify-center flex-shrink-0"
+                      title="Channel settings"
+                      aria-label="Channel settings"
+                    >
+                      <Settings size={16} />
+                    </button>
+                  </div>
                 </div>
               </header>
 
@@ -843,167 +1032,73 @@ function YouTubeAnalytics() {
 
               {/* Charts */}
               <div className="pr-1 pb-4 space-y-4">
-                {/* First chart: last 30 uploads (vertical bars — upload # on X, views on Y) */}
-                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 overflow-hidden shadow-sm">
+                {/* First chart: recent uploads (vertical bars — upload # on X, views on Y) */}
+                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 shadow-sm">
                   <ChartCard
-                    title="Last 30 uploads — performance"
+                    title={`Last ${videoLimit} uploads — performance`}
                     subtitle={
                       last30Performance.count > 0
-                        ? "Upload #1 = newest. Orange dashed line = average views."
+                        ? `Newest ${videoLimit} in sample · #1 = newest. Orange dashed line = average views.`
                         : "Refresh to load videos"
                     }
                     icon={Clapperboard}
                     className="border-0 shadow-none rounded-none min-h-0"
+                    headerExtra={
+                      last30Performance.count > 0 ? (
+                        <UploadsChartTypeToggle value={uploadsChartType} onChange={setUploadsChartType} />
+                      ) : null
+                    }
+                    stats={
+                      last30Performance.count > 0
+                        ? [
+                            { label: "Total views", value: formatCompact(last30Performance.totalViews) },
+                            { label: "Avg views", value: formatCompact(last30Performance.avgViews) },
+                            { label: "Videos", value: String(last30Performance.count) },
+                          ]
+                        : undefined
+                    }
                   >
                     {last30Performance.count === 0 ? (
                       <p className="text-center text-sm text-slate-400 py-16">Refresh the channel to compare your latest uploads.</p>
                     ) : (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart
-                          data={last30Performance.items}
-                          margin={{ top: 28, right: 8, left: -8, bottom: 4 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.12)" />
-                          <XAxis
-                            dataKey="chartLabel"
-                            tick={{ fontSize: 8, fontWeight: 600 }}
-                            tickLine={false}
-                            interval={0}
-                            angle={-40}
-                            textAnchor="end"
-                            height={52}
-                            tickFormatter={(label) => {
-                              const n = parseInt(String(label).replace("#", ""), 10);
-                              if (n === 1 || n === last30Performance.count || n % 5 === 0) return label;
-                              return "";
-                            }}
-                          />
-                          <YAxis
-                            tick={{ fontSize: 9 }}
-                            tickFormatter={formatCompact}
-                            width={48}
-                            tickLine={false}
-                            domain={[0, last30YMax]}
-                            allowDataOverflow={false}
-                          />
-                          <Tooltip
-                            contentStyle={tooltipStyle}
-                            formatter={(value) => [formatCompact(value), "Views"]}
-                            labelFormatter={(_, payload) => {
-                              const row = payload?.[0]?.payload;
-                              return row?.title ? row.title.slice(0, 80) : "";
-                            }}
-                          />
-                          <ReferenceLine
-                            y={last30Performance.avgViews}
-                            stroke="#f59e0b"
-                            strokeWidth={2}
-                            strokeDasharray="6 4"
-                            label={{
-                              value: `Avg ${formatCompact(last30Performance.avgViews)} views`,
-                              position: "insideTopRight",
-                              fill: "#d97706",
-                              fontSize: 11,
-                              fontWeight: 700,
-                            }}
-                          />
-                          <Bar dataKey="views" fill={accent.hex} radius={[4, 4, 0, 0]} maxBarSize={28} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                      <LastUploadsPerformanceChart
+                        chartType={uploadsChartType}
+                        items={last30Performance.items}
+                        count={last30Performance.count}
+                        avgViews={last30Performance.avgViews}
+                        yMax={last30YMax}
+                        accentHex={accent.hex}
+                        tooltipStyle={tooltipStyle}
+                      />
                     )}
                   </ChartCard>
                 </div>
 
                 {!isShortChannel && (
-                  <ChartCard
-                    title="Daily views"
-                    subtitle="Sum of views on videos published each day (scraped data)"
-                    icon={Activity}
-                  >
-                    <ResponsiveContainer width="100%" height={240}>
-                      <AreaChart data={dailyTimeline}>
-                        <defs>
-                          <linearGradient id="viewsGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={accent.hex} stopOpacity={0.35} />
-                            <stop offset="95%" stopColor={accent.hex} stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.15)" />
-                        <XAxis dataKey="label" tick={{ fontSize: 9 }} tickLine={false} />
-                        <YAxis tick={{ fontSize: 9 }} tickFormatter={formatCompact} width={42} tickLine={false} />
-                        <Tooltip contentStyle={tooltipStyle} formatter={(v) => [formatCompact(v), "Views"]} />
-                        <Area type="monotone" dataKey="views" stroke={accent.hex} fill="url(#viewsGrad)" strokeWidth={2} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </ChartCard>
-                )}
-
-                {!isShortChannel && (
-                  <>
-                    <ChartCard
-                      title="Views per video"
-                      subtitle={`Each point is one video (1–${videoViewsSeries.length || 0}, newest → oldest) — hover for title`}
-                      icon={BarChart3}
-                    >
-                      <ResponsiveContainer width="100%" height={280}>
-                        <AreaChart data={videoViewsSeries} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="videoViewsGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={accent.hex} stopOpacity={0.35} />
-                              <stop offset="95%" stopColor={accent.hex} stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.15)" />
-                          <XAxis
-                            dataKey="index"
-                            tick={{ fontSize: 8 }}
-                            tickLine={false}
-                            interval="preserveStartEnd"
-                            tickFormatter={(idx) => {
-                              const n = Number(idx);
-                              const last = videoViewsSeries.length;
-                              if (n === 1 || n === last || n % 50 === 0) return String(n);
-                              return "";
-                            }}
-                            label={{ value: "Video #", position: "insideBottom", offset: -2, fontSize: 9, fill: "#94a3b8" }}
-                          />
-                          <YAxis tick={{ fontSize: 9 }} tickFormatter={formatCompact} width={48} tickLine={false} />
-                          <Tooltip
-                            contentStyle={tooltipStyle}
-                            labelFormatter={(_, payload) => {
-                              const row = payload?.[0]?.payload;
-                              return row ? `#${row.index}` : "";
-                            }}
-                            formatter={(value, _name, item) => [
-                              formatCompact(value),
-                              item?.payload?.title
-                                ? item.payload.title.length > 60
-                                  ? `${item.payload.title.slice(0, 58)}…`
-                                  : item.payload.title
-                                : "Views",
-                            ]}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="views"
-                            stroke={accent.hex}
-                            fill="url(#videoViewsGrad)"
-                            strokeWidth={1.5}
-                            dot={false}
-                            isAnimationActive={videoViewsSeries.length < 120}
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </ChartCard>
-
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                      <ChartCard title="Uploads per week" subtitle="Count & views in each week bucket" icon={TrendingUp}>
+                      <ChartCard
+                        title="Uploads per week"
+                        subtitle="Count & views in each week bucket"
+                        icon={TrendingUp}
+                        stats={[
+                          { label: "Uploads", value: String(weeklyUploadsSummary.uploads) },
+                          { label: "Views", value: formatCompact(weeklyUploadsSummary.views) },
+                          { label: "Weeks", value: String(weeklyUploadsSummary.weeks) },
+                        ]}
+                      >
                         <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={weeklyUploads}>
+                          <BarChart data={weeklyUploads} margin={CHART_MARGIN_DUAL_AXIS}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.12)" />
                             <XAxis dataKey="label" tick={{ fontSize: 9 }} />
-                            <YAxis yAxisId="left" tick={{ fontSize: 9 }} />
-                            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9 }} tickFormatter={formatCompact} />
+                            <YAxis yAxisId="left" tick={{ fontSize: 9 }} width={Y_AXIS_COUNT_WIDTH} tickLine={false} />
+                            <YAxis
+                              yAxisId="right"
+                              orientation="right"
+                              tick={{ fontSize: 9 }}
+                              tickFormatter={formatCompact}
+                              width={Y_AXIS_VIEWS_WIDTH}
+                              tickLine={false}
+                            />
                             <Tooltip contentStyle={tooltipStyle} />
                             <Legend wrapperStyle={{ fontSize: 10 }} />
                             <Bar yAxisId="left" dataKey="uploads" name="Uploads" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -1012,19 +1107,32 @@ function YouTubeAnalytics() {
                         </ResponsiveContainer>
                       </ChartCard>
 
-                      <ChartCard title="Views distribution" subtitle="How many videos fall in each view bracket" icon={BarChart3}>
+                      <ChartCard
+                        title="Views distribution"
+                        subtitle="How many videos fall in each view bracket"
+                        icon={BarChart3}
+                        stats={[
+                          { label: "Videos", value: String(viewsDistributionSummary.total) },
+                          { label: "Top bracket", value: viewsDistributionSummary.topLabel },
+                          { label: "In bracket", value: String(viewsDistributionSummary.topCount) },
+                        ]}
+                      >
                         <ResponsiveContainer width="100%" height={200}>
-                          <BarChart data={viewsDistribution}>
+                          <BarChart data={viewsDistribution} margin={CHART_MARGIN_COUNT}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.12)" />
                             <XAxis dataKey="label" tick={{ fontSize: 9 }} />
-                            <YAxis allowDecimals={false} tick={{ fontSize: 9 }} />
+                            <YAxis
+                              allowDecimals={false}
+                              tick={{ fontSize: 9 }}
+                              width={Y_AXIS_COUNT_WIDTH}
+                              tickLine={false}
+                            />
                             <Tooltip contentStyle={tooltipStyle} />
                             <Bar dataKey="count" name="Videos" fill="#6366f1" radius={[6, 6, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </ChartCard>
                     </div>
-                  </>
                 )}
 
                 {/* Top 10 most viewed */}
@@ -1037,7 +1145,7 @@ function YouTubeAnalytics() {
                       <div>
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white">Top 10 most viewed</h3>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                          From your last scrape · {stats.videoCount} videos loaded
+                          Top 10 from newest {videoLimit} analyzed · {videos.length} scraped
                         </p>
                       </div>
                     </div>
@@ -1047,7 +1155,7 @@ function YouTubeAnalytics() {
                       </span>
                     )}
                   </div>
-                  <div className="p-3 sm:p-4 space-y-2">
+                  <div className="p-2 space-y-1 max-h-[280px] overflow-y-auto custom-scrollbar">
                     {top10ByViews.length === 0 ? (
                       <p className="text-center text-sm text-slate-400 py-10">
                         Refresh the channel to load videos and see the leaderboard.
@@ -1062,47 +1170,47 @@ function YouTubeAnalytics() {
                             href={`https://www.youtube.com/watch?v=${v.videoId}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group flex items-center gap-3 sm:gap-4 p-3 rounded-xl border border-transparent hover:border-slate-200/90 dark:hover:border-slate-600/80 hover:bg-white dark:hover:bg-slate-800/60 hover:shadow-md transition-all duration-200"
+                            className="group flex items-center gap-2 p-2 rounded-lg border border-transparent hover:border-slate-200/90 dark:hover:border-slate-600/80 hover:bg-white dark:hover:bg-slate-800/60 hover:shadow-sm transition-all duration-200"
                           >
                             <div
-                              className={`flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-black tabular-nums ${rankBadgeClass(rank)}`}
+                              className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black tabular-nums ${rankBadgeClass(rank)}`}
                             >
                               {rank}
                             </div>
-                            <div className="relative flex-shrink-0 w-[88px] sm:w-[104px] aspect-video rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-800 ring-1 ring-slate-200/80 dark:ring-slate-700">
+                            <div className="relative flex-shrink-0 w-[64px] sm:w-[72px] aspect-video rounded-md overflow-hidden bg-slate-200 dark:bg-slate-800 ring-1 ring-slate-200/80 dark:ring-slate-700">
                               <img
                                 src={v.thumbnail}
                                 alt=""
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               />
                               <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/35 transition-colors">
-                                <span className="opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg">
-                                  <Play size={14} className="ml-0.5" fill="currentColor" />
+                                <span className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md">
+                                  <Play size={11} className="ml-0.5" fill="currentColor" />
                                 </span>
                               </span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white line-clamp-2 leading-snug group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                              <p className="text-[11px] sm:text-xs font-semibold text-slate-900 dark:text-white line-clamp-2 leading-tight group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
                                 {v.title}
                               </p>
                               {v.publishedText && (
-                                <p className="text-[10px] text-slate-500 mt-1 truncate">{v.publishedText}</p>
+                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">{v.publishedText}</p>
                               )}
-                              <div className="mt-2 h-1.5 w-full max-w-[200px] rounded-full bg-slate-200/90 dark:bg-slate-700/80 overflow-hidden">
+                              <div className="mt-1 h-1 w-full max-w-[140px] rounded-full bg-slate-200/90 dark:bg-slate-700/80 overflow-hidden">
                                 <div
                                   className="h-full rounded-full transition-all duration-500"
                                   style={{ width: `${pct}%`, backgroundColor: accent.hex }}
                                 />
                               </div>
                             </div>
-                            <div className="flex-shrink-0 text-right pl-1">
-                              <p className="text-base sm:text-lg font-black tabular-nums text-slate-900 dark:text-white leading-none">
+                            <div className="flex-shrink-0 text-right pl-0.5">
+                              <p className="text-sm font-black tabular-nums text-slate-900 dark:text-white leading-none">
                                 {formatCompact(v.views)}
                               </p>
-                              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mt-0.5">
+                              <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mt-0.5">
                                 views
                               </p>
-                              <p className="text-[9px] text-slate-400 mt-1 hidden sm:block">{pct}% of #1</p>
+                              <p className="text-[8px] text-slate-400 dark:text-slate-500 mt-0.5 hidden sm:block">{pct}% of #1</p>
                             </div>
                           </a>
                         );
@@ -1110,59 +1218,6 @@ function YouTubeAnalytics() {
                     )}
                   </div>
                 </section>
-
-                {/* Video table */}
-                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                    <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100">Recent uploads</h3>
-                    <p className="text-[10px] text-slate-500">Newest first · up to {SCRAPE_VIDEO_CAP} from scrape</p>
-                  </div>
-                  <div className="max-h-[360px] overflow-y-auto custom-scrollbar">
-                    <table className="w-full text-xs">
-                      <thead className="bg-slate-50 dark:bg-slate-800/95">
-                        <tr className="text-[10px] font-bold uppercase text-slate-500 text-left">
-                          <th className="py-2.5 pl-4">Video</th>
-                          <th className="py-2.5 text-right">Views</th>
-                          <th className="py-2.5 pr-4 text-right">Published</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {recentVideos.map((v) => (
-                          <tr key={v.videoId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30">
-                            <td className="py-2 pl-4 pr-2">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <img
-                                  src={v.thumbnail}
-                                  alt=""
-                                  className="w-16 h-9 rounded-md object-cover flex-shrink-0 bg-slate-200"
-                                />
-                                <a
-                                  href={`https://www.youtube.com/watch?v=${v.videoId}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 hover:text-red-600"
-                                >
-                                  {v.title}
-                                </a>
-                              </div>
-                            </td>
-                            <td className="py-2 text-right font-bold tabular-nums text-slate-900 dark:text-white">
-                              {formatCompact(v.views)}
-                            </td>
-                            <td className="py-2 pr-4 text-right text-slate-500">{v.publishedText || "—"}</td>
-                          </tr>
-                        ))}
-                        {recentVideos.length === 0 && (
-                          <tr>
-                            <td colSpan={3} className="py-12 text-center text-slate-400">
-                              Click Refresh to load up to {SCRAPE_VIDEO_CAP} videos
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
               </div>
             </>
           )}

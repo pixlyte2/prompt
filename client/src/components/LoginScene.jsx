@@ -11,8 +11,8 @@ function NeuralNetwork() {
     const nodePositions = [];
     const lines = [];
 
-    const NODE_COUNT = 50;
-    const MAX_DISTANCE = 2.8;
+    const NODE_COUNT = 40;
+    const MAX_DISTANCE = 2.5;
 
     for (let i = 0; i < NODE_COUNT; i++) {
       nodePositions.push(
@@ -41,14 +41,11 @@ function NeuralNetwork() {
   useFrame((state) => {
     if (!groupRef.current) return;
 
-    // Mouse parallax + rotation
-    groupRef.current.rotation.y += 0.0015;
-    groupRef.current.rotation.x = state.mouse.y * 0.3;
-    groupRef.current.rotation.y += state.mouse.x * 0.3;
+    const t = state.clock.elapsedTime;
+    groupRef.current.rotation.y = t * 0.05 + state.mouse.x * 0.03;
+    groupRef.current.rotation.x = state.mouse.y * 0.04;
 
-    // Node pulse animation
-    const scale =
-      1 + Math.sin(state.clock.elapsedTime * 3) * 0.2;
+    const scale = 1 + Math.sin(t * 0.9) * 0.06;
     if (pulseRef.current) {
       pulseRef.current.scale.set(scale, scale, scale);
     }
@@ -66,7 +63,7 @@ function NeuralNetwork() {
       >
         <PointMaterial
           color="#00ffff"
-          size={0.1}
+          size={0.08}
           sizeAttenuation
           depthWrite={false}
           transparent
@@ -78,10 +75,10 @@ function NeuralNetwork() {
         <Line
           key={index}
           points={line}
-          color="#ff00ff"
+          color="#3b82f6"
           lineWidth={1}
           transparent
-          opacity={0.4}
+          opacity={0.28}
         />
       ))}
     </group>
@@ -90,8 +87,8 @@ function NeuralNetwork() {
 
 export default function LoginScene() {
   return (
-    <Canvas camera={{ position: [0, 0, 8] }}>
-      <color attach="background" args={["#0f0f1a"]} />
+    <Canvas className="!h-full !w-full" camera={{ position: [0, 0, 8] }}>
+      <color attach="background" args={["#0f172a"]} />
       <ambientLight intensity={0.6} />
       <NeuralNetwork />
     </Canvas>

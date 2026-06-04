@@ -1,4 +1,4 @@
-# CreatorAI Client
+# Creator AI Client
 
 ## About
 A React-based web application for managing AI prompts with role-based access control. Features separate dashboards for Super Admins, Admins, Content Managers, and Viewers with prompt management, user management, and channel organization capabilities.

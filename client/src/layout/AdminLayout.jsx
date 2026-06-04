@@ -57,6 +57,7 @@ export default function AdminLayout({
         onCloseMobile={() => setMobileNavOpen(false)}
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={handleToggleCollapse}
+        showTomorrowPipeline={role !== "voice_over"}
       />
 
       <div

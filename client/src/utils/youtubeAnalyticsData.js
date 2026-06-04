@@ -54,47 +54,6 @@ export function computeDashboardStats(videos) {
   return { videoCount, totalViews, avgViews, uploads30d, uploads7d, views30d, views7d };
 }
 
-/** Daily timeline: views and upload counts by publish day in the selected range. */
-export function buildDailyTimeline(videos, dateRange) {
-  const pointsCount = dateRange === "7d" ? 7 : dateRange === "90d" ? 90 : 28;
-
-  const timeline = Array.from({ length: pointsCount }, (_, i) => {
-    const day = pointsCount - 1 - i;
-    const date = new Date();
-    date.setDate(date.getDate() - day);
-    return {
-      label: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      dayIndex: day,
-      views: 0,
-      uploads: 0,
-    };
-  });
-
-  (videos || []).forEach((v) => {
-    const daysAgo = getDaysAgo(v.publishedText);
-    if (daysAgo >= pointsCount) return;
-    const point = timeline.find((p) => p.dayIndex === daysAgo);
-    if (point) {
-      point.views += v.views || 0;
-      point.uploads += 1;
-    }
-  });
-
-  return timeline;
-}
-
-/**
- * One point per scraped video (newest → oldest), for area chart — no dates on X axis.
- */
-export function buildVideoViewsSeries(videos) {
-  return sortVideosByRecent(videos).map((v, i) => ({
-    index: i + 1,
-    views: v.views || 0,
-    title: v.title || v.videoId || "",
-    videoId: v.videoId,
-  }));
-}
-
 /** Weekly upload counts (last N weeks) */
 export function buildWeeklyUploads(videos, weeks = 12) {
   const buckets = Array.from({ length: weeks }, (_, i) => {

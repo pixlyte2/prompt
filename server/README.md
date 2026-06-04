@@ -1,7 +1,7 @@
-# CreatorAI Server
+# Creator AI Server
 
 ## About
-RESTful API backend for the CreatorAI prompt management system. Provides authentication, authorization, and CRUD operations for managing prompts, users, channels, and companies with role-based access control (Super Admin, Admin, Content Manager, Viewer).
+RESTful API backend for the Creator AI prompt management system. Provides authentication, authorization, and CRUD operations for managing prompts, users, channels, and companies with role-based access control (Super Admin, Admin, Content Manager, Viewer).
 
 ## Tech Stack
 - **Node.js** - Runtime environment

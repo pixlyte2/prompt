@@ -240,7 +240,7 @@ export default function AssistantWidget() {
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold leading-tight truncate">Assistant</p>
-                <p className="text-[10px] text-blue-100 truncate">CreatorAI help · uses your Gemini key</p>
+                <p className="text-[10px] text-blue-100 truncate">Creator AI help · uses your Gemini key</p>
               </div>
             </div>
             <div className="flex items-center gap-0.5 flex-shrink-0 cursor-default" onPointerDown={(e) => e.stopPropagation()}>
@@ -331,7 +331,7 @@ export default function AssistantWidget() {
                     send();
                   }
                 }}
-                placeholder="Ask anything about CreatorAI…"
+                placeholder="Ask anything about Creator AI…"
                 disabled={loading}
                 rows={2}
                 className="buffer-input text-xs flex-1 min-h-[2.75rem] max-h-24 resize-y py-2"
