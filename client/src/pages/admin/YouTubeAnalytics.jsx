@@ -912,46 +912,6 @@ function YouTubeAnalytics() {
                       </ResponsiveContainer>
                     )}
                   </ChartCard>
-                  {last30Performance.count > 0 && (
-                    <div className="max-h-[360px] overflow-y-auto custom-scrollbar divide-y divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800">
-                      {last30Performance.items.map((v) => (
-                        <a
-                          key={v.videoId}
-                          href={`https://www.youtube.com/watch?v=${v.videoId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group flex items-center gap-3 sm:gap-4 px-4 py-2.5 hover:bg-slate-50/90 dark:hover:bg-slate-800/40 transition-colors"
-                        >
-                          <span
-                            className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black tabular-nums ${
-                              v.uploadOrder <= 3
-                                ? "bg-sky-500 text-white shadow-sm"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                            }`}
-                          >
-                            {v.uploadOrder}
-                          </span>
-                          <img
-                            src={v.thumbnail}
-                            alt=""
-                            className="w-14 h-8 rounded-md object-cover flex-shrink-0 bg-slate-200 ring-1 ring-slate-200/80 dark:ring-slate-700"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-slate-900 dark:text-white line-clamp-1 group-hover:text-red-600 dark:group-hover:text-red-400">
-                              {v.title}
-                            </p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">{v.publishedText || "—"}</p>
-                          </div>
-                          <div className="flex-shrink-0 text-right">
-                            <p className="text-sm font-black tabular-nums text-slate-900 dark:text-white">
-                              {formatCompact(v.views)}
-                            </p>
-                            <p className="text-[9px] font-semibold uppercase text-slate-500">views</p>
-                          </div>
-                        </a>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 {!isShortChannel && (
