@@ -1,5 +1,6 @@
 const Prompt = require("../models/prompt");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { DEFAULT_CONTENT_GUARD_RULES } = require("../constants/contentGuardRules");
 
 const GEMINI_MODEL_MAP = {
   "gemini-2.5-flash": "gemini-2.5-flash",
@@ -28,7 +29,7 @@ function resolveGeminiModelId(aiModel) {
 
 exports.validateContent = async (req, res) => {
   try {
-    const { content, aiModel, apiKey } = req.body;
+    const { content, aiModel, apiKey, rules } = req.body;
     if (!content || !apiKey) return res.status(400).json({ message: "Content and API key are required" });
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -37,8 +38,10 @@ exports.validateContent = async (req, res) => {
       generationConfig: { maxOutputTokens: 65536, temperature: 0.7 }
     });
 
-    const prompt = `You are a content policy and ad-suitability expert. Analyze the following content and respond ONLY with valid JSON (no markdown, no code fences) in this exact format:
-{"issues":[{"type":"string","severity":"High|Medium|Low","description":"string"}],"optimizedContent":"string with the rewritten/optimized version of the content that fixes all issues"}
+    const instructions =
+      typeof rules === "string" && rules.trim() ? rules.trim() : DEFAULT_CONTENT_GUARD_RULES;
+
+    const prompt = `${instructions}
 
 Content to validate:
 ${content}`;

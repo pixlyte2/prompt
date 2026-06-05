@@ -270,8 +270,8 @@ function LastUploadsPerformanceChart({ chartType, items, count, avgViews, yMax, 
 }
 
 /** How many recent uploads to include in charts and KPIs (not scrape cap). */
-const VIDEO_LIMIT_OPTIONS = [10, 25, 30, 50, 75, 100];
-const DEFAULT_VIDEO_LIMIT = 30;
+const VIDEO_LIMIT_OPTIONS = [10, 50, 100, 200, 500];
+const DEFAULT_VIDEO_LIMIT = 50;
 
 const SEGMENT_ACTIVE =
   "bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 shadow-sm ring-1 ring-blue-200/80 dark:ring-blue-800/60 font-semibold";
@@ -329,7 +329,7 @@ function YouTubeAnalytics() {
   /** null = use channel config from Trending Hub; otherwise manual long/short scrape */
   const [formatOverride, setFormatOverride] = useState(null);
   const [videoLimit, setVideoLimit] = useState(DEFAULT_VIDEO_LIMIT);
-  const [uploadsChartType, setUploadsChartType] = useState("bar");
+  const [uploadsChartType, setUploadsChartType] = useState("area");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [channelPanelOpen, setChannelPanelOpen] = useState(readChannelPanelOpen);
   const [mobileChannelOpen, setMobileChannelOpen] = useState(false);

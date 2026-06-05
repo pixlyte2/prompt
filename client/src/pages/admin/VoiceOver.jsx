@@ -37,6 +37,13 @@ const PLATFORM_META = {
   website: { icon: Globe, color: "text-gray-500" },
 };
 
+const FORMAT_PILL = {
+  short: "border-orange-200 bg-orange-50 dark:border-orange-950/60 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400",
+  long: "border-indigo-200 bg-indigo-50 dark:border-indigo-950/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400",
+};
+
+const FORMAT_LABEL = { short: "Short", long: "Long" };
+
 function toDateKey(d) {
   if (!d || d === "null" || d === "undefined") return "";
   const dt = new Date(d);
@@ -439,11 +446,20 @@ function VoiceOverTaskRow({
         : "Upload voice-over (audio file)";
 
   const uploadIdleClasses = canUploadVo
-    ? "cursor-pointer border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 active:scale-95 shadow-sm"
-    : "cursor-not-allowed border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/10 text-gray-400 dark:text-gray-600";
+    ? "cursor-pointer border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:border-emerald-400 dark:hover:border-emerald-600 active:scale-95 shadow-sm"
+    : "cursor-not-allowed border border-dashed border-gray-300 dark:border-gray-700 bg-white/90 dark:bg-gray-900/70 text-gray-500 dark:text-gray-400";
 
   const uploadBusyClasses =
     "pointer-events-none cursor-wait border border-emerald-300 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-200 shadow-inner";
+
+  const iconActionBase =
+    "h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border shadow-sm disabled:opacity-40 disabled:cursor-not-allowed active:scale-95";
+  const iconActionView =
+    `${iconActionBase} border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-200 dark:hover:border-blue-800`;
+  const iconActionDownload =
+    `${iconActionBase} border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-600`;
+  const iconActionAudio =
+    `${iconActionBase} border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:border-emerald-300 dark:hover:border-emerald-700 hover:text-emerald-800 dark:hover:text-emerald-200`;
 
   return (
     <>
@@ -494,6 +510,20 @@ function VoiceOverTaskRow({
                     ID: {task.customVideoId}
                   </span>
                 )}
+                {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat])
+                  .filter(Boolean)
+                  .map((fmt) => {
+                    const pillClass = FORMAT_PILL[fmt];
+                    if (!pillClass) return null;
+                    return (
+                      <span
+                        key={fmt}
+                        className={`inline-flex items-center rounded-md sm:rounded-lg border px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-sm ${pillClass}`}
+                      >
+                        {FORMAT_LABEL[fmt] || fmt}
+                      </span>
+                    );
+                  })}
                 {scriptOk ? (
                   <span className="inline-flex items-center rounded-md sm:rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-950/60 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                     Script Ready
@@ -523,7 +553,7 @@ function VoiceOverTaskRow({
           </div>
 
           {/* Actions Container */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-105 sm:pt-0 sm:border-0 sm:justify-end shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-100 dark:border-gray-800/60 sm:pt-0 sm:border-0 sm:justify-end shrink-0">
             
             {/* Custom inline stream play trigger */}
             {voOk && (
@@ -553,7 +583,7 @@ function VoiceOverTaskRow({
               type="button"
               disabled={scriptActionsLocked}
               onClick={() => setScriptModalOpen(true)}
-              className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-800 hover:bg-gray-55 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed text-gray-600 dark:text-gray-300 active:scale-95"
+              className={iconActionView}
               title={!scriptOk ? "No script on this task" : "View script"}
               aria-label="View script"
             >
@@ -565,7 +595,7 @@ function VoiceOverTaskRow({
               type="button"
               disabled={scriptActionsLocked}
               onClick={handleDownloadScriptTxt}
-              className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-800 hover:bg-gray-55 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed text-gray-600 dark:text-gray-300 active:scale-95"
+              className={iconActionDownload}
               title="Download script as .txt"
               aria-label="Download script"
             >
@@ -601,7 +631,7 @@ function VoiceOverTaskRow({
                   type="button"
                   disabled={rowBlocking}
                   onClick={() => onVoiceOverDownload?.(task)}
-                  className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-800 hover:bg-gray-55 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed text-gray-600 dark:text-gray-300 active:scale-95"
+                  className={iconActionAudio}
                   title="Download voice-over audio file"
                   aria-label="Download voice-over"
                 >
@@ -616,7 +646,7 @@ function VoiceOverTaskRow({
                   type="button"
                   disabled={rowBlocking}
                   onClick={() => setDeleteModalOpen(true)}
-                  className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border border-red-200/50 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-955/20 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className={`${iconActionBase} border-red-200/70 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/25 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/40 hover:border-red-300 dark:hover:border-red-800 hover:text-red-700 dark:hover:text-red-300`}
                   title="Remove voice-over"
                   aria-label="Remove voice-over"
                 >

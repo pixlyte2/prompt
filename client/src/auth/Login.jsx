@@ -1,6 +1,6 @@
 import { useState, useId, Suspense, lazy } from "react";
 import api, { saveAuth } from "../utils/api";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   Eye,
@@ -9,7 +9,6 @@ import {
   Loader2,
   Mail,
   Lock,
-  Sparkles,
   Moon,
   Sun,
   AlertCircle,
@@ -21,6 +20,7 @@ import {
   Mic,
 } from "lucide-react";
 import { useDarkMode } from "../contexts/DarkModeContext";
+import CreatorAILogo from "../components/CreatorAILogo";
 
 const LoginScene = lazy(() => import("../components/LoginScene"));
 
@@ -144,7 +144,7 @@ export default function Login() {
     <div className="min-h-screen min-h-[100dvh] flex flex-col lg:flex-row bg-slate-50 dark:bg-slate-950">
       {/* Brand panel — desktop */}
       <aside
-        className="hidden lg:flex lg:w-[46%] xl:w-1/2 relative overflow-hidden"
+        className="hidden lg:flex lg:w-[46%] xl:w-1/2 relative overflow-hidden lg:min-h-[100dvh] lg:max-h-[100dvh]"
         aria-hidden="true"
       >
         <div className="absolute inset-0">
@@ -160,32 +160,30 @@ export default function Login() {
         <div className="absolute top-24 left-16 w-40 h-40 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute bottom-32 right-12 w-56 h-56 rounded-full bg-blue-400/10 blur-3xl" />
 
-        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-16 text-white max-w-xl">
-          <div className="inline-flex items-center gap-4 mb-10">
-            <div className="w-16 h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-xl ring-1 ring-white/10">
-              <Sparkles className="w-8 h-8" aria-hidden="true" />
-            </div>
-            <span className="text-3xl xl:text-4xl font-bold tracking-tight text-white drop-shadow-sm">
+        <div className="relative z-10 flex flex-col justify-center h-full min-h-0 overflow-hidden px-8 xl:px-12 2xl:px-16 py-6 xl:py-8 text-white max-w-xl">
+          <div className="inline-flex items-center gap-3 mb-5 xl:mb-6">
+            <CreatorAILogo size="lg" variant="glass" />
+            <span className="text-2xl xl:text-3xl font-bold tracking-tight text-white drop-shadow-sm">
               Creator AI
             </span>
           </div>
-          <h1 className="text-2xl xl:text-3xl font-bold leading-tight tracking-tight">
+          <h1 className="text-lg xl:text-xl 2xl:text-2xl font-bold leading-tight tracking-tight">
             Welcome to the future of
-            <span className="block text-blue-200 mt-1">AI-powered creativity</span>
+            <span className="block text-blue-200 mt-0.5">AI-powered creativity</span>
           </h1>
-          <p className="mt-4 text-base text-blue-100/90 leading-relaxed">
+          <p className="mt-2.5 text-sm xl:text-base text-blue-100/90 leading-snug">
             Research competitors, inspect any YouTube video, track channel analytics, and
             run production—from prompts to voice-over—in one workspace.
           </p>
-          <ul className="mt-10 space-y-4" aria-label="Product capabilities">
+          <ul className="mt-5 xl:mt-6 space-y-2 xl:space-y-2.5" aria-label="Product capabilities">
             {BRAND_FEATURES.map(({ icon: Icon, label, caption }) => (
-              <li key={label} className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
-                  <Icon size={16} className="text-blue-100" aria-hidden="true" />
+              <li key={label} className="flex items-start gap-2.5">
+                <div className="w-7 h-7 rounded-md bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+                  <Icon size={14} className="text-blue-100" aria-hidden="true" />
                 </div>
-                <div className="min-w-0 pt-0.5">
-                  <p className="text-sm font-semibold text-white leading-snug">{label}</p>
-                  <p className="text-xs text-blue-200/80 mt-0.5 leading-relaxed">{caption}</p>
+                <div className="min-w-0">
+                  <p className="text-xs xl:text-sm font-semibold text-white leading-snug">{label}</p>
+                  <p className="text-[11px] xl:text-xs text-blue-200/80 mt-0.5 leading-tight">{caption}</p>
                 </div>
               </li>
             ))}
@@ -197,9 +195,7 @@ export default function Login() {
       <main className="flex-1 flex flex-col min-h-0">
         <header className="flex items-center justify-between px-4 sm:px-8 pt-4 sm:pt-6 shrink-0">
           <div className="lg:hidden inline-flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center shadow-md ring-2 ring-blue-500/20">
-              <Sparkles className="w-5 h-5 text-white" aria-hidden="true" />
-            </div>
+            <CreatorAILogo size="md" variant="solid" />
             <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
               Creator AI
             </span>
@@ -369,16 +365,6 @@ export default function Login() {
                 </button>
               </form>
             </div>
-
-            <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
-              Super admin?{" "}
-              <Link
-                to="/superadmin-login"
-                className="font-medium text-blue-600 dark:text-blue-400 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-              >
-                Sign in here
-              </Link>
-            </p>
 
             <footer className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
               <p className="text-xs text-slate-500 dark:text-slate-400 text-center">

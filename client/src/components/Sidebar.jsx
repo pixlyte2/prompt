@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Moon, Sun, X, ChevronLeft, ChevronRight, ScrollText, Loader2 } from "lucide-react";
 import LogoutButton from "./LogoutButton";
+import CreatorAILogo from "./CreatorAILogo";
 import { useDarkMode } from "../contexts/DarkModeContext";
 import api from "../services/api";
 import { countTomorrowScriptsReady } from "../utils/videoTaskSchedule";
@@ -231,9 +232,7 @@ function BrandBlock({ isCollapsed }) {
   return (
     <div className={`p-4 border-b border-gray-100 dark:border-gray-700 flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
       <Link to={location.pathname} className="flex items-center gap-3 overflow-hidden">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-          <span className="text-white font-bold text-xs">CA</span>
-        </div>
+        <CreatorAILogo size="sm" variant="sidebar" />
         {!isCollapsed && <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">Creator AI</h2>}
       </Link>
     </div>
@@ -311,9 +310,7 @@ export default function Sidebar({
           >
             <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
               <Link to={location.pathname} className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-xs">CA</span>
-                </div>
+                <CreatorAILogo size="sm" variant="sidebar" />
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">Creator AI</h2>
               </Link>
               <button

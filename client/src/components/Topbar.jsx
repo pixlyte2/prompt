@@ -3,6 +3,7 @@ import { Clock, Eraser, ChevronDown, LogOut, Trash2, Sun, Moon, Menu } from "luc
 import { clearCache, clearRecentPrompts } from "../utils/cache";
 import { toast } from "react-hot-toast";
 import HistoryModal from "./HistoryModal";
+import UserAvatar from "./UserAvatar";
 import { getUser, getRole, logout } from "../utils/api";
 import { useNavigate } from "react-router-dom";
 import { useDarkMode } from "../contexts/DarkModeContext";
@@ -172,9 +173,7 @@ export default function Topbar({ title = "Dashboard", icon: Icon, onCacheClear, 
                 aria-expanded={showUserMenu}
                 aria-haspopup="true"
               >
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                  {(user?.name || user?.email || "U")[0].toUpperCase()}
-                </div>
+                <UserAvatar user={user} />
 
                 <div className="hidden sm:block text-left min-w-0 max-w-[8rem] lg:max-w-[12rem]">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">

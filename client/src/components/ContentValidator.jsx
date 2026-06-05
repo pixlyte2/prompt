@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Loader2, X, Copy, AlertTriangle, CheckCircle2, Info, Sparkles } from "lucide-react";
+import { Loader2, X, Copy, AlertTriangle, CheckCircle2, Info, Sparkles, RotateCcw } from "lucide-react";
 import { toast } from "react-hot-toast";
 import axios from "axios";
 import { decryptData } from "../utils/encryption";
+import { DEFAULT_CONTENT_GUARD_RULES } from "../constants/contentGuardRules";
 
 const MODELS = [
   { value: "gemini-2.5-flash", label: "Flash 2.5" },
@@ -18,12 +19,14 @@ const SEV = {
 
 export default function ContentValidator() {
   const [content, setContent] = useState("");
+  const [aiRules, setAiRules] = useState(DEFAULT_CONTENT_GUARD_RULES);
   const [model, setModel] = useState("gemini-2.5-flash");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+  const rulesCustomized = aiRules.trim() !== DEFAULT_CONTENT_GUARD_RULES.trim();
 
   const handleValidate = async () => {
     if (!content.trim()) {
@@ -49,11 +52,16 @@ export default function ContentValidator() {
       return;
     }
 
+    if (!aiRules.trim()) {
+      toast.error("AI rules cannot be empty");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await axios.post(
         import.meta.env.VITE_API_URL + "/ai/validate",
-        { content: content, aiModel: model, apiKey: apiKey },
+        { content: content, aiModel: model, apiKey: apiKey, rules: aiRules.trim() },
         {
           timeout: 120000,
           headers: {
@@ -128,14 +136,40 @@ export default function ContentValidator() {
         </div>
       </div>
 
-      {/* Textarea */}
-      <div className="flex-1 p-3 min-h-0">
-        <textarea
-          value={content}
-          onChange={function (e) { setContent(e.target.value); }}
-          placeholder="Paste your YouTube description, title, tags, or any content you want to validate..."
-          className="w-full h-full border-0 bg-transparent text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:outline-none leading-relaxed"
-        />
+      {/* Rules + content */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-shrink-0 px-3 pt-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[11px] font-medium text-gray-600 dark:text-gray-400">
+              AI Rules
+            </label>
+            {rulesCustomized && (
+              <button
+                type="button"
+                onClick={function () { setAiRules(DEFAULT_CONTENT_GUARD_RULES); }}
+                className="text-[11px] text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium flex items-center gap-1"
+              >
+                <RotateCcw size={11} />
+                Reset to default
+              </button>
+            )}
+          </div>
+          <textarea
+            value={aiRules}
+            onChange={function (e) { setAiRules(e.target.value); }}
+            rows={6}
+            className="w-full buffer-input text-sm resize-y min-h-[9rem] leading-relaxed"
+            spellCheck={false}
+          />
+        </div>
+        <div className="flex-1 p-3 min-h-0">
+          <textarea
+            value={content}
+            onChange={function (e) { setContent(e.target.value); }}
+            placeholder="Paste your YouTube description, title, tags, or any content you want to validate..."
+            className="w-full h-full border-0 bg-transparent text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:outline-none leading-relaxed"
+          />
+        </div>
       </div>
 
       {/* Results Modal */}
