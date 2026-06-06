@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 
 const createUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, active } = req.body;
 
     if (!["content_manager", "viewer", "voice_over"].includes(role))
       return res.status(400).json({ message: "Invalid role" });
@@ -15,14 +15,16 @@ const createUser = async (req, res) => {
       email,
       password: hash,
       role,
-      companyId: req.user.companyId
+      companyId: req.user.companyId,
+      active: active !== false
     });
 
     res.json({
       id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      active: user.active !== false
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -47,7 +49,7 @@ const deleteUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, active } = req.body;
 
     const user = await User.findOne({
       _id: req.params.id,
@@ -84,6 +86,10 @@ const updateUser = async (req, res) => {
 
     if (password != null && String(password).trim()) {
       user.password = await bcrypt.hash(String(password).trim(), 10);
+    }
+
+    if (active !== undefined) {
+      user.active = active !== false;
     }
 
     await user.save();

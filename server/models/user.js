@@ -15,6 +15,10 @@ const userSchema = new mongoose.Schema(
       ref: "Company",
       
       // required: true
+    },
+    active: {
+      type: Boolean,
+      default: true
     }
   },
   { timestamps: true }

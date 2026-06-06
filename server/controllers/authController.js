@@ -27,6 +27,10 @@ const login = async (req, res) => {
       return res.status(401).json({ message: "Wrong password" });
     }
 
+    if (user.active === false) {
+      return res.status(403).json({ message: "Your account has been deactivated" });
+    }
+
     // ❌ block superadmin here (they have separate login)
     if (user.role === "superadmin") {
       return res.status(403).json({ message: "Use superadmin login" });

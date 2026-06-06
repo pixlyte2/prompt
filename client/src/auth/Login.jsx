@@ -365,13 +365,6 @@ export default function Login() {
                 </button>
               </form>
             </div>
-
-            <footer className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
-              <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                © {new Date().getFullYear()} Pixlyt Digital Solutions Pvt Ltd. All rights
-                reserved.
-              </p>
-            </footer>
           </div>
         </div>
       </main>

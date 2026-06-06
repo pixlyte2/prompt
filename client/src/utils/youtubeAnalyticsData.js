@@ -1,4 +1,4 @@
-/** @typedef {{ videoId: string, title: string, views: number, publishedText?: string, duration?: string, videoFormat?: string, thumbnail?: string }} ScrapedVideo */
+/** @typedef {{ videoId: string, title: string, views: number, publishedText?: string, publishedAt?: string | null, duration?: string, videoFormat?: string, thumbnail?: string }} ScrapedVideo */
 
 export const SCRAPE_VIDEO_CAP = 500;
 
@@ -101,6 +101,29 @@ export function sortVideosByRecent(videos) {
   return [...(videos || [])].sort((a, b) => getDaysAgo(a.publishedText) - getDaysAgo(b.publishedText));
 }
 
+/** Long-form upload (Videos tab) — not a Short/reel row. Matches server scrape filters. */
+export function isLongFormVideo(video) {
+  if (!video) return false;
+  if (video.videoFormat === "short") return false;
+  if (String(video.duration || "").toLowerCase() === "short") return false;
+  return true;
+}
+
+/** Absolute publish date for tooltips; prefers ISO `publishedAt`, else approximates from relative text. */
+export function formatVideoPublishedDate(publishedAt, publishedText) {
+  if (publishedAt) {
+    const d = new Date(publishedAt);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
+  }
+  if (!publishedText) return null;
+  const daysAgo = getDaysAgo(publishedText);
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 /** Highest view counts first (for leaderboard). */
 export function buildTopVideosByViews(videos, limit = 10) {
   return [...(videos || [])]
@@ -113,16 +136,24 @@ export function buildLastUploadedPerformance(videos, limit = 30) {
   const list = sortVideosByRecent(videos).slice(0, limit);
   const maxViews = Math.max(1, ...list.map((v) => v.views || 0));
   const totalViews = list.reduce((s, v) => s + (v.views || 0), 0);
-  const items = list.map((v, i) => ({
-    videoId: v.videoId,
-    title: v.title || "",
-    thumbnail: v.thumbnail,
-    publishedText: v.publishedText || "",
-    views: v.views || 0,
-    uploadOrder: i + 1,
-    chartLabel: `#${i + 1}`,
-    pct: Math.round(((v.views || 0) / maxViews) * 100),
-  }));
+  const items = list.map((v, i) => {
+    const isLongVideo = isLongFormVideo(v);
+    return {
+      videoId: v.videoId,
+      title: v.title || "",
+      thumbnail: v.thumbnail,
+      publishedText: v.publishedText || "",
+      publishedAt: v.publishedAt || null,
+      isLongVideo,
+      publishedDateLabel: isLongVideo
+        ? formatVideoPublishedDate(v.publishedAt, v.publishedText)
+        : null,
+      views: v.views || 0,
+      uploadOrder: i + 1,
+      chartLabel: `#${i + 1}`,
+      pct: Math.round(((v.views || 0) / maxViews) * 100),
+    };
+  });
   return {
     items,
     maxViews,
@@ -130,4 +161,35 @@ export function buildLastUploadedPerformance(videos, limit = 30) {
     avgViews: list.length > 0 ? Math.round(totalViews / list.length) : 0,
     count: list.length,
   };
+}
+
+export const COMPARE_SAMPLE_LIMITS = [10, 50, 100, 200, 500];
+
+export function computeMedianViews(videos) {
+  const views = (videos || []).map((v) => v.views || 0).sort((a, b) => a - b);
+  if (views.length === 0) return 0;
+  const mid = Math.floor(views.length / 2);
+  if (views.length % 2 === 0) return Math.round((views[mid - 1] + views[mid]) / 2);
+  return views[mid];
+}
+
+/** Per-sample-size stats for channel comparison (client-side from scraped videos). */
+export function computeCompareSampleStats(videos, limits = COMPARE_SAMPLE_LIMITS) {
+  const sorted = sortVideosByRecent(videos);
+  const scrapedCount = sorted.length;
+
+  return limits.map((limit) => {
+    const sample = sorted.slice(0, limit);
+    const stats = computeDashboardStats(sample);
+    const topVideo = buildTopVideosByViews(sample, 1)[0];
+    return {
+      limit,
+      videoCount: stats.videoCount,
+      totalViews: stats.totalViews,
+      avgViews: stats.avgViews,
+      bestVideoViews: topVideo?.views || 0,
+      medianViews: computeMedianViews(sample),
+      scrapedCount,
+    };
+  });
 }
