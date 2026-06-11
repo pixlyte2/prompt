@@ -7,6 +7,8 @@ const UA =
 const cacheMap = new Map();
 /** Max recent videos per channel (YouTube Analytics & single-channel scrape). */
 const CHANNEL_VIDEO_CAP = 500;
+/** Default scrape size for single-channel YouTube Analytics requests. */
+const DEFAULT_CHANNEL_VIDEO_LIMIT = 50;
 
 const DEFAULT_SEED = {
   name: "News",
@@ -155,6 +157,40 @@ function extractSubscribersFromYtData(data, html) {
   }
 
   return 0;
+}
+
+function pickBestThumbnail(thumbnails) {
+  if (!Array.isArray(thumbnails) || thumbnails.length === 0) return null;
+  const sorted = [...thumbnails].sort((a, b) => (b.width || 0) - (a.width || 0));
+  return sorted[0]?.url || null;
+}
+
+/** Pull channel profile image from ytInitialData or raw HTML. */
+function extractChannelAvatarFromYtData(data, html) {
+  const legacyThumbs = data?.header?.c4TabbedHeaderRenderer?.avatar?.thumbnails;
+  const legacyUrl = pickBestThumbnail(legacyThumbs);
+  if (legacyUrl) return legacyUrl;
+
+  const pageHeader =
+    data?.header?.pageHeaderRenderer?.content?.pageHeaderViewModel ||
+    data?.header?.pageHeaderViewModel;
+  const decoratedSources =
+    pageHeader?.image?.decoratedAvatarViewModel?.avatar?.avatarViewModel?.image?.sources;
+  const decoratedUrl = pickBestThumbnail(decoratedSources);
+  if (decoratedUrl) return decoratedUrl;
+
+  const metaThumbs = data?.metadata?.channelMetadataRenderer?.avatar?.thumbnails;
+  const metaUrl = pickBestThumbnail(metaThumbs);
+  if (metaUrl) return metaUrl;
+
+  if (html) {
+    const m = html.match(
+      /"channelMetadataRenderer"[\s\S]*?"avatar"\s*:\s*\{[\s\S]*?"thumbnails"\s*:\s*\[\s*\{[\s\S]*?"url"\s*:\s*"([^"]+)"/,
+    );
+    if (m?.[1]) return m[1];
+  }
+
+  return null;
 }
 
 async function fetchChannelPageSubscribers(handle, skipUrl = null) {
@@ -357,18 +393,20 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
   const res = await fetch(url, {
     headers: { "User-Agent": UA, "Accept-Language": "en" },
   });
-  if (!res.ok) return { videos: [], subscribers: 0, handle: channel.handle };
+  if (!res.ok) return { videos: [], subscribers: 0, avatarUrl: null, handle: channel.handle };
 
   const html = await res.text();
   const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});/s);
-  if (!match) return { videos: [], subscribers: 0, handle: channel.handle };
+  if (!match) return { videos: [], subscribers: 0, avatarUrl: null, handle: channel.handle };
 
   let data;
   try {
     data = JSON.parse(match[1]);
   } catch {
-    return { videos: [], subscribers: 0, handle: channel.handle };
+    return { videos: [], subscribers: 0, avatarUrl: null, handle: channel.handle };
   }
+
+  const avatarUrl = extractChannelAvatarFromYtData(data, html);
 
   let subscribers = extractSubscribersFromYtData(data, html);
   if (!subscribers) {
@@ -419,7 +457,7 @@ async function scrapeChannel(channel, maxVideos, videoFormat = "long") {
     }
   }
 
-  return { videos: videos.slice(0, maxVideos), subscribers, handle: channel.handle };
+  return { videos: videos.slice(0, maxVideos), subscribers, avatarUrl, handle: channel.handle };
 }
 
 async function seedDefaultType() {
@@ -436,22 +474,45 @@ function normalizeChannelHandle(handle) {
     .toLowerCase();
 }
 
-async function fetchVideosForType(typeId, videoFormat, channelHandleFilter = null) {
+async function persistChannelAvatars(typeId, avatarMap) {
+  if (!typeId || !avatarMap || Object.keys(avatarMap).length === 0) return;
+
+  const type = await CompetitorType.findById(typeId);
+  if (!type) return;
+
+  let changed = false;
+  for (const ch of type.channels) {
+    const newAvatar = avatarMap[normalizeChannelHandle(ch.handle)];
+    if (newAvatar && ch.avatarUrl !== newAvatar) {
+      ch.avatarUrl = newAvatar;
+      changed = true;
+    }
+  }
+
+  if (changed) await type.save();
+}
+
+async function fetchVideosForType(typeId, videoFormat, channelHandleFilter = null, requestedMax = null) {
   const handleKey = channelHandleFilter ? normalizeChannelHandle(channelHandleFilter) : "";
+
+  const type = await CompetitorType.findById(typeId).lean();
+  if (!type) return null;
+
+  const parsedMax = Number(requestedMax);
+  const maxVideos = handleKey
+    ? Math.min(
+        Number.isFinite(parsedMax) && parsedMax > 0 ? parsedMax : DEFAULT_CHANNEL_VIDEO_LIMIT,
+        CHANNEL_VIDEO_CAP,
+      )
+    : Math.min(type.videosPerChannel || 30, CHANNEL_VIDEO_CAP);
+
   const cacheKey = handleKey
-    ? `${typeId}_${videoFormat || "all"}_${handleKey}`
+    ? `${typeId}_${videoFormat || "all"}_${handleKey}_${maxVideos}`
     : videoFormat
       ? `${typeId}_${videoFormat}`
       : typeId;
   const cached = cacheMap.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached;
-
-  const type = await CompetitorType.findById(typeId).lean();
-  if (!type) return null;
-
-  const maxVideos = handleKey
-    ? CHANNEL_VIDEO_CAP
-    : Math.min(type.videosPerChannel || 30, CHANNEL_VIDEO_CAP);
 
   let channelsToScrape = type.channels || [];
   if (handleKey) {
@@ -486,24 +547,36 @@ async function fetchVideosForType(typeId, videoFormat, channelHandleFilter = nul
 
   const videos = [];
   const subsMap = {};
+  const avatarMap = {};
 
   results.forEach((r) => {
     if (r.status === "fulfilled" && r.value) {
-      const { videos: chanVideos, subscribers, handle } = r.value;
+      const { videos: chanVideos, subscribers, avatarUrl, handle } = r.value;
       if (chanVideos) {
         videos.push(...chanVideos);
       }
-      if (subscribers && handle) {
+      if (handle) {
         const lowerH = handle.toLowerCase();
-        subsMap[lowerH] = Math.max(subsMap[lowerH] || 0, subscribers);
+        if (subscribers) {
+          subsMap[lowerH] = Math.max(subsMap[lowerH] || 0, subscribers);
+        }
+        if (avatarUrl) {
+          avatarMap[lowerH] = avatarUrl;
+        }
       }
     }
   });
 
-  const channelsWithSubs = type.channels.map((ch) => ({
-    ...ch,
-    subscribers: subsMap[ch.handle.toLowerCase()] || 0,
-  }));
+  const channelsWithSubs = type.channels.map((ch) => {
+    const handleKey = normalizeChannelHandle(ch.handle);
+    return {
+      ...ch,
+      subscribers: subsMap[handleKey] || 0,
+      avatarUrl: avatarMap[handleKey] || ch.avatarUrl || null,
+    };
+  });
+
+  await persistChannelAvatars(typeId, avatarMap);
 
   const entry = { videos, channels: channelsWithSubs, ts: Date.now() };
   cacheMap.set(cacheKey, entry);
@@ -526,7 +599,7 @@ exports.getCompetitorVideos = async (req, res) => {
   try {
     await seedDefaultType();
 
-    const { typeId, force, videoFormat, channelHandle } = req.query;
+    const { typeId, force, videoFormat, channelHandle, maxVideos } = req.query;
     if (!typeId) {
       return res.status(400).json({ message: "typeId query parameter is required" });
     }
@@ -535,7 +608,7 @@ exports.getCompetitorVideos = async (req, res) => {
       exports.clearCache(typeId);
     }
 
-    const result = await fetchVideosForType(typeId, videoFormat, channelHandle || null);
+    const result = await fetchVideosForType(typeId, videoFormat, channelHandle || null, maxVideos);
     if (!result) {
       return res.status(404).json({ message: "Competitor type not found" });
     }

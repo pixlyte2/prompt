@@ -287,7 +287,9 @@ export default function AIChatManager({ injectedSource }) {
       
       if (response.data.captions) {
         setSourceText(response.data.captions);
-        toast.success("Captions fetched successfully!");
+        const lang = response.data.language?.toUpperCase() || "UNKNOWN";
+        const typeLabel = response.data.type === "auto-generated" ? "auto" : "manual";
+        toast.success(`Captions fetched in ${lang} (${typeLabel})`);
       } else {
         toast.error("No captions available for this video");
       }
@@ -297,12 +299,14 @@ export default function AIChatManager({ injectedSource }) {
       
       if (error.code === 'ECONNABORTED') {
         errorMessage = "Request timed out. Please try again.";
-      } else if (error.response?.status === 404) {
-        errorMessage = "Video not found or captions not available";
-      } else if (error.response?.status === 403) {
-        errorMessage = "Access denied. Video may be private or restricted.";
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
+        const available = error.response.data.availableLanguages;
+        if (available?.length) {
+          errorMessage += `. Try: ${available.join(', ')}`;
+        }
+      } else if (error.response?.status === 403) {
+        errorMessage = "Access denied. Video may be private or restricted.";
       } else if (error.code === 'ERR_NETWORK' || !error.response) {
         // Backend endpoint doesn't exist
         toast.error("Caption fetching not available. Please manually copy captions from YouTube.", {

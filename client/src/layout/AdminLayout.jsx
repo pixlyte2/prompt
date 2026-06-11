@@ -43,11 +43,12 @@ export default function AdminLayout({
   };
 
   const role = getRole();
+  const isVoLimitedRole = role === "voice_over" || role === "voice_over_training";
   const sidebarMenu = useMemo(
-    () => (role === "voice_over" ? voiceOverMenu : adminMenu),
-    [role],
+    () => (isVoLimitedRole ? voiceOverMenu : adminMenu),
+    [isVoLimitedRole],
   );
-  const showAssistant = role !== "voice_over";
+  const showAssistant = !isVoLimitedRole;
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
@@ -57,7 +58,7 @@ export default function AdminLayout({
         onCloseMobile={() => setMobileNavOpen(false)}
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={handleToggleCollapse}
-        showTomorrowPipeline={role !== "voice_over"}
+        showTomorrowPipeline={!isVoLimitedRole}
       />
 
       <div

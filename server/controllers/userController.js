@@ -5,7 +5,7 @@ const createUser = async (req, res) => {
   try {
     const { name, email, password, role, active } = req.body;
 
-    if (!["content_manager", "viewer", "voice_over"].includes(role))
+    if (!["content_manager", "viewer", "voice_over", "voice_over_training"].includes(role))
       return res.status(400).json({ message: "Invalid role" });
 
     const hash = await bcrypt.hash(password, 10);
@@ -78,7 +78,7 @@ const updateUser = async (req, res) => {
     }
 
     if (role !== undefined && user.role !== "admin") {
-      if (!["content_manager", "viewer", "voice_over"].includes(role)) {
+      if (!["content_manager", "viewer", "voice_over", "voice_over_training"].includes(role)) {
         return res.status(400).json({ message: "Invalid role" });
       }
       user.role = role;

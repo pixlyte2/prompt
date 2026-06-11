@@ -13,20 +13,37 @@ const {
 } = require("../utils/voiceOverGridfs");
 
 /** Tasks shown on the Voice-over page: scheduled date set and not completed */
-function taskAllowedForVoiceOverRole(task) {
+function taskAllowedForVoiceOverSchedule(task) {
   if (!task) return false;
   if (task.status === "completed") return false;
   return Boolean(task.scheduledDate);
 }
 
+/** Completed Production Hub tasks eligible for VO Training downloads */
+function taskAllowedForVoTraining(task) {
+  if (!task || task.status !== "completed") return false;
+  return Boolean(String(task.script ?? "").trim()) &&
+    Boolean(String(task.voiceOverStoredName ?? "").trim());
+}
+
 /** @returns {boolean} true if response was sent (403) */
-function rejectVoiceOverOutOfScope(req, res, task) {
-  if (req.user?.role !== "voice_over") return false;
-  if (taskAllowedForVoiceOverRole(task)) return false;
-  res.status(403).json({
-    message: "Voice-over role can only access scheduled, non-completed production tasks",
-  });
-  return true;
+function rejectVoiceOverOutOfScope(req, res, task, options = {}) {
+  const role = req.user?.role;
+  if (role === "voice_over") {
+    if (taskAllowedForVoiceOverSchedule(task)) return false;
+    res.status(403).json({
+      message: "Voice-over role can only access scheduled, non-completed production tasks",
+    });
+    return true;
+  }
+  if (role === "voice_over_training") {
+    if (options.allowTraining && taskAllowedForVoTraining(task)) return false;
+    res.status(403).json({
+      message: "Voice-over training role can only download completed training tasks",
+    });
+    return true;
+  }
+  return false;
 }
 
 function localDateKey(d) {
@@ -188,7 +205,11 @@ exports.getTasks = async (req, res) => {
     if (req.user.role === "voice_over" && bucket !== "schedule") {
       return res.status(403).json({ message: "Not authorized to load this task list" });
     }
+    if (req.user.role === "voice_over_training" && bucket !== "vo-training") {
+      return res.status(403).json({ message: "Not authorized to load this task list" });
+    }
 
+    let limit;
     if (bucket === "schedule") {
       filter.status = { $ne: "completed" };
       filter.scheduledDate = { $ne: null, $exists: true };
@@ -200,17 +221,30 @@ exports.getTasks = async (req, res) => {
       ];
     } else if (bucket === "completed") {
       filter.status = "completed";
+    } else if (bucket === "vo-training") {
+      filter.status = "completed";
+      filter.script = { $exists: true, $nin: ["", null] };
+      filter.voiceOverStoredName = { $exists: true, $nin: ["", null] };
+      limit = 10;
     } else if (bucket !== "") {
-      return res.status(400).json({ message: "Invalid bucket. Use schedule, backlog, or completed." });
+      return res.status(400).json({ message: "Invalid bucket. Use schedule, backlog, completed, or vo-training." });
     }
 
-    const sort = bucket === "completed"
+    const sort = bucket === "completed" || bucket === "vo-training"
       ? { completedAt: -1, updatedAt: -1 }
       : bucket === "backlog"
         ? { updatedAt: -1 }
         : { scheduledDate: 1 };
 
-    const tasks = await VideoTask.find(filter).sort(sort).lean();
+    let query = VideoTask.find(filter).sort(sort);
+    if (limit) query = query.limit(limit);
+    const tasks = await query.lean();
+
+    if (bucket === "vo-training") {
+      const filtered = tasks.filter(taskAllowedForVoTraining);
+      return res.json(filtered.slice(0, 10));
+    }
+
     res.json(tasks);
   } catch (err) {
     console.error("getTasks error:", err.message);
@@ -405,7 +439,7 @@ exports.downloadVoiceOver = async (req, res) => {
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
-    if (rejectVoiceOverOutOfScope(req, res, task)) return;
+    if (rejectVoiceOverOutOfScope(req, res, task, { allowTraining: true })) return;
     if (!task?.voiceOverStoredName?.trim()) {
       return res.status(404).json({ message: "No voice-over file for this task" });
     }

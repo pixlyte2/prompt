@@ -4,7 +4,8 @@ const channelSchema = new mongoose.Schema(
   {
     handle: { type: String, required: true },
     name: { type: String, required: true },
-    videoFormat: { type: String, enum: ['long', 'short'], default: 'long' }
+    videoFormat: { type: String, enum: ['long', 'short'], default: 'long' },
+    avatarUrl: { type: String, default: null },
   },
   { _id: false },
 );

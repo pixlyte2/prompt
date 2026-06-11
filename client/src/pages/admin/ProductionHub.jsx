@@ -43,6 +43,7 @@ import AdminLayout from "../../layout/AdminLayout";
 import api, { httpClient } from "../../services/api";
 import { downloadVoiceOverFile, uploadVoiceOverFile } from "../../utils/voiceOverDownload";
 import { VOICE_OVER_ACCEPT, isVoiceOverFileAllowed, voiceOverFileTypeHint } from "../../constants/voiceOverFileTypes";
+import { countWords } from "../../utils/aiPromptUtils";
 
 // Shared UI Components
 function FilterChip({ active, onClick, children, count, variant = "default" }) {
@@ -739,6 +740,19 @@ const TaskRow = memo(function TaskRow({
             <span>Script</span>
           </button>
         )}
+
+        {hasTaskScript(task) && (() => {
+          const scriptWordCount = countWords(task.script);
+          if (!scriptWordCount) return null;
+          return (
+            <span
+              className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold tabular-nums tracking-tight bg-violet-50/70 text-violet-700 border border-violet-200/70 dark:bg-violet-900/25 dark:text-violet-200 dark:border-violet-700/50 shadow-sm min-h-[22px] sm:min-h-[26px]"
+              title={`${scriptWordCount.toLocaleString()} words`}
+            >
+              {scriptWordCount}w
+            </span>
+          );
+        })()}
 
         {/* Voice-over (VO) */}
         {hasTaskVoiceOver(task) && (

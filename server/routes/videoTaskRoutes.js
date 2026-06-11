@@ -17,7 +17,7 @@ function handleVoiceOverUpload(req, res, next) {
 }
 
 const adminOnly = allowRoles("admin");
-const adminOrVoiceOver = allowRoles("admin", "voice_over");
+const adminOrVoiceOver = allowRoles("admin", "voice_over", "voice_over_training");
 
 router.get("/stats", protect, adminOnly, ctrl.getTaskStats);
 router.get("/", protect, adminOrVoiceOver, ctrl.getTasks);

@@ -49,7 +49,7 @@ export default function Topbar({ title = "Dashboard", icon: Icon, onCacheClear, 
     }
   })();
 
-  const isVoiceOverRole = role === "voice_over";
+  const isVoiceOverRole = role === "voice_over" || role === "voice_over_training";
 
   const handleLogout = () => {
     logout();

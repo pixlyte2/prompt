@@ -46,13 +46,13 @@ import { toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
 import api from "../../services/api";
 import {
-  SCRAPE_VIDEO_CAP,
   formatCompact,
   computeDashboardStats,
   buildTopVideosByViews,
   buildWeeklyUploads,
   buildViewsDistribution,
   buildLastUploadedPerformance,
+  buildCompareUploadsPerformance,
   sortVideosByRecent,
   computeViewsAxisMax,
   computeCompareSampleStats,
@@ -61,6 +61,33 @@ import {
 
 const YT_META_PREFIX = "YT_ANALYTICS_META_";
 const YT_CHANNEL_PANEL_KEY = "YT_ANALYTICS_CHANNEL_PANEL_OPEN";
+const YT_COMPARE_CHANNEL_A_KEY = "YT_ANALYTICS_COMPARE_CHANNEL_A";
+const YT_COMPARE_CHANNEL_B_KEY = "YT_ANALYTICS_COMPARE_CHANNEL_B";
+
+function readSavedChannelHandle(key) {
+  try {
+    const v = localStorage.getItem(key);
+    if (v && typeof v === "string") return v.trim().toLowerCase();
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function writeSavedChannelHandle(key, handle) {
+  try {
+    if (handle) localStorage.setItem(key, String(handle).toLowerCase());
+    else localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+function findChannelByHandle(channels, handle) {
+  if (!handle || !Array.isArray(channels)) return null;
+  const key = String(handle).toLowerCase();
+  return channels.find((c) => c.handle?.toLowerCase() === key) || null;
+}
 
 function readChannelPanelOpen() {
   try {
@@ -81,13 +108,33 @@ const PRESET_COLORS = {
   rose: { hex: "#f43f5e", bg: "bg-rose-500", text: "text-rose-500", light: "#fda4af" },
 };
 
-const SCRAPE_STATUS_STEPS = [
-  "Connecting to YouTube…",
-  "Reading subscriber count…",
-  `Loading up to ${SCRAPE_VIDEO_CAP} recent videos…`,
-  "Parsing views and upload dates…",
-  "Large channels may take 2–4 minutes…",
-];
+/** Compare slot defaults when channel meta colors collide. */
+const COMPARE_SLOT_A = "blue";
+const COMPARE_SLOT_B = "violet";
+
+function resolveCompareAccents(channelA, channelB) {
+  const accentA = PRESET_COLORS[channelA?.color] || PRESET_COLORS[COMPARE_SLOT_A];
+  let accentB = PRESET_COLORS[channelB?.color] || PRESET_COLORS[COMPARE_SLOT_B];
+
+  if (accentA.hex === accentB.hex) {
+    accentB =
+      accentA.hex === PRESET_COLORS[COMPARE_SLOT_B].hex
+        ? PRESET_COLORS.amber
+        : PRESET_COLORS[COMPARE_SLOT_B];
+  }
+
+  return { accentA, accentB };
+}
+
+function getScrapeStatusSteps(videoCap) {
+  return [
+    "Connecting to YouTube…",
+    "Reading subscriber count…",
+    `Loading up to ${videoCap} recent videos…`,
+    "Parsing views and upload dates…",
+    "Large channels may take 2–4 minutes…",
+  ];
+}
 
 function readChannelUiMeta(handle) {
   try {
@@ -103,6 +150,70 @@ function writeChannelUiMeta(handle, { color }) {
   localStorage.setItem(
     `${YT_META_PREFIX}${handle.toLowerCase()}`,
     JSON.stringify({ color: color || "blue", handle }),
+  );
+}
+
+function scrapedChannelFields(scrapedChan) {
+  if (!scrapedChan) return {};
+  const patch = {};
+  if (scrapedChan.subscribers) patch.subscribers = scrapedChan.subscribers;
+  if (scrapedChan.avatarUrl) patch.avatarUrl = scrapedChan.avatarUrl;
+  return patch;
+}
+
+function patchChannelListWithScraped(prev, handleKey, scrapedChan) {
+  const patch = scrapedChannelFields(scrapedChan);
+  if (Object.keys(patch).length === 0) return prev;
+  return prev.map((c) => (c.handle.toLowerCase() === handleKey ? { ...c, ...patch } : c));
+}
+
+function patchChannelIfMatch(prev, handleKey, patch) {
+  if (!prev || prev.handle?.toLowerCase() !== handleKey || Object.keys(patch).length === 0) return prev;
+  return { ...prev, ...patch };
+}
+
+const CHANNEL_AVATAR_SIZES = {
+  xs: "w-7 h-7 text-[10px] rounded-md",
+  sm: "w-8 h-8 text-xs rounded-lg",
+  md: "w-9 h-9 text-sm rounded-lg",
+  lg: "w-16 h-16 text-xl rounded-xl",
+  badge: "inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] rounded-md min-w-[1.25rem] h-5",
+};
+
+function ChannelAvatar({ channel, size = "md", accentBg, className = "", ringActive = false }) {
+  const [imgError, setImgError] = useState(false);
+  const avatarUrl = channel?.avatarUrl;
+  const showImage = avatarUrl && !imgError;
+  const letter = channel?.name?.charAt(0) || "?";
+  const bg = accentBg || PRESET_COLORS[channel?.color]?.bg || PRESET_COLORS.blue.bg;
+  const sizeClass = CHANNEL_AVATAR_SIZES[size] || CHANNEL_AVATAR_SIZES.md;
+  const ringClass = ringActive
+    ? "ring-2 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-900 ring-slate-400"
+    : "";
+
+  useEffect(() => {
+    setImgError(false);
+  }, [avatarUrl]);
+
+  if (showImage) {
+    const imgSizeClass = sizeClass.replace(/\s*text-[^\s]+/, "");
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        onError={() => setImgError(true)}
+        className={`${imgSizeClass} object-cover flex-shrink-0 ${ringClass} ${className}`}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`${sizeClass} ${bg} text-white font-bold flex items-center justify-center flex-shrink-0 ${ringClass} ${className}`}
+      aria-hidden
+    >
+      {letter}
+    </div>
   );
 }
 
@@ -290,6 +401,204 @@ function LastUploadsPerformanceChart({ chartType, items, count, avgViews, yMax, 
   );
 }
 
+function CompareUploadsLegend({ channelAName, channelBName, accentAHex, accentBHex }) {
+  return (
+    <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-2 text-[10px] text-slate-600 dark:text-slate-300">
+      <li className="flex items-center gap-1.5 min-w-0">
+        <span
+          className="inline-block w-4 h-0.5 rounded-full flex-shrink-0"
+          style={{ backgroundColor: accentAHex }}
+          aria-hidden
+        />
+        <span className="truncate">{channelAName}</span>
+      </li>
+      <li className="flex items-center gap-1.5 min-w-0">
+        <span
+          className="inline-block w-4 h-0.5 rounded-full flex-shrink-0"
+          style={{ backgroundColor: accentBHex }}
+          aria-hidden
+        />
+        <span className="truncate">{channelBName}</span>
+      </li>
+    </ul>
+  );
+}
+
+function CompareUploadsPerformanceTooltip({
+  active,
+  payload,
+  channelAName,
+  channelBName,
+  accentAHex,
+  accentBHex,
+  contentStyle,
+}) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+  if (!row) return null;
+
+  return (
+    <div style={contentStyle} className="px-2.5 py-2 shadow-lg min-w-[160px]">
+      <p className="text-[10px] font-semibold mb-1.5 tabular-nums">{row.chartLabel}</p>
+      {row.viewsA != null && (
+        <p className="text-[10px] opacity-90 flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: accentAHex }} />
+          <span className="font-medium truncate max-w-[140px]">{channelAName}</span>
+          <span className="font-semibold tabular-nums ml-auto">{formatCompact(row.viewsA)}</span>
+        </p>
+      )}
+      {row.viewsB != null && (
+        <p className="text-[10px] opacity-90 flex items-center gap-1.5 mt-0.5">
+          <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: accentBHex }} />
+          <span className="font-medium truncate max-w-[140px]">{channelBName}</span>
+          <span className="font-semibold tabular-nums ml-auto">{formatCompact(row.viewsB)}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function CompareUploadsPerformanceChart({
+  chartType,
+  items,
+  count,
+  avgA,
+  avgB,
+  yMax,
+  accentAHex,
+  accentBHex,
+  channelAName,
+  channelBName,
+  tooltipStyle,
+}) {
+  const xAxis = (
+    <XAxis
+      dataKey="chartLabel"
+      tick={{ fontSize: 8, fontWeight: 600 }}
+      tickLine={false}
+      interval={0}
+      angle={-40}
+      textAnchor="end"
+      height={52}
+      tickFormatter={(label) => {
+        const n = parseInt(String(label).replace("#", ""), 10);
+        if (n === 1 || n === count || n % 5 === 0) return label;
+        return "";
+      }}
+    />
+  );
+  const shared = (
+    <>
+      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.12)" />
+      {xAxis}
+      <YAxis
+        tick={{ fontSize: 9 }}
+        tickFormatter={formatCompact}
+        width={Y_AXIS_VIEWS_WIDTH}
+        tickLine={false}
+        domain={[0, yMax]}
+        allowDataOverflow={false}
+      />
+      <Tooltip
+        content={
+          <CompareUploadsPerformanceTooltip
+            channelAName={channelAName}
+            channelBName={channelBName}
+            accentAHex={accentAHex}
+            accentBHex={accentBHex}
+            contentStyle={tooltipStyle}
+          />
+        }
+      />
+      <Legend
+        verticalAlign="bottom"
+        content={
+          <CompareUploadsLegend
+            channelAName={channelAName}
+            channelBName={channelBName}
+            accentAHex={accentAHex}
+            accentBHex={accentBHex}
+          />
+        }
+      />
+      <ReferenceLine y={avgA} stroke={accentAHex} strokeWidth={1.5} strokeDasharray="6 4" ifOverflow="extendDomain" />
+      <ReferenceLine y={avgB} stroke={accentBHex} strokeWidth={1.5} strokeDasharray="6 4" ifOverflow="extendDomain" />
+    </>
+  );
+
+  if (chartType === "line") {
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={items} margin={CHART_MARGIN_VIEWS}>
+          {shared}
+          <Line
+            type="monotone"
+            dataKey="viewsA"
+            name={channelAName}
+            stroke={accentAHex}
+            strokeWidth={2}
+            dot={{ r: 2.5, fill: accentAHex, stroke: accentAHex, strokeWidth: 0 }}
+            activeDot={{ r: 4, fill: accentAHex, stroke: accentAHex, strokeWidth: 0 }}
+            connectNulls={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="viewsB"
+            name={channelBName}
+            stroke={accentBHex}
+            strokeWidth={2}
+            dot={{ r: 2.5, fill: accentBHex, stroke: accentBHex, strokeWidth: 0 }}
+            activeDot={{ r: 4, fill: accentBHex, stroke: accentBHex, strokeWidth: 0 }}
+            connectNulls={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  if (chartType === "area") {
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <AreaChart data={items} margin={CHART_MARGIN_VIEWS}>
+          {shared}
+          <Area
+            type="monotone"
+            dataKey="viewsA"
+            name={channelAName}
+            stroke={accentAHex}
+            strokeWidth={2}
+            fill={accentAHex}
+            fillOpacity={0.18}
+            activeDot={{ r: 4, fill: accentAHex, stroke: accentAHex, strokeWidth: 0 }}
+            connectNulls={false}
+          />
+          <Area
+            type="monotone"
+            dataKey="viewsB"
+            name={channelBName}
+            stroke={accentBHex}
+            strokeWidth={2}
+            fill={accentBHex}
+            fillOpacity={0.18}
+            activeDot={{ r: 4, fill: accentBHex, stroke: accentBHex, strokeWidth: 0 }}
+            connectNulls={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={items} margin={CHART_MARGIN_VIEWS}>
+        {shared}
+        <Bar dataKey="viewsA" name={channelAName} fill={accentAHex} radius={[4, 4, 0, 0]} maxBarSize={16} />
+        <Bar dataKey="viewsB" name={channelBName} fill={accentBHex} radius={[4, 4, 0, 0]} maxBarSize={16} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 /** How many recent uploads to include in charts and KPIs (not scrape cap). */
 const VIDEO_LIMIT_OPTIONS = [10, 50, 100, 200, 500];
 const DEFAULT_VIDEO_LIMIT = 50;
@@ -336,6 +645,58 @@ const SEGMENT_ACTIVE =
   "bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 shadow-sm ring-1 ring-blue-200/80 dark:ring-blue-800/60 font-semibold";
 const SEGMENT_IDLE =
   "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium";
+
+const ATTENTION_DELAY_MS = 700;
+const ATTENTION_DURATION_MS = 7500;
+
+/** Brief post-load pulse to draw attention; auto-stops after a few cycles or when dismissed. */
+function useAttentionPulse(shouldShow) {
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    if (!shouldShow) {
+      setActive(false);
+      return undefined;
+    }
+    let cancelled = false;
+    const startTimer = window.setTimeout(() => {
+      if (!cancelled) setActive(true);
+    }, ATTENTION_DELAY_MS);
+    const stopTimer = window.setTimeout(() => {
+      if (!cancelled) setActive(false);
+    }, ATTENTION_DURATION_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(startTimer);
+      window.clearTimeout(stopTimer);
+    };
+  }, [shouldShow]);
+
+  const dismiss = useCallback(() => setActive(false), []);
+  return [active, dismiss];
+}
+
+function AttentionHighlight({ active, rounded = "rounded-lg", ringClass = "", className = "", children }) {
+  return (
+    <div className={`relative inline-flex ${className}`}>
+      {active && (
+        <span
+          className={`absolute -inset-1 ${rounded} bg-blue-400/40 dark:bg-blue-500/30 animate-ping motion-reduce:animate-none pointer-events-none`}
+          aria-hidden="true"
+        />
+      )}
+      <div
+        className={
+          active
+            ? `relative z-[1] ring-2 ring-blue-400/70 dark:ring-blue-500/50 ring-offset-1 ring-offset-gray-100 dark:ring-offset-gray-800 motion-reduce:ring-0 ${ringClass}`
+            : `relative z-[1] ${ringClass}`
+        }
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
 
 /** Room for formatCompact Y ticks (e.g. "74.0K") — avoid negative margin.left clipping tspan labels. */
 const CHART_MARGIN_VIEWS = { top: 8, right: 12, left: 4, bottom: 4 };
@@ -478,14 +839,10 @@ function CompareSampleCard({ limit, statsA, statsB, channelA, channelB, accentA,
             <tr className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
               <th className="text-left py-1.5 font-bold">Metric</th>
               <th className="text-right py-1.5 font-bold">
-                <span className={`inline-flex items-center gap-1 justify-end ${colA} text-white px-1.5 py-0.5 rounded-md text-[9px]`}>
-                  {channelA?.name?.charAt(0) || "A"}
-                </span>
+                <ChannelAvatar channel={channelA} size="badge" accentBg={colA} className="text-white" />
               </th>
               <th className="text-right py-1.5 font-bold">
-                <span className={`inline-flex items-center gap-1 justify-end ${colB} text-white px-1.5 py-0.5 rounded-md text-[9px]`}>
-                  {channelB?.name?.charAt(0) || "B"}
-                </span>
+                <ChannelAvatar channel={channelB} size="badge" accentBg={colB} className="text-white" />
               </th>
             </tr>
           </thead>
@@ -506,7 +863,7 @@ function CompareSampleCard({ limit, statsA, statsB, channelA, channelB, accentA,
 }
 
 /** Inline scrape progress — button state + content banner (no full-page modal). */
-function ScrapeProgressBanner({ title, statusMessage, elapsedSec, channels, onCancel }) {
+function ScrapeProgressBanner({ title, statusMessage, elapsedSec, channels, videoCap, onCancel }) {
   if (!channels?.length) return null;
   return (
     <div
@@ -538,7 +895,7 @@ function ScrapeProgressBanner({ title, statusMessage, elapsedSec, channels, onCa
               ))}
             </ul>
             <p className="text-[10px] font-semibold text-slate-400 mt-2 flex items-center gap-1">
-              <Clock size={10} /> {elapsedSec}s elapsed · up to {SCRAPE_VIDEO_CAP} videos per channel
+              <Clock size={10} /> {elapsedSec}s elapsed · up to {videoCap} videos per channel
             </p>
           </div>
         </div>
@@ -575,16 +932,19 @@ function YouTubeAnalytics() {
   const compareScrapeDoneRef = useRef(new Set());
   const compareAbortRefA = useRef(null);
   const compareAbortRefB = useRef(null);
-  const [scrapeStatusMessage, setScrapeStatusMessage] = useState(SCRAPE_STATUS_STEPS[0]);
+  const [scrapeStatusMessage, setScrapeStatusMessage] = useState(getScrapeStatusSteps(DEFAULT_VIDEO_LIMIT)[0]);
   const [scrapeElapsedSec, setScrapeElapsedSec] = useState(0);
   const scrapeAbortRef = useRef(null);
   const scrapeInFlightRef = useRef(false);
   const activeChannelRef = useRef(null);
   const analyticsCacheRef = useRef(new Map());
+  const videoLimitRef = useRef(DEFAULT_VIDEO_LIMIT);
+  const prevAnalyticsChannelKeyRef = useRef("");
   /** null = use channel config from Trending Hub; otherwise manual long/short scrape */
   const [formatOverride, setFormatOverride] = useState(null);
   const [videoLimit, setVideoLimit] = useState(DEFAULT_VIDEO_LIMIT);
   const [uploadsChartType, setUploadsChartType] = useState("area");
+  const [compareUploadsChartType, setCompareUploadsChartType] = useState("line");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [channelPanelOpen, setChannelPanelOpen] = useState(readChannelPanelOpen);
   const [mobileChannelOpen, setMobileChannelOpen] = useState(false);
@@ -615,21 +975,29 @@ function YouTubeAnalytics() {
   }, [activeChannel]);
 
   useEffect(() => {
+    videoLimitRef.current = videoLimit;
+  }, [videoLimit]);
+
+  const scrapeVideoCap = refreshing ? videoLimit : DEFAULT_VIDEO_LIMIT;
+  const scrapeStatusSteps = useMemo(() => getScrapeStatusSteps(scrapeVideoCap), [scrapeVideoCap]);
+
+  useEffect(() => {
     const scraping = refreshing || compareLoadingA || compareLoadingB;
     if (!scraping) {
       setScrapeElapsedSec(0);
-      setScrapeStatusMessage(SCRAPE_STATUS_STEPS[0]);
+      setScrapeStatusMessage(getScrapeStatusSteps(DEFAULT_VIDEO_LIMIT)[0]);
       return undefined;
     }
     const started = Date.now();
     let step = 0;
+    setScrapeStatusMessage(scrapeStatusSteps[0]);
     const tick = setInterval(() => {
       setScrapeElapsedSec(Math.floor((Date.now() - started) / 1000));
-      step = (step + 1) % SCRAPE_STATUS_STEPS.length;
-      setScrapeStatusMessage(SCRAPE_STATUS_STEPS[step]);
+      step = (step + 1) % scrapeStatusSteps.length;
+      setScrapeStatusMessage(scrapeStatusSteps[step]);
     }, 4000);
     return () => clearInterval(tick);
-  }, [refreshing, compareLoadingA, compareLoadingB]);
+  }, [refreshing, compareLoadingA, compareLoadingB, scrapeStatusSteps]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -655,11 +1023,22 @@ function YouTubeAnalytics() {
             typeName: type.name,
             color: meta.color || "blue",
             subscribers: 0,
+            avatarUrl: ch.avatarUrl || null,
             videoFormat: ch.videoFormat === "short" ? "short" : "long",
           });
         });
       });
-      setChannels(channelList);
+      setChannels((prevChannels) => {
+        const prevByHandle = Object.fromEntries(prevChannels.map((c) => [c.handle.toLowerCase(), c]));
+        return channelList.map((c) => {
+          const prev = prevByHandle[c.handle.toLowerCase()];
+          return {
+            ...c,
+            subscribers: prev?.subscribers || 0,
+            avatarUrl: c.avatarUrl || prev?.avatarUrl || null,
+          };
+        });
+      });
       if (channelList.length > 0 && !activeChannel) {
         setActiveChannel(channelList[0]);
       } else if (activeChannel) {
@@ -667,7 +1046,11 @@ function YouTubeAnalytics() {
           channelList.find((c) => c.handle === activeChannel.handle) || channelList[0];
         setActiveChannel((prev) => {
           if (!prev || prev.handle !== updated.handle) return updated;
-          return { ...updated, subscribers: prev.subscribers > 0 ? prev.subscribers : updated.subscribers };
+          return {
+            ...updated,
+            subscribers: prev.subscribers > 0 ? prev.subscribers : updated.subscribers,
+            avatarUrl: updated.avatarUrl || prev.avatarUrl || null,
+          };
         });
       }
     } catch {
@@ -684,44 +1067,49 @@ function YouTubeAnalytics() {
     const ch = activeChannelRef.current;
     if (!ch?.handle || !ch?.typeId) {
       setVideos([]);
-      setRefreshing(false);
+      if (!scrapeInFlightRef.current) {
+        setRefreshing(false);
+      }
       return;
     }
 
     const handleKey = ch.handle.toLowerCase();
     const channelDefault = ch.videoFormat === "short" ? "short" : "long";
     const videoFormat = formatOverride ?? channelDefault;
-    const scrapeKey = `${handleKey}|${ch.typeId}|${videoFormat}`;
+    const scrapeKey = `${handleKey}|${ch.typeId}|${videoFormat}|${videoLimitRef.current}`;
     const cached = analyticsCacheRef.current.get(scrapeKey);
 
     if (cached) {
       setVideos(cached.videos);
+      const patch = { subscribers: cached.subscribers };
+      if (cached.avatarUrl) patch.avatarUrl = cached.avatarUrl;
       setChannels((prev) =>
-        prev.map((c) => (c.handle.toLowerCase() === handleKey ? { ...c, subscribers: cached.subscribers } : c)),
+        prev.map((c) => (c.handle.toLowerCase() === handleKey ? { ...c, ...patch } : c)),
       );
       setActiveChannel((prev) => {
         if (!prev || prev.handle.toLowerCase() !== handleKey) return prev;
-        if (prev.subscribers === cached.subscribers) return prev;
-        return { ...prev, subscribers: cached.subscribers };
+        if (prev.subscribers === patch.subscribers && prev.avatarUrl === patch.avatarUrl) return prev;
+        return { ...prev, ...patch };
       });
     } else {
       setVideos([]);
     }
-    setRefreshing(false);
+    if (!scrapeInFlightRef.current) {
+      setRefreshing(false);
+    }
   }, [formatOverride]);
 
-  const loadVideos = useCallback(async ({ force = false, showToast = false } = {}) => {
+  const loadVideos = useCallback(async ({ force = false, showToast = false, videoFormatOverride, maxVideos: maxVideosArg } = {}) => {
     const ch = activeChannelRef.current;
     if (!ch?.handle || !ch?.typeId) return;
 
     const handleKey = ch.handle.toLowerCase();
     const channelDefault = ch.videoFormat === "short" ? "short" : "long";
-    const videoFormat = formatOverride ?? channelDefault;
-    const scrapeKey = `${handleKey}|${ch.typeId}|${videoFormat}`;
+    const videoFormat = videoFormatOverride ?? formatOverride ?? channelDefault;
+    const maxVideos = maxVideosArg ?? videoLimitRef.current ?? DEFAULT_VIDEO_LIMIT;
+    const scrapeKey = `${handleKey}|${ch.typeId}|${videoFormat}|${maxVideos}`;
 
     if (!force) return;
-
-    if (scrapeInFlightRef.current) return;
 
     scrapeAbortRef.current?.abort();
     const ctrl = new AbortController();
@@ -734,6 +1122,7 @@ function YouTubeAnalytics() {
         typeId: ch.typeId,
         videoFormat,
         channelHandle: ch.handle,
+        maxVideos: String(maxVideos),
         force: "true",
       });
 
@@ -747,24 +1136,20 @@ function YouTubeAnalytics() {
       const list = (data.videos || []).filter(
         (v) => String(v.channelHandle || "").toLowerCase() === handleKey,
       );
-      const trimmed = list.slice(0, SCRAPE_VIDEO_CAP);
+      const trimmed = list.slice(0, maxVideos);
 
       const scrapedChan = (data.channels || []).find(
         (sc) => sc.handle.toLowerCase() === handleKey,
       );
       const subs = scrapedChan?.subscribers || 0;
+      const avatarUrl = scrapedChan?.avatarUrl || null;
 
-      analyticsCacheRef.current.set(scrapeKey, { videos: trimmed, subscribers: subs });
+      analyticsCacheRef.current.set(scrapeKey, { videos: trimmed, subscribers: subs, avatarUrl });
       setVideos(trimmed);
 
-      setChannels((prev) =>
-        prev.map((c) => (c.handle.toLowerCase() === handleKey ? { ...c, subscribers: subs } : c)),
-      );
-      setActiveChannel((prev) => {
-        if (!prev || prev.handle.toLowerCase() !== handleKey) return prev;
-        if (prev.subscribers === subs) return prev;
-        return { ...prev, subscribers: subs };
-      });
+      const patch = scrapedChannelFields({ subscribers: subs, avatarUrl });
+      setChannels((prev) => patchChannelListWithScraped(prev, handleKey, { subscribers: subs, avatarUrl }));
+      setActiveChannel((prev) => patchChannelIfMatch(prev, handleKey, patch));
 
       if (showToast) {
         toast.dismiss();
@@ -781,9 +1166,11 @@ function YouTubeAnalytics() {
           : err?.response?.data?.message || "Could not fetch channel data";
       toast.error(msg, { duration: 5000 });
     } finally {
-      scrapeInFlightRef.current = false;
-      if (scrapeAbortRef.current === ctrl) scrapeAbortRef.current = null;
-      setRefreshing(false);
+      if (scrapeAbortRef.current === ctrl) {
+        scrapeAbortRef.current = null;
+        scrapeInFlightRef.current = false;
+        setRefreshing(false);
+      }
     }
   }, [formatOverride]);
 
@@ -794,16 +1181,56 @@ function YouTubeAnalytics() {
   const isShortChannel = activeVideoFormat === "short";
   const usingChannelFormatDefault = formatOverride === null;
 
+  const handleAnalyticsFormatSelect = useCallback(
+    (value) => {
+      if (value === activeVideoFormat || refreshing) return;
+      setFormatOverride(value);
+      loadVideos({
+        force: true,
+        showToast: false,
+        videoFormatOverride: value,
+        maxVideos: videoLimitRef.current,
+      });
+    },
+    [activeVideoFormat, refreshing, loadVideos],
+  );
+
+  const handleVideoLimitSelect = useCallback(
+    (n) => {
+      if (refreshing) return;
+      setVideoLimit(n);
+      videoLimitRef.current = n;
+      loadVideos({ force: true, showToast: false, maxVideos: n });
+    },
+    [refreshing, loadVideos],
+  );
+
   useEffect(() => {
     setFormatOverride(null);
+    setVideoLimit(DEFAULT_VIDEO_LIMIT);
+    videoLimitRef.current = DEFAULT_VIDEO_LIMIT;
   }, [activeHandle, activeTypeId]);
 
   useEffect(() => {
     if (!activeHandle || !activeTypeId) return;
-    scrapeAbortRef.current?.abort();
-    scrapeInFlightRef.current = false;
     applyAnalyticsCache();
-  }, [activeHandle, activeTypeId, activeVideoFormat, applyAnalyticsCache]);
+
+    const channelKey = `${activeHandle.toLowerCase()}|${activeTypeId}`;
+    if (prevAnalyticsChannelKeyRef.current === channelKey) return;
+    prevAnalyticsChannelKeyRef.current = channelKey;
+
+    const handleKey = activeHandle.toLowerCase();
+    const channelDefault = activeChannelRef.current?.videoFormat === "short" ? "short" : "long";
+    const scrapeKey = `${handleKey}|${activeTypeId}|${channelDefault}|${DEFAULT_VIDEO_LIMIT}`;
+    if (!analyticsCacheRef.current.get(scrapeKey)) {
+      loadVideos({
+        force: true,
+        showToast: false,
+        maxVideos: DEFAULT_VIDEO_LIMIT,
+        videoFormatOverride: channelDefault,
+      });
+    }
+  }, [activeHandle, activeTypeId, activeVideoFormat, applyAnalyticsCache, loadVideos]);
 
   const cancelScrape = useCallback(() => {
     scrapeAbortRef.current?.abort();
@@ -813,26 +1240,55 @@ function YouTubeAnalytics() {
     setRefreshing(false);
     setCompareLoadingA(false);
     setCompareLoadingB(false);
-    setCompareScrapeChannel(null);
     toast("Scrape cancelled", { duration: 2500 });
   }, []);
 
   useEffect(() => {
-    if (pageTab !== "compare" || channels.length === 0) return;
-    if (!compareChannelA) setCompareChannelA(channels[0]);
-    if (!compareChannelB && channels.length > 1) {
-      setCompareChannelB(channels.find((c) => c.handle !== channels[0]?.handle) || null);
-    }
-  }, [pageTab, channels, compareChannelA, compareChannelB]);
+    if (channels.length === 0) return;
+
+    const savedA = readSavedChannelHandle(YT_COMPARE_CHANNEL_A_KEY);
+    const savedB = readSavedChannelHandle(YT_COMPARE_CHANNEL_B_KEY);
+
+    setCompareChannelA((prev) => {
+      const synced = prev ? findChannelByHandle(channels, prev.handle) : null;
+      if (synced) return synced;
+      return findChannelByHandle(channels, savedA) || channels[0] || null;
+    });
+
+    setCompareChannelB((prev) => {
+      const synced = prev ? findChannelByHandle(channels, prev.handle) : null;
+      if (synced) return synced;
+
+      const resolvedA = findChannelByHandle(channels, savedA) || channels[0];
+      const fromSaved = findChannelByHandle(channels, savedB);
+      if (fromSaved && fromSaved.handle !== resolvedA?.handle) return fromSaved;
+
+      if (channels.length > 1) {
+        return channels.find((c) => c.handle !== resolvedA?.handle) || null;
+      }
+      return null;
+    });
+  }, [channels]);
+
+  const selectCompareChannelA = useCallback((channel) => {
+    setCompareChannelA(channel);
+    writeSavedChannelHandle(YT_COMPARE_CHANNEL_A_KEY, channel?.handle);
+  }, []);
+
+  const selectCompareChannelB = useCallback((channel) => {
+    setCompareChannelB(channel);
+    writeSavedChannelHandle(YT_COMPARE_CHANNEL_B_KEY, channel?.handle);
+  }, []);
 
   const applyCompareCache = useCallback(
     (side, channel) => {
       const setSideVideos = side === "a" ? setCompareVideosA : setCompareVideosB;
       const setLoading = side === "a" ? setCompareLoadingA : setCompareLoadingB;
+      const abortRef = side === "a" ? compareAbortRefA : compareAbortRefB;
 
       if (!channel?.handle || !channel?.typeId) {
         setSideVideos([]);
-        setLoading(false);
+        if (!abortRef.current) setLoading(false);
         return;
       }
 
@@ -842,24 +1298,22 @@ function YouTubeAnalytics() {
 
       if (cached) {
         setSideVideos(cached.videos);
+        const patch = { subscribers: cached.subscribers };
+        if (cached.avatarUrl) patch.avatarUrl = cached.avatarUrl;
         setChannels((prev) =>
-          prev.map((c) =>
-            c.handle.toLowerCase() === handleKey ? { ...c, subscribers: cached.subscribers } : c,
-          ),
+          prev.map((c) => (c.handle.toLowerCase() === handleKey ? { ...c, ...patch } : c)),
         );
         if (side === "a") {
-          setCompareChannelA((prev) =>
-            prev?.handle?.toLowerCase() === handleKey ? { ...prev, subscribers: cached.subscribers } : prev,
-          );
+          setCompareChannelA((prev) => patchChannelIfMatch(prev, handleKey, patch));
         } else {
-          setCompareChannelB((prev) =>
-            prev?.handle?.toLowerCase() === handleKey ? { ...prev, subscribers: cached.subscribers } : prev,
-          );
+          setCompareChannelB((prev) => patchChannelIfMatch(prev, handleKey, patch));
         }
       } else {
         setSideVideos([]);
       }
-      setLoading(false);
+      if (!abortRef.current) {
+        setLoading(false);
+      }
     },
     [compareFormat],
   );
@@ -877,19 +1331,15 @@ function YouTubeAnalytics() {
         const cached = compareCacheRef.current.get(scrapeKey);
         if (cached) {
           setSideVideos(cached.videos);
+          const patch = { subscribers: cached.subscribers };
+          if (cached.avatarUrl) patch.avatarUrl = cached.avatarUrl;
           setChannels((prev) =>
-            prev.map((c) =>
-              c.handle.toLowerCase() === handleKey ? { ...c, subscribers: cached.subscribers } : c,
-            ),
+            prev.map((c) => (c.handle.toLowerCase() === handleKey ? { ...c, ...patch } : c)),
           );
           if (side === "a") {
-            setCompareChannelA((prev) =>
-              prev?.handle?.toLowerCase() === handleKey ? { ...prev, subscribers: cached.subscribers } : prev,
-            );
+            setCompareChannelA((prev) => patchChannelIfMatch(prev, handleKey, patch));
           } else {
-            setCompareChannelB((prev) =>
-              prev?.handle?.toLowerCase() === handleKey ? { ...prev, subscribers: cached.subscribers } : prev,
-            );
+            setCompareChannelB((prev) => patchChannelIfMatch(prev, handleKey, patch));
           }
           return;
         }
@@ -918,25 +1368,21 @@ function YouTubeAnalytics() {
         const list = (data.videos || []).filter(
           (v) => String(v.channelHandle || "").toLowerCase() === handleKey,
         );
-        const trimmed = list.slice(0, SCRAPE_VIDEO_CAP);
+        const trimmed = list.slice(0, DEFAULT_VIDEO_LIMIT);
         const scrapedChan = (data.channels || []).find((sc) => sc.handle.toLowerCase() === handleKey);
         const subs = scrapedChan?.subscribers || 0;
+        const avatarUrl = scrapedChan?.avatarUrl || null;
 
-        compareCacheRef.current.set(scrapeKey, { videos: trimmed, subscribers: subs });
+        compareCacheRef.current.set(scrapeKey, { videos: trimmed, subscribers: subs, avatarUrl });
         compareScrapeDoneRef.current.add(scrapeKey);
         setSideVideos(trimmed);
 
-        setChannels((prev) =>
-          prev.map((c) => (c.handle.toLowerCase() === handleKey ? { ...c, subscribers: subs } : c)),
-        );
+        const patch = scrapedChannelFields({ subscribers: subs, avatarUrl });
+        setChannels((prev) => patchChannelListWithScraped(prev, handleKey, { subscribers: subs, avatarUrl }));
         if (side === "a") {
-          setCompareChannelA((prev) =>
-            prev?.handle?.toLowerCase() === handleKey ? { ...prev, subscribers: subs } : prev,
-          );
+          setCompareChannelA((prev) => patchChannelIfMatch(prev, handleKey, patch));
         } else {
-          setCompareChannelB((prev) =>
-            prev?.handle?.toLowerCase() === handleKey ? { ...prev, subscribers: subs } : prev,
-          );
+          setCompareChannelB((prev) => patchChannelIfMatch(prev, handleKey, patch));
         }
 
         if (showToast) {
@@ -950,9 +1396,10 @@ function YouTubeAnalytics() {
             : err?.response?.data?.message || "Could not fetch channel data";
         toast.error(msg, { duration: 5000 });
       } finally {
-        setLoading(false);
-        if (abortRef.current === ctrl) abortRef.current = null;
-        setCompareScrapeChannel((prev) => (prev?.handle === channel.handle ? null : prev));
+        if (abortRef.current === ctrl) {
+          abortRef.current = null;
+          setLoading(false);
+        }
       }
     },
     [compareFormat],
@@ -963,10 +1410,16 @@ function YouTubeAnalytics() {
   const compareTypeIdA = compareChannelA?.typeId;
   const compareTypeIdB = compareChannelB?.typeId;
 
+  const compareContextRef = useRef("");
+
   useEffect(() => {
     if (pageTab !== "compare") return;
-    compareAbortRefA.current?.abort();
-    compareAbortRefB.current?.abort();
+    const contextKey = `${compareHandleA}|${compareTypeIdA}|${compareHandleB}|${compareTypeIdB}|${compareFormat}`;
+    if (compareContextRef.current && compareContextRef.current !== contextKey) {
+      compareAbortRefA.current?.abort();
+      compareAbortRefB.current?.abort();
+    }
+    compareContextRef.current = contextKey;
     applyCompareCache("a", compareChannelA);
     applyCompareCache("b", compareChannelB);
   }, [
@@ -977,8 +1430,6 @@ function YouTubeAnalytics() {
     compareTypeIdB,
     compareFormat,
     applyCompareCache,
-    compareChannelA,
-    compareChannelB,
   ]);
 
   const compareStatsA = useMemo(
@@ -989,10 +1440,35 @@ function YouTubeAnalytics() {
     () => computeCompareSampleStats(compareVideosB, COMPARE_SAMPLE_LIMITS),
     [compareVideosB],
   );
-  const compareAccentA = PRESET_COLORS[compareChannelA?.color] || PRESET_COLORS.blue;
-  const compareAccentB = PRESET_COLORS[compareChannelB?.color] || PRESET_COLORS.violet;
+  const { accentA: compareAccentA, accentB: compareAccentB } = useMemo(
+    () => resolveCompareAccents(compareChannelA, compareChannelB),
+    [compareChannelA?.color, compareChannelB?.color],
+  );
   const compareLoading = compareLoadingA || compareLoadingB;
   const compareReady = compareChannelA && compareChannelB && compareVideosA.length > 0 && compareVideosB.length > 0;
+
+  const compareUploadsPerformance = useMemo(
+    () => buildCompareUploadsPerformance(compareVideosA, compareVideosB, compareSampleLimit),
+    [compareVideosA, compareVideosB, compareSampleLimit],
+  );
+  const compareUploadsYMax = useMemo(
+    () =>
+      computeViewsAxisMax(
+        compareUploadsPerformance.maxViews,
+        Math.max(compareUploadsPerformance.avgA, compareUploadsPerformance.avgB),
+      ),
+    [compareUploadsPerformance.maxViews, compareUploadsPerformance.avgA, compareUploadsPerformance.avgB],
+  );
+
+  const needsAnalyzeAttention =
+    pageTab === "analytics" && videos.length === 0 && !refreshing && !!activeChannel;
+  const [analyzeAttention, dismissAnalyzeAttention] = useAttentionPulse(needsAnalyzeAttention);
+
+  const compareNeedsAttention =
+    pageTab === "compare" && !!compareChannelA && !!compareChannelB && !compareReady && !compareLoading;
+  const [compareFormatAttention, dismissCompareFormatAttention] = useAttentionPulse(compareNeedsAttention);
+  const [compareSampleAttention, dismissCompareSampleAttention] = useAttentionPulse(compareNeedsAttention);
+  const [compareRefreshAttention, dismissCompareRefreshAttention] = useAttentionPulse(compareNeedsAttention);
 
   const compareScrapeChannels = useMemo(() => {
     if (!compareLoading) return [];
@@ -1084,8 +1560,10 @@ function YouTubeAnalytics() {
       },
       {
         label: isShortChannel ? "Shorts in sample" : "Videos in sample",
-        value: `${stats.videoCount} / ${videos.length || SCRAPE_VIDEO_CAP}`,
-        sub: `Analyzing newest ${videoLimit} · up to ${SCRAPE_VIDEO_CAP} scraped`,
+        value: `${stats.videoCount} / ${videos.length || videoLimit}`,
+        sub: videos.length
+          ? `Analyzing newest ${videoLimit} · ${videos.length} scraped`
+          : `Analyzing newest ${videoLimit} uploads`,
         icon: Video,
         color: accent.text,
       },
@@ -1146,6 +1624,7 @@ function YouTubeAnalytics() {
           typeName: type.name,
           color: newChanColor,
           subscribers: 0,
+          avatarUrl: added.avatarUrl || null,
           videoFormat: "long",
         });
       }
@@ -1179,7 +1658,7 @@ function YouTubeAnalytics() {
   return (
     <AdminLayout
       title="YouTube Analytics"
-      titleInfo={`Scrapes up to ${SCRAPE_VIDEO_CAP} recent public videos per channel`}
+      titleInfo="Scrapes recent public videos per channel (10–500, configurable via Videos filter)"
       icon={BarChart3}
       contentFit
     >
@@ -1248,11 +1727,7 @@ function YouTubeAnalytics() {
                   {channelPanelOpen ? (
                     <>
                       <div className="flex items-center gap-2">
-                        <div
-                          className={`w-8 h-8 rounded-lg ${col.bg} text-white text-xs font-bold flex items-center justify-center flex-shrink-0`}
-                        >
-                          {c.name.charAt(0)}
-                        </div>
+                        <ChannelAvatar channel={c} size="sm" accentBg={col.bg} />
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{c.name}</p>
                           <p className="text-[10px] text-slate-500 truncate">@{c.handle}</p>
@@ -1263,13 +1738,7 @@ function YouTubeAnalytics() {
                       )}
                     </>
                   ) : (
-                    <div
-                      className={`w-9 h-9 rounded-lg ${col.bg} text-white text-xs font-bold flex items-center justify-center ${
-                        active ? "ring-2 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-900 ring-slate-400" : ""
-                      }`}
-                    >
-                      {c.name.charAt(0)}
-                    </div>
+                    <ChannelAvatar channel={c} size="sidebarCollapsed" accentBg={col.bg} ringActive={active} />
                   )}
                 </button>
               );
@@ -1312,7 +1781,7 @@ function YouTubeAnalytics() {
                     <CompareChannelSelect
                       label="Channel A"
                       value={compareChannelA}
-                      onChange={setCompareChannelA}
+                      onChange={selectCompareChannelA}
                       channels={channels}
                       excludeHandle={compareChannelB?.handle}
                       disabled={compareLoading}
@@ -1323,7 +1792,7 @@ function YouTubeAnalytics() {
                     <CompareChannelSelect
                       label="Channel B"
                       value={compareChannelB}
-                      onChange={setCompareChannelB}
+                      onChange={selectCompareChannelB}
                       channels={channels}
                       excludeHandle={compareChannelA?.handle}
                       disabled={compareLoading}
@@ -1333,65 +1802,87 @@ function YouTubeAnalytics() {
                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Format
                     </span>
-                    <div
-                      className={`inline-flex rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 ${
-                        compareLoading ? "opacity-50 pointer-events-none" : ""
-                      }`}
-                    >
-                      {[
-                        { label: "Long", value: "long" },
-                        { label: "Shorts", value: "short" },
-                      ].map((f) => (
-                        <button
-                          key={f.value}
-                          type="button"
-                          disabled={compareLoading}
-                          onClick={() => setCompareFormat(f.value)}
-                          className={`px-3 py-1.5 rounded-md text-xs transition-colors ${
-                            compareFormat === f.value ? SEGMENT_ACTIVE : SEGMENT_IDLE
-                          }`}
-                        >
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
+                    <AttentionHighlight active={compareFormatAttention}>
+                      <div
+                        className={`inline-flex rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 ${
+                          compareLoading ? "opacity-50 pointer-events-none" : ""
+                        }`}
+                      >
+                        {[
+                          { label: "Long", value: "long" },
+                          { label: "Shorts", value: "short" },
+                        ].map((f) => (
+                          <button
+                            key={f.value}
+                            type="button"
+                            disabled={compareLoading}
+                            onClick={() => {
+                              dismissCompareFormatAttention();
+                              setCompareFormat(f.value);
+                            }}
+                            className={`px-3 py-1.5 rounded-md text-xs transition-colors ${
+                              compareFormat === f.value ? SEGMENT_ACTIVE : SEGMENT_IDLE
+                            }`}
+                          >
+                            {f.label}
+                          </button>
+                        ))}
+                      </div>
+                    </AttentionHighlight>
                     <div className="flex flex-nowrap items-center gap-1.5 sm:gap-2">
                       <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex-shrink-0">
                         Sample
                       </span>
-                      <div
-                        className="inline-flex flex-nowrap flex-shrink-0 rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
-                        role="group"
-                        aria-label="Comparison sample size"
-                      >
-                        {VIDEO_LIMIT_OPTIONS.map((n) => (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() => setCompareSampleLimit(n)}
-                            className={`px-1.5 py-1 sm:px-2 sm:py-1.5 md:px-2.5 rounded-md text-[10px] sm:text-xs tabular-nums transition-colors whitespace-nowrap ${
-                              compareSampleLimit === n ? SEGMENT_ACTIVE : SEGMENT_IDLE
-                            }`}
-                            aria-pressed={compareSampleLimit === n}
-                          >
-                            {n}
-                          </button>
-                        ))}
-                      </div>
+                      <AttentionHighlight active={compareSampleAttention}>
+                        <div
+                          className="inline-flex flex-nowrap flex-shrink-0 rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                          role="group"
+                          aria-label="Comparison sample size"
+                        >
+                          {VIDEO_LIMIT_OPTIONS.map((n) => (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => {
+                                dismissCompareSampleAttention();
+                                setCompareSampleLimit(n);
+                              }}
+                              className={`px-1.5 py-1 sm:px-2 sm:py-1.5 md:px-2.5 rounded-md text-[10px] sm:text-xs tabular-nums transition-colors whitespace-nowrap ${
+                                compareSampleLimit === n ? SEGMENT_ACTIVE : SEGMENT_IDLE
+                              }`}
+                              aria-pressed={compareSampleLimit === n}
+                            >
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      </AttentionHighlight>
                     </div>
-                    <button
-                      type="button"
-                      disabled={compareLoading || !compareChannelA || !compareChannelB}
-                      onClick={() => {
-                        if (compareChannelA) loadCompareSide("a", compareChannelA, { force: true, showToast: false });
-                        if (compareChannelB) loadCompareSide("b", compareChannelB, { force: true, showToast: true });
-                      }}
-                      className="buffer-button-primary inline-flex items-center justify-center gap-1.5 text-xs py-2 px-3.5 h-9 disabled:opacity-50 ml-auto"
-                      aria-busy={compareLoading}
+                    <AttentionHighlight
+                      active={compareRefreshAttention}
+                      className="ml-auto"
                     >
-                      {compareLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                      {compareLoading ? "Refreshing…" : "Refresh both"}
-                    </button>
+                      <button
+                        type="button"
+                        disabled={compareLoading || !compareChannelA || !compareChannelB}
+                        onClick={() => {
+                          dismissCompareRefreshAttention();
+                          setCompareLoadingA(true);
+                          setCompareLoadingB(true);
+                          if (compareChannelA) loadCompareSide("a", compareChannelA, { force: true, showToast: false });
+                          if (compareChannelB) loadCompareSide("b", compareChannelB, { force: true, showToast: true });
+                        }}
+                        className={`buffer-button-primary inline-flex items-center justify-center gap-1.5 text-xs py-2 px-3.5 h-9 disabled:opacity-50 ${
+                          compareRefreshAttention
+                            ? "ring-2 ring-white/70 dark:ring-blue-300/50 ring-offset-1 ring-offset-blue-600 dark:ring-offset-blue-700 motion-reduce:ring-0"
+                            : ""
+                        }`}
+                        aria-busy={compareLoading}
+                      >
+                        {compareLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                        {compareLoading ? "Refreshing…" : "Refresh both"}
+                      </button>
+                    </AttentionHighlight>
                   </div>
                 </div>
               </header>
@@ -1402,6 +1893,7 @@ function YouTubeAnalytics() {
                   statusMessage={scrapeStatusMessage}
                   elapsedSec={scrapeElapsedSec}
                   channels={compareScrapeChannels}
+                  videoCap={DEFAULT_VIDEO_LIMIT}
                   onCancel={cancelScrape}
                 />
               )}
@@ -1427,7 +1919,7 @@ function YouTubeAnalytics() {
                 <div className="flex flex-col items-center justify-center text-center p-12 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/60">
                   <Loader2 size={32} className="text-red-500 animate-spin mb-3" />
                   <p className="font-bold text-slate-800 dark:text-slate-100">Loading channel data…</p>
-                  <p className="text-sm text-slate-500 mt-1">Scraping up to {SCRAPE_VIDEO_CAP} videos per channel.</p>
+                  <p className="text-sm text-slate-500 mt-1">Scraping up to {DEFAULT_VIDEO_LIMIT} videos per channel.</p>
                 </div>
               ) : (
                 <>
@@ -1446,14 +1938,15 @@ function YouTubeAnalytics() {
                       return (
                         <div
                           key={ch.id}
-                          className="rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white dark:bg-slate-900/60 p-2.5 sm:p-3"
+                          className="rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white dark:bg-slate-900/60 p-2 sm:p-2.5"
                         >
-                          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                            <div
-                              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md ${accent.bg} text-white font-bold flex items-center justify-center text-[10px] sm:text-xs flex-shrink-0`}
-                            >
-                              {ch.name.charAt(0)}
-                            </div>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <ChannelAvatar
+                              channel={ch}
+                              size="xs"
+                              accentBg={accent.bg}
+                              className="sm:w-8 sm:h-8 sm:rounded-md flex-shrink-0"
+                            />
                             <div className="min-w-0 flex-1">
                               <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate leading-tight">
                                 {ch.name}
@@ -1469,23 +1962,23 @@ function YouTubeAnalytics() {
                                 <ExternalLink size={9} className="flex-shrink-0 hidden sm:block" />
                               </a>
                             </div>
-                          </div>
-                          <div className="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
-                            <div className="inline-flex items-baseline gap-1 rounded-md px-1.5 py-0.5 sm:px-2 sm:py-1 bg-slate-50/95 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50">
-                              <span className="text-[7px] sm:text-[8px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-none">
-                                Subscribers
-                              </span>
-                              <span className="text-[10px] sm:text-xs font-bold tabular-nums text-slate-900 dark:text-white leading-none">
-                                {ch.subscribers > 0 ? formatCompact(ch.subscribers) : "—"}
-                              </span>
-                            </div>
-                            <div className="inline-flex items-baseline gap-1 rounded-md px-1.5 py-0.5 sm:px-2 sm:py-1 bg-slate-50/95 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50">
-                              <span className="text-[7px] sm:text-[8px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-none">
-                                Scraped
-                              </span>
-                              <span className="text-[10px] sm:text-xs font-bold tabular-nums text-slate-900 dark:text-white leading-none">
-                                {scraped} videos
-                              </span>
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                              <div className="inline-flex items-baseline gap-1 rounded-md px-1.5 py-0.5 bg-slate-50/95 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50">
+                                <span className="text-[7px] sm:text-[8px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-none">
+                                  Subs
+                                </span>
+                                <span className="text-[10px] sm:text-xs font-bold tabular-nums text-slate-900 dark:text-white leading-none">
+                                  {ch.subscribers > 0 ? formatCompact(ch.subscribers) : "—"}
+                                </span>
+                              </div>
+                              <div className="inline-flex items-baseline gap-1 rounded-md px-1.5 py-0.5 bg-slate-50/95 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50">
+                                <span className="text-[7px] sm:text-[8px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-none">
+                                  Scraped
+                                </span>
+                                <span className="text-[10px] sm:text-xs font-bold tabular-nums text-slate-900 dark:text-white leading-none whitespace-nowrap">
+                                  {scraped} videos
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1509,6 +2002,48 @@ function YouTubeAnalytics() {
                           <span className="text-slate-500">Tied</span>
                         )}
                       </span>
+                    </div>
+                  )}
+
+                  {compareReady && compareUploadsPerformance.count > 0 && (
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 shadow-sm">
+                      <ChartCard
+                        title={`Last ${compareSampleLimit} uploads — head-to-head`}
+                        subtitle={`Newest ${compareSampleLimit} in sample · #1 = newest. Dashed lines = each channel's average views.`}
+                        icon={Clapperboard}
+                        className="border-0 shadow-none rounded-none min-h-0"
+                        headerExtra={
+                          <UploadsChartTypeToggle
+                            value={compareUploadsChartType}
+                            onChange={setCompareUploadsChartType}
+                          />
+                        }
+                        stats={[
+                          {
+                            label: compareChannelA.name,
+                            value: formatCompact(compareUploadsPerformance.totalA),
+                          },
+                          {
+                            label: compareChannelB.name,
+                            value: formatCompact(compareUploadsPerformance.totalB),
+                          },
+                          { label: "Uploads", value: String(compareUploadsPerformance.count) },
+                        ]}
+                      >
+                        <CompareUploadsPerformanceChart
+                          chartType={compareUploadsChartType}
+                          items={compareUploadsPerformance.items}
+                          count={compareUploadsPerformance.count}
+                          avgA={compareUploadsPerformance.avgA}
+                          avgB={compareUploadsPerformance.avgB}
+                          yMax={compareUploadsYMax}
+                          accentAHex={compareAccentA.hex}
+                          accentBHex={compareAccentB.hex}
+                          channelAName={compareChannelA.name}
+                          channelBName={compareChannelB.name}
+                          tooltipStyle={tooltipStyle}
+                        />
+                      </ChartCard>
                     </div>
                   )}
 
@@ -1574,11 +2109,7 @@ function YouTubeAnalytics() {
                       aria-expanded={mobileChannelOpen}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div
-                          className={`w-9 h-9 rounded-lg ${accent.bg} text-white text-sm font-bold flex items-center justify-center flex-shrink-0`}
-                        >
-                          {activeChannel.name.charAt(0)}
-                        </div>
+                        <ChannelAvatar channel={activeChannel} size="md" accentBg={accent.bg} />
                         <div className="text-left min-w-0">
                           <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{activeChannel.name}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{activeChannel.handle}</p>
@@ -1611,11 +2142,7 @@ function YouTubeAnalytics() {
                               }`}
                             >
                               <div className="flex items-center gap-2">
-                                <div
-                                  className={`w-7 h-7 rounded-md ${col.bg} text-white text-[10px] font-bold flex items-center justify-center`}
-                                >
-                                  {c.name.charAt(0)}
-                                </div>
+                                <ChannelAvatar channel={c} size="xs" accentBg={col.bg} />
                                 <div className="min-w-0 flex-1">
                                   <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{c.name}</p>
                                   <p className="text-[10px] text-gray-500 truncate">@{c.handle}</p>
@@ -1634,11 +2161,7 @@ function YouTubeAnalytics() {
                   </div>
 
                   <div className="hidden lg:flex items-center gap-3 min-w-0 flex-1">
-                    <div
-                      className={`w-11 h-11 rounded-lg ${accent.bg} text-white font-bold flex items-center justify-center text-lg flex-shrink-0`}
-                    >
-                      {activeChannel.name.charAt(0)}
-                    </div>
+                    <ChannelAvatar channel={activeChannel} size="lg" accentBg={accent.bg} />
                     <div className="min-w-0">
                       <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
                         {activeChannel.name}
@@ -1677,7 +2200,7 @@ function YouTubeAnalytics() {
                             key={f.value}
                             type="button"
                             disabled={refreshing}
-                            onClick={() => setFormatOverride(f.value)}
+                            onClick={() => handleAnalyticsFormatSelect(f.value)}
                             className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs transition-colors inline-flex items-center gap-1 ${
                               isActive ? SEGMENT_ACTIVE : SEGMENT_IDLE
                             }`}
@@ -1711,16 +2234,31 @@ function YouTubeAnalytics() {
                   </div>
 
                   <div className="flex items-center gap-1.5 sm:gap-2 ml-auto flex-shrink-0">
-                    <button
-                      type="button"
-                      disabled={refreshing}
-                      onClick={() => loadVideos({ force: true, showToast: true })}
-                      className="buffer-button-primary inline-flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs py-1.5 px-2.5 sm:py-2 sm:px-3.5 h-8 sm:h-9 disabled:opacity-50 whitespace-nowrap"
-                      aria-busy={refreshing}
-                    >
-                      {refreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                      {refreshing ? (videos.length === 0 ? "Analyzing…" : "Refreshing…") : videos.length === 0 ? "Analyze" : "Refresh"}
-                    </button>
+                    <div className="relative inline-flex">
+                      {analyzeAttention && (
+                        <span
+                          className="absolute -inset-1 rounded-lg bg-blue-400/40 dark:bg-blue-500/30 animate-ping motion-reduce:animate-none pointer-events-none"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        disabled={refreshing}
+                        onClick={() => {
+                          dismissAnalyzeAttention();
+                          loadVideos({ force: true, showToast: true });
+                        }}
+                        className={`buffer-button-primary inline-flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs py-1.5 px-2.5 sm:py-2 sm:px-3.5 h-8 sm:h-9 disabled:opacity-50 whitespace-nowrap ${
+                          analyzeAttention
+                            ? "relative z-[1] ring-2 ring-white/70 dark:ring-blue-300/50 ring-offset-1 ring-offset-blue-600 dark:ring-offset-blue-700 motion-reduce:ring-0"
+                            : ""
+                        }`}
+                        aria-busy={refreshing}
+                      >
+                        {refreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                        {refreshing ? (videos.length === 0 ? "Analyzing…" : "Refreshing…") : videos.length === 0 ? "Analyze" : "Refresh"}
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setSettingsOpen(true)}
@@ -1741,6 +2279,7 @@ function YouTubeAnalytics() {
                   statusMessage={scrapeStatusMessage}
                   elapsedSec={scrapeElapsedSec}
                   channels={analyticsScrapeChannels}
+                  videoCap={videoLimit}
                   onCancel={cancelScrape}
                 />
               )}
@@ -1752,7 +2291,9 @@ function YouTubeAnalytics() {
                     Videos
                   </span>
                   <div
-                    className="inline-flex flex-nowrap flex-shrink-0 rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                    className={`inline-flex flex-nowrap flex-shrink-0 rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 ${
+                      refreshing ? "opacity-50 pointer-events-none" : ""
+                    }`}
                     role="group"
                     aria-label="Number of videos to analyze"
                   >
@@ -1760,7 +2301,8 @@ function YouTubeAnalytics() {
                       <button
                         key={n}
                         type="button"
-                        onClick={() => setVideoLimit(n)}
+                        disabled={refreshing}
+                        onClick={() => handleVideoLimitSelect(n)}
                         className={`px-1.5 py-1 sm:px-2 sm:py-1.5 md:px-2.5 rounded-md text-[10px] sm:text-xs tabular-nums transition-colors whitespace-nowrap ${
                           videoLimit === n ? SEGMENT_ACTIVE : SEGMENT_IDLE
                         }`}

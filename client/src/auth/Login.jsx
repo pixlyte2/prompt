@@ -29,6 +29,7 @@ const ROLE_HOME = {
   content_manager: "/content/prompts",
   viewer: "/viewer",
   voice_over: "/admin/voice-over",
+  voice_over_training: "/admin/voice-over",
 };
 
 /** Labels aligned with AdminLayout, TrendingHub, Help, and YouTubeAnalytics */

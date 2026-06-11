@@ -150,7 +150,7 @@ export default function App() {
         <Route
           path="/admin/voice-over"
           element={
-            <PrivateRoute allowedRoles={["admin", "voice_over"]}>
+            <PrivateRoute allowedRoles={["admin", "voice_over", "voice_over_training"]}>
               <VoiceOver />
             </PrivateRoute>
           }

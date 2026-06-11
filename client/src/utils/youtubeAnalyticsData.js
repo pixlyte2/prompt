@@ -163,6 +163,33 @@ export function buildLastUploadedPerformance(videos, limit = 30) {
   };
 }
 
+/** Head-to-head upload performance for channel compare (paired by upload order, #1 = newest). */
+export function buildCompareUploadsPerformance(videosA, videosB, limit = 30) {
+  const listA = sortVideosByRecent(videosA).slice(0, limit);
+  const listB = sortVideosByRecent(videosB).slice(0, limit);
+  const count = Math.max(listA.length, listB.length);
+
+  const totalA = listA.reduce((s, v) => s + (v.views || 0), 0);
+  const totalB = listB.reduce((s, v) => s + (v.views || 0), 0);
+  const avgA = listA.length > 0 ? Math.round(totalA / listA.length) : 0;
+  const avgB = listB.length > 0 ? Math.round(totalB / listB.length) : 0;
+
+  const maxViews = Math.max(
+    1,
+    ...listA.map((v) => v.views || 0),
+    ...listB.map((v) => v.views || 0),
+  );
+
+  const items = Array.from({ length: count }, (_, i) => ({
+    chartLabel: `#${i + 1}`,
+    uploadOrder: i + 1,
+    viewsA: listA[i] != null ? listA[i].views || 0 : null,
+    viewsB: listB[i] != null ? listB[i].views || 0 : null,
+  }));
+
+  return { items, maxViews, totalA, totalB, avgA, avgB, count };
+}
+
 export const COMPARE_SAMPLE_LIMITS = [10, 50, 100, 200, 500];
 
 export function computeMedianViews(videos) {

@@ -18,6 +18,8 @@ function UserCard({ user, onDelete, onEdit }) {
         return { label: "Admin", color: "bg-purple-100 text-purple-700" };
       case "voice_over":
         return { label: "Voice Over", color: "bg-emerald-100 text-emerald-800" };
+      case "voice_over_training":
+        return { label: "Voice Over Training", color: "bg-indigo-100 text-indigo-800" };
       default:
         return { label: "Viewer", color: "bg-gray-100 text-gray-700" };
     }
@@ -186,7 +188,7 @@ export default function Users() {
   };
 
   /* ================= FILTER & SORT ================= */
-  const ROLE_ORDER = { admin: 0, content_manager: 1, viewer: 2, voice_over: 3 };
+  const ROLE_ORDER = { admin: 0, content_manager: 1, viewer: 2, voice_over: 3, voice_over_training: 4 };
 
   const filteredUsers = users
     .filter(u => {
@@ -331,6 +333,7 @@ export default function Users() {
                   <option value="viewer">Viewer</option>
                   <option value="content_manager">Content Manager</option>
                   <option value="voice_over">Voice Over</option>
+                  <option value="voice_over_training">Voice Over Training</option>
                 </select>
                 <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                   <input
@@ -400,6 +403,7 @@ export default function Users() {
                     <option value="viewer">Viewer</option>
                     <option value="content_manager">Content Manager</option>
                     <option value="voice_over">Voice Over</option>
+                    <option value="voice_over_training">Voice Over Training</option>
                   </select>
                 )}
                 <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">

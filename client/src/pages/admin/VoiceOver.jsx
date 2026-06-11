@@ -24,9 +24,12 @@ import {
   Volume2,
   VolumeX,
   Music,
+  GraduationCap,
+  CalendarDays,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api, { httpClient } from "../../services/api";
+import { getRole } from "../../utils/api";
 import { downloadVoiceOverFile, uploadVoiceOverFile } from "../../utils/voiceOverDownload";
 import { VOICE_OVER_ACCEPT, isVoiceOverFileAllowed, voiceOverFileTypeHint } from "../../constants/voiceOverFileTypes";
 
@@ -103,6 +106,69 @@ function sortVoiceOverTasksForDisplay(a, b) {
   const idB = b.customVideoId != null ? Number(b.customVideoId) : Infinity;
   if (idA !== idB) return idA - idB;
   return String(a.title || "").localeCompare(String(b.title || ""), undefined, { sensitivity: "base" });
+}
+
+function formatCompletedDate(task) {
+  const d = task?.completedAt || task?.updatedAt;
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+const PAGE_TABS = [
+  { id: "schedule", label: "Schedule", icon: CalendarDays },
+  { id: "vo-training", label: "VO Training", icon: GraduationCap },
+];
+
+const SCHEDULE_FILTERS = (metrics) => [
+  { value: "all", label: `All (${metrics.total})` },
+  { value: "no-vo", label: `VO Pending (${metrics.awaitingVo})` },
+  { value: "vo-ready", label: `VO Complete (${metrics.voCompleted})` },
+];
+
+function getAllowedTabsForRole(role) {
+  if (role === "voice_over") return PAGE_TABS.filter((t) => t.id === "schedule");
+  if (role === "voice_over_training") return PAGE_TABS.filter((t) => t.id === "vo-training");
+  return PAGE_TABS;
+}
+
+function getDefaultTabForRole(role) {
+  if (role === "voice_over_training") return "vo-training";
+  return "schedule";
+}
+
+function PageTabBar({ tabs, activeTab, onChange, trainingCount }) {
+  if (!tabs.length) return null;
+  return (
+    <div
+      className="flex gap-1 border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide -mx-1 px-1 flex-shrink-0"
+      role="tablist"
+      aria-label="Voice-over views"
+    >
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = activeTab === tab.id;
+        const label =
+          tab.id === "vo-training" ? `${tab.label} (${trainingCount})` : tab.label;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(tab.id)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap ${
+              isActive
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+            }`}
+          >
+            <Icon size={16} className="flex-shrink-0" />
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function sanitizeFilenameBase(title) {
@@ -679,6 +745,98 @@ function VoiceOverTaskRow({
   );
 }
 
+function VoTrainingTaskRow({
+  task,
+  index,
+  onDownloadVoiceOver,
+  voiceOverDownloadingIds,
+}) {
+  const [scriptModalOpen, setScriptModalOpen] = useState(false);
+  const [scriptDownloadBusy, setScriptDownloadBusy] = useState(false);
+  const taskKey = String(task._id);
+  const busyVoDownload = voiceOverDownloadingIds?.has(taskKey) ?? false;
+  const dateLabel = formatCompletedDate(task);
+  const scriptOk = hasScript(task);
+  const scriptActionsLocked = !scriptOk || scriptDownloadBusy || busyVoDownload;
+
+  const handleDownloadScript = () => {
+    if (scriptActionsLocked) return;
+    setScriptDownloadBusy(true);
+    queueMicrotask(() => {
+      try {
+        downloadScriptTxt(task, "completed");
+      } finally {
+        setScriptDownloadBusy(false);
+      }
+    });
+  };
+
+  const textActionBase =
+    "h-8 px-2.5 sm:h-9 sm:px-3 inline-flex items-center justify-center gap-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95";
+  const textActionView =
+    `${textActionBase} border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-200 dark:hover:border-blue-800`;
+  const textActionDownload =
+    `${textActionBase} border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-600`;
+
+  return (
+    <>
+      {scriptModalOpen && <ScriptViewModal task={task} onClose={() => setScriptModalOpen(false)} />}
+    <div className="group flex flex-col p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/40 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/30 hover:border-indigo-300/60 dark:hover:border-indigo-800/60 shadow-sm hover:shadow-md transition-all duration-300">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
+        <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+          <div className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100 dark:bg-indigo-950/60 text-[10px] font-black text-indigo-600 dark:text-indigo-400 mt-0.5 sm:mt-1">
+            {index + 1}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 leading-snug line-clamp-2">
+              {task.title}
+            </h3>
+            <p className="mt-1 text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">
+              Completed {dateLabel}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-100 dark:border-gray-800/60 sm:pt-0 sm:border-0 sm:justify-end shrink-0">
+          <button
+            type="button"
+            disabled={scriptActionsLocked}
+            onClick={() => setScriptModalOpen(true)}
+            className={textActionView}
+            title={!scriptOk ? "No script on this task" : "View script"}
+            aria-label="View script"
+          >
+            <Eye size={12} />
+            <span>View</span>
+          </button>
+          <button
+            type="button"
+            disabled={scriptActionsLocked}
+            onClick={handleDownloadScript}
+            className={textActionDownload}
+            title="Download script as .txt"
+            aria-label="Download script"
+          >
+            {scriptDownloadBusy ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+            <span>Script</span>
+          </button>
+          <button
+            type="button"
+            disabled={busyVoDownload || scriptDownloadBusy}
+            onClick={() => onDownloadVoiceOver?.(task)}
+            className="h-8 px-2.5 sm:h-9 sm:px-3 inline-flex items-center justify-center gap-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold border border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+            title="Download voice-over audio file"
+          >
+            {busyVoDownload ? <Loader2 size={12} className="animate-spin" /> : <FileAudio size={12} />}
+            <span>Voice-over</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    </>
+  );
+}
+
 function DateSection({
   dateKey,
   tasks,
@@ -743,14 +901,21 @@ function DateSection({
 }
 
 export default function VoiceOver() {
+  const role = getRole();
+  const allowedTabs = useMemo(() => getAllowedTabsForRole(role), [role]);
+  const defaultTab = useMemo(() => getDefaultTabForRole(role), [role]);
+
   const [scheduleTasks, setScheduleTasks] = useState([]);
+  const [trainingTasks, setTrainingTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [trainingLoading, setTrainingLoading] = useState(false);
   const [uploadingTaskId, setUploadingTaskId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingTaskId, setDeletingTaskId] = useState(null);
   const [voiceOverDownloadingIds, setVoiceOverDownloadingIds] = useState(() => new Set());
 
   // Search & Filter State
+  const [pageTab, setPageTab] = useState(defaultTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [filterDate, setFilterDate] = useState("");
@@ -880,7 +1045,30 @@ export default function VoiceOver() {
     }
   }, []);
 
+  const loadTraining = useCallback(async () => {
+    setTrainingLoading(true);
+    try {
+      const { data } = await httpClient.get("/video-tasks?bucket=vo-training");
+      setTrainingTasks(data || []);
+    } catch {
+      toast.error("Failed to load training videos");
+    } finally {
+      setTrainingLoading(false);
+    }
+  }, []);
+
+  const isTrainingTab = pageTab === "vo-training";
+
+  const handleRefresh = useCallback(() => {
+    if (isTrainingTab) {
+      loadTraining();
+    } else {
+      load();
+    }
+  }, [isTrainingTab, load, loadTraining]);
+
   useEffect(() => {
+    if (role === "voice_over_training") return;
     load();
     return () => {
       // Clean up playing audio URL on unmount
@@ -888,7 +1076,13 @@ export default function VoiceOver() {
         URL.revokeObjectURL(audioUrl);
       }
     };
-  }, [load]);
+  }, [load, role]);
+
+  useEffect(() => {
+    if (pageTab === "vo-training") {
+      loadTraining();
+    }
+  }, [pageTab, loadTraining]);
 
   // Sync state changes with native HTML5 audio element
   useEffect(() => {
@@ -1004,8 +1198,16 @@ export default function VoiceOver() {
     >
       <div className="h-full w-full overflow-hidden flex flex-col relative">
         <div className={`flex flex-col h-full min-h-0 overflow-hidden w-full max-w-[1600px] mx-auto custom-scrollbar px-3 sm:px-4 pt-2 ${activePlayingTask ? "pb-28" : "pb-4"} gap-1.5`}>
+
+        <PageTabBar
+          tabs={allowedTabs}
+          activeTab={pageTab}
+          onChange={setPageTab}
+          trainingCount={trainingTasks.length}
+        />
         
-        {/* Search and Action Bar */}
+        {/* Search and Action Bar — schedule tab only */}
+        {pageTab === "schedule" && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 sm:p-4 bg-white/70 dark:bg-gray-900/60 backdrop-blur border border-gray-200/80 dark:border-gray-800/80 rounded-xl sm:rounded-2xl">
           <div className="flex items-center gap-2 w-full sm:flex-1">
             <div className="relative flex-1">
@@ -1057,11 +1259,7 @@ export default function VoiceOver() {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full pl-3 pr-8 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-950 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all text-gray-900 dark:text-white appearance-none cursor-pointer"
               >
-                {[
-                  { value: "all", label: `All (${metrics.total})` },
-                  { value: "no-vo", label: `VO Pending (${metrics.awaitingVo})` },
-                  { value: "vo-ready", label: `VO Complete (${metrics.voCompleted})` },
-                ].map((f) => (
+                {SCHEDULE_FILTERS(metrics).map((f) => (
                   <option key={f.value} value={f.value}>
                     {f.label}
                   </option>
@@ -1074,11 +1272,7 @@ export default function VoiceOver() {
 
             {/* Desktop View: Button Group */}
             <div className="hidden sm:flex items-center gap-1 sm:gap-1.5">
-              {[
-                { value: "all", label: `All (${metrics.total})` },
-                { value: "no-vo", label: `VO Pending (${metrics.awaitingVo})` },
-                { value: "vo-ready", label: `VO Complete (${metrics.voCompleted})` },
-              ].map((f) => (
+              {SCHEDULE_FILTERS(metrics).map((f) => (
                 <button
                   key={f.value}
                   onClick={() => setStatusFilter(f.value)}
@@ -1097,18 +1291,66 @@ export default function VoiceOver() {
 
             <button
               type="button"
-              onClick={load}
+              onClick={handleRefresh}
               disabled={loading}
               className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-md sm:rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-55 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 shrink-0"
-              title="Refresh lists"
+              title="Refresh schedule"
             >
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
             </button>
           </div>
         </div>
+        )}
+
+        {/* VO Training toolbar */}
+        {pageTab === "vo-training" && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 sm:p-4 bg-white/70 dark:bg-gray-900/60 backdrop-blur border border-gray-200/80 dark:border-gray-800/80 rounded-xl sm:rounded-2xl">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 w-full sm:flex-1">
+            Last 10 completed Production Hub videos with script and voice-over attached.
+          </p>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={trainingLoading}
+              className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-md sm:rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-55 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 shrink-0"
+              title="Refresh training list"
+            >
+              <RefreshCw size={12} className={trainingLoading ? "animate-spin" : ""} />
+            </button>
+          </div>
+        </div>
+        )}
 
         {/* Content list block */}
-        {loading ? (
+        {pageTab === "vo-training" ? (
+          trainingLoading ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 py-24 text-gray-500 dark:text-gray-400">
+              <Loader2 size={28} className="animate-spin text-indigo-500" />
+              <p className="text-sm">Loading training videos…</p>
+            </div>
+          ) : trainingTasks.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-20 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-gray-900/20 text-gray-500 dark:text-gray-400">
+              <FileText size={36} className="mb-3 opacity-30 text-gray-400" />
+              <p className="text-sm font-bold text-gray-700 dark:text-gray-300">No training videos available</p>
+              <p className="text-xs mt-1 max-w-sm px-4">
+                Completed Production Hub videos with both a script and voice-over will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 sm:space-y-3 pr-1 custom-scrollbar">
+              {trainingTasks.map((task, idx) => (
+                <VoTrainingTaskRow
+                  key={task._id}
+                  task={task}
+                  index={idx}
+                  onDownloadVoiceOver={handleVoiceOverDownload}
+                  voiceOverDownloadingIds={voiceOverDownloadingIds}
+                />
+              ))}
+            </div>
+          )
+        ) : loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 py-24 text-gray-500 dark:text-gray-400">
             <Loader2 size={28} className="animate-spin text-emerald-500" />
             <p className="text-sm">Loading tasks…</p>

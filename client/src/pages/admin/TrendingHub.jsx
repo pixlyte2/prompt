@@ -27,9 +27,12 @@ import {
   AlertTriangle,
   ListChecks,
   Video,
+  Sparkles,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
+import VideoAIModal from "../../components/VideoAIModal";
 import api from "../../services/api";
+import { countWords } from "../../utils/aiPromptUtils";
 
 // Shared UI Components
 function FilterChip({ active, onClick, children, count, variant = "default" }) {
@@ -306,6 +309,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [initialized, setInitialized] = useState(false);
+  const [showScriptAI, setShowScriptAI] = useState(false);
 
   const PLATFORM_OPTIONS = [
     { value: "youtube", label: "YouTube", icon: Youtube, placeholder: "https://youtube.com/watch?v=..." },
@@ -358,6 +362,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
 
   const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
   const canSave = title.trim() && channelType && (scheduledDate || !scheduledDate); // Backlog allows no date
+  const scriptWordCount = countWords(script);
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -410,14 +415,15 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
   const ActiveIcon = activePlat.icon;
 
   return (
+    <>
     <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="relative w-full max-w-md buffer-card shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 flex-shrink-0">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">Add to Board</h3>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Schedule this video for content creation</p>
         </div>
-        <div className="px-5 py-4 space-y-3 max-h-[65vh] overflow-y-auto">
+        <div className="px-5 py-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
           {/* Video preview */}
           <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
             <img
@@ -467,7 +473,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter title for your content"
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              className="w-full buffer-input text-sm"
             />
           </div>
 
@@ -571,10 +577,8 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
                 type="date"
                 value={scheduledDate || ""}
                 onChange={(e) => setScheduledDate(e.target.value)}
-                className={`w-full px-3 py-2 rounded-lg border transition-all text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
-                  !scheduledDate 
-                    ? "bg-gray-50/50 dark:bg-gray-800/50 text-gray-400 border-gray-100 dark:border-gray-800 opacity-60" 
-                    : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700"
+                className={`w-full buffer-input text-sm ${
+                  !scheduledDate ? "opacity-60 cursor-not-allowed" : ""
                 }`}
               />
             </div>
@@ -586,21 +590,36 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
               placeholder="Add any notes…"
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none"
+              className="w-full buffer-input text-sm resize-none"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Script (optional)</label>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Script (optional)</label>
+              <button
+                type="button"
+                onClick={() => setShowScriptAI(true)}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+              >
+                <Sparkles size={11} />
+                Get Script
+              </button>
+            </div>
             <textarea
               value={script}
               onChange={(e) => setScript(e.target.value)}
               rows={4}
-              placeholder="Paste or write the video script…"
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-y min-h-[5rem]"
+              placeholder="Paste or write the video script, or use Get Script to generate one…"
+              className="w-full buffer-input text-sm resize-y min-h-[5rem]"
             />
+            {script.trim() && (
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 text-right tabular-nums">
+                {scriptWordCount} words
+              </p>
+            )}
           </div>
         </div>
-        <div className="flex flex-col gap-3 px-5 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <div className="flex flex-col gap-3 px-5 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 flex-shrink-0">
           {error && (
             <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30">
               <AlertTriangle size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
@@ -608,14 +627,14 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
             </div>
           )}
           <div className="flex items-center gap-2">
-            <button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <button type="button" onClick={onClose} className="buffer-button-secondary text-xs">
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSave}
               disabled={saving || !canSave}
-              className="ml-auto px-4 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
+              className="ml-auto buffer-button-primary text-xs inline-flex items-center gap-1.5 disabled:opacity-50"
             >
               {saving ? <Loader2 size={12} className="animate-spin" /> : (scheduledDate ? <Plus size={12} /> : <ListChecks size={12} />)}
               {scheduledDate ? "Schedule Task" : "Add to Backlog"}
@@ -624,10 +643,35 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
         </div>
       </div>
     </div>
+    {showScriptAI && (
+      <VideoAIModal
+        open={showScriptAI}
+        scriptOnly
+        channelType={channelType}
+        video={{
+          videoId: video.videoId,
+          title: video.title,
+          thumbnail: video.thumbnail,
+          channelName: video.channelName,
+          channelHandle: video.channelHandle,
+          views: video.views,
+          viewsText: video.viewsText,
+          duration: video.duration,
+          videoFormat: video.videoFormat,
+          url: videoUrl,
+        }}
+        onClose={() => setShowScriptAI(false)}
+        onScriptGenerated={(generated) => {
+          setScript(generated);
+          toast.success("Script added to task");
+        }}
+      />
+    )}
+    </>
   );
 }
 
-function CompetitorVideoCard({ video, onSchedule, onPreviewThumbnail }) {
+function CompetitorVideoCard({ video, onSchedule, onPreviewThumbnail, onOpenAI }) {
   const channelInitial = video.channelName ? video.channelName.charAt(0).toUpperCase() : "?";
 
   return (
@@ -670,19 +714,35 @@ function CompetitorVideoCard({ video, onSchedule, onPreviewThumbnail }) {
             <span className="w-1.5 h-1.5 rounded-full bg-white" /> LIVE
           </span>
         )}
-
-        {/* Schedule — always visible on thumbnail */}
-        {onSchedule && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onSchedule(video); }}
-            className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-white/95 dark:bg-gray-900/95 text-gray-700 dark:text-gray-200 hover:text-white hover:bg-gradient-to-br hover:from-blue-650 hover:to-indigo-600 shadow-md border border-gray-100 dark:border-gray-800 transition-colors duration-200 z-10 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
-            title="Schedule this video"
-          >
-            <CalendarPlus size={14} />
-          </button>
-        )}
       </div>
+
+      {/* Action bar — below thumbnail, never obscures preview */}
+      {(onOpenAI || onSchedule) && (
+        <div className="flex border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40">
+          {onOpenAI && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenAI(video); }}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors border-r border-gray-100 dark:border-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+              title="Generate AI script"
+            >
+              <Sparkles size={12} />
+              AI Script
+            </button>
+          )}
+          {onSchedule && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onSchedule(video); }}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500"
+              title="Schedule this video"
+            >
+              <CalendarPlus size={12} />
+              Schedule
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Details Container */}
       <div className="flex-1 p-3 flex flex-col justify-between bg-gradient-to-b from-transparent to-gray-50/50 dark:to-gray-950/20">
@@ -1126,6 +1186,7 @@ function CompetitorWatch() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewThumbUrl, setPreviewThumbUrl] = useState(null);
   const [scheduleVideo, setScheduleVideo] = useState(null);
+  const [aiVideo, setAiVideo] = useState(null);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   const [showViewDropdown, setShowViewDropdown] = useState(false);
@@ -1770,6 +1831,7 @@ function CompetitorWatch() {
                 video={video} 
                 onSchedule={setScheduleVideo} 
                 onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
+                onOpenAI={setAiVideo}
               />
             ))}
           </div>
@@ -1785,6 +1847,23 @@ function CompetitorWatch() {
           onClose={() => setScheduleVideo(null)}
         />
       )}
+      <VideoAIModal
+        open={!!aiVideo}
+        channelType={activeTypeName}
+        video={aiVideo ? {
+          videoId: aiVideo.videoId,
+          title: aiVideo.title,
+          thumbnail: aiVideo.thumbnail,
+          channelName: aiVideo.channelName,
+          channelHandle: aiVideo.channelHandle,
+          views: aiVideo.views,
+          viewsText: aiVideo.viewsText,
+          duration: aiVideo.duration,
+          videoFormat: aiVideo.videoFormat,
+          url: `https://www.youtube.com/watch?v=${aiVideo.videoId}`,
+        } : null}
+        onClose={() => setAiVideo(null)}
+      />
     </div>
   );
 }
