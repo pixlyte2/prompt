@@ -61,6 +61,30 @@ const login = async (req, res) => {
   }
 };
 
+const refresh = async (req, res) => {
+  try {
+    const user = req.user;
+    const token = jwt.sign(
+      {
+        id: user.id,
+        role: user.role,
+        companyId: user.companyId
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+    res.json({
+      token,
+      role: user.role,
+      companyId: user.companyId
+    });
+  } catch (err) {
+    console.error("Refresh token error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
-  login
+  login,
+  refresh
 };

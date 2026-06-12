@@ -928,6 +928,7 @@ function YouTubeAnalytics() {
   const [compareLoadingB, setCompareLoadingB] = useState(false);
   const [compareFormat, setCompareFormat] = useState("long");
   const [compareSampleLimit, setCompareSampleLimit] = useState(DEFAULT_VIDEO_LIMIT);
+  const compareSampleLimitRef = useRef(DEFAULT_VIDEO_LIMIT);
   const compareCacheRef = useRef(new Map());
   const compareScrapeDoneRef = useRef(new Set());
   const compareAbortRefA = useRef(null);
@@ -978,7 +979,12 @@ function YouTubeAnalytics() {
     videoLimitRef.current = videoLimit;
   }, [videoLimit]);
 
-  const scrapeVideoCap = refreshing ? videoLimit : DEFAULT_VIDEO_LIMIT;
+  useEffect(() => {
+    compareSampleLimitRef.current = compareSampleLimit;
+  }, [compareSampleLimit]);
+
+  const compareScraping = compareLoadingA || compareLoadingB;
+  const scrapeVideoCap = refreshing ? videoLimit : compareScraping ? compareSampleLimit : DEFAULT_VIDEO_LIMIT;
   const scrapeStatusSteps = useMemo(() => getScrapeStatusSteps(scrapeVideoCap), [scrapeVideoCap]);
 
   useEffect(() => {
@@ -1293,7 +1299,8 @@ function YouTubeAnalytics() {
       }
 
       const handleKey = channel.handle.toLowerCase();
-      const scrapeKey = `${handleKey}|${channel.typeId}|${compareFormat}`;
+      const maxVideos = compareSampleLimitRef.current ?? DEFAULT_VIDEO_LIMIT;
+      const scrapeKey = `${handleKey}|${channel.typeId}|${compareFormat}|${maxVideos}`;
       const cached = compareCacheRef.current.get(scrapeKey);
 
       if (cached) {
@@ -1319,11 +1326,12 @@ function YouTubeAnalytics() {
   );
 
   const loadCompareSide = useCallback(
-    async (side, channel, { force = false, showToast = false } = {}) => {
+    async (side, channel, { force = false, showToast = false, maxVideos: maxVideosArg } = {}) => {
       if (!channel?.handle || !channel?.typeId) return;
 
       const handleKey = channel.handle.toLowerCase();
-      const scrapeKey = `${handleKey}|${channel.typeId}|${compareFormat}`;
+      const maxVideos = maxVideosArg ?? compareSampleLimitRef.current ?? DEFAULT_VIDEO_LIMIT;
+      const scrapeKey = `${handleKey}|${channel.typeId}|${compareFormat}|${maxVideos}`;
       const setLoading = side === "a" ? setCompareLoadingA : setCompareLoadingB;
       const setSideVideos = side === "a" ? setCompareVideosA : setCompareVideosB;
 
@@ -1357,6 +1365,7 @@ function YouTubeAnalytics() {
           typeId: channel.typeId,
           videoFormat: compareFormat,
           channelHandle: channel.handle,
+          maxVideos: String(maxVideos),
         });
         if (force || !compareScrapeDoneRef.current.has(scrapeKey)) params.set("force", "true");
 
@@ -1368,7 +1377,7 @@ function YouTubeAnalytics() {
         const list = (data.videos || []).filter(
           (v) => String(v.channelHandle || "").toLowerCase() === handleKey,
         );
-        const trimmed = list.slice(0, DEFAULT_VIDEO_LIMIT);
+        const trimmed = list.slice(0, maxVideos);
         const scrapedChan = (data.channels || []).find((sc) => sc.handle.toLowerCase() === handleKey);
         const subs = scrapedChan?.subscribers || 0;
         const avatarUrl = scrapedChan?.avatarUrl || null;
@@ -1403,6 +1412,27 @@ function YouTubeAnalytics() {
       }
     },
     [compareFormat],
+  );
+
+  const handleCompareSampleLimitSelect = useCallback(
+    (n) => {
+      if (compareLoadingA || compareLoadingB || compareSampleLimit === n) return;
+      setCompareSampleLimit(n);
+      compareSampleLimitRef.current = n;
+      if (!compareChannelA || !compareChannelB) return;
+      setCompareLoadingA(true);
+      setCompareLoadingB(true);
+      loadCompareSide("a", compareChannelA, { force: true, showToast: false, maxVideos: n });
+      loadCompareSide("b", compareChannelB, { force: true, showToast: true, maxVideos: n });
+    },
+    [
+      compareLoadingA,
+      compareLoadingB,
+      compareSampleLimit,
+      compareChannelA,
+      compareChannelB,
+      loadCompareSide,
+    ],
   );
 
   const compareHandleA = compareChannelA?.handle;
@@ -1845,7 +1875,7 @@ function YouTubeAnalytics() {
                               type="button"
                               onClick={() => {
                                 dismissCompareSampleAttention();
-                                setCompareSampleLimit(n);
+                                handleCompareSampleLimitSelect(n);
                               }}
                               className={`px-1.5 py-1 sm:px-2 sm:py-1.5 md:px-2.5 rounded-md text-[10px] sm:text-xs tabular-nums transition-colors whitespace-nowrap ${
                                 compareSampleLimit === n ? SEGMENT_ACTIVE : SEGMENT_IDLE
@@ -1869,8 +1899,20 @@ function YouTubeAnalytics() {
                           dismissCompareRefreshAttention();
                           setCompareLoadingA(true);
                           setCompareLoadingB(true);
-                          if (compareChannelA) loadCompareSide("a", compareChannelA, { force: true, showToast: false });
-                          if (compareChannelB) loadCompareSide("b", compareChannelB, { force: true, showToast: true });
+                          if (compareChannelA) {
+                            loadCompareSide("a", compareChannelA, {
+                              force: true,
+                              showToast: false,
+                              maxVideos: compareSampleLimitRef.current,
+                            });
+                          }
+                          if (compareChannelB) {
+                            loadCompareSide("b", compareChannelB, {
+                              force: true,
+                              showToast: true,
+                              maxVideos: compareSampleLimitRef.current,
+                            });
+                          }
                         }}
                         className={`buffer-button-primary inline-flex items-center justify-center gap-1.5 text-xs py-2 px-3.5 h-9 disabled:opacity-50 ${
                           compareRefreshAttention
@@ -1893,7 +1935,7 @@ function YouTubeAnalytics() {
                   statusMessage={scrapeStatusMessage}
                   elapsedSec={scrapeElapsedSec}
                   channels={compareScrapeChannels}
-                  videoCap={DEFAULT_VIDEO_LIMIT}
+                  videoCap={compareSampleLimit}
                   onCancel={cancelScrape}
                 />
               )}
@@ -1919,7 +1961,7 @@ function YouTubeAnalytics() {
                 <div className="flex flex-col items-center justify-center text-center p-12 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/60">
                   <Loader2 size={32} className="text-red-500 animate-spin mb-3" />
                   <p className="font-bold text-slate-800 dark:text-slate-100">Loading channel data…</p>
-                  <p className="text-sm text-slate-500 mt-1">Scraping up to {DEFAULT_VIDEO_LIMIT} videos per channel.</p>
+                  <p className="text-sm text-slate-500 mt-1">Scraping up to {compareSampleLimit} videos per channel.</p>
                 </div>
               ) : (
                 <>

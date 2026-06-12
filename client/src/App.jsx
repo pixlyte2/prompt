@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import PrivateRoute from "./components/PrivateRoute";
 import { DarkModeProvider } from "./contexts/DarkModeContext";
+import SessionWatcher from "./components/SessionWatcher";
 
 import Login from "./auth/Login";
 import SuperAdminLogin from "./auth/SuperAdminLogin";
@@ -24,6 +25,7 @@ import YouTubeAnalytics from "./pages/admin/YouTubeAnalytics";
 export default function App() {
   return (
     <DarkModeProvider>
+      <SessionWatcher />
       <Toaster
         position="top-right"
         toastOptions={{

@@ -548,7 +548,17 @@ function logCaptionTracksDev(context, tracks) {
   console.log(`[captions] ${context}:`, summary);
 }
 
+const CAPTION_DOWNLOAD_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36,gzip(gfe)';
+
 const CLIENT_PROFILES = [
+  {
+    name: 'android_youtube',
+    clientName: 'ANDROID',
+    clientVersion: '20.10.38',
+    clientNameHeader: '3',
+    userAgent: 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)',
+    context: {},
+  },
   {
     name: 'ios',
     clientName: 'IOS',
@@ -591,6 +601,7 @@ const CLIENT_PROFILES = [
     },
   },
 ];
+
 
 async function fetchPlayerWithClient(videoId, client) {
   const body = {
@@ -688,6 +699,37 @@ async function resolveVideoCaptions(videoId, preferredLang) {
   }
 
   if (!playerData) {
+    try {
+      const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      const response = await fetch(watchUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        }
+      });
+      if (response.ok) {
+        const html = await response.text();
+        const tracks = extractCaptionTracksFromHtml(html);
+        if (tracks && tracks.length > 0) {
+          playerData = {
+            captions: {
+              playerCaptionsTracklistRenderer: {
+                captionTracks: tracks
+              }
+            }
+          };
+        } else {
+          failures.push('web_page: No caption tracks found in watch page HTML');
+        }
+      } else {
+        failures.push(`web_page: Fetch failed with status ${response.status}`);
+      }
+    } catch (err) {
+      failures.push(`web_page: ${err.message}`);
+    }
+  }
+
+  if (!playerData) {
     return {
       error: {
         status: 404,
@@ -722,7 +764,7 @@ async function resolveVideoCaptions(videoId, preferredLang) {
   try {
     const response = await fetch(decodedUrl, {
       headers: {
-        'User-Agent': CLIENT_PROFILES[0].userAgent,
+        'User-Agent': CAPTION_DOWNLOAD_USER_AGENT,
       },
     });
     if (response.ok) {
@@ -738,7 +780,7 @@ async function resolveVideoCaptions(videoId, preferredLang) {
       const rawBaseUrl = track.baseUrl.replace(/\\u0026/g, '&').replace(/\\u003d/gi, '=');
       const response = await fetch(rawBaseUrl, {
         headers: {
-          'User-Agent': CLIENT_PROFILES[0].userAgent,
+          'User-Agent': CAPTION_DOWNLOAD_USER_AGENT,
         },
       });
       if (response.ok) {
