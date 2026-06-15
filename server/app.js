@@ -17,6 +17,7 @@ const settingRoutes = require("./routes/settingRoutes");
 const trendsRoutes = require("./routes/trendsRoutes");
 const competitorRoutes = require("./routes/competitorRoutes");
 const competitorTypeRoutes = require("./routes/competitorTypeRoutes");
+const competitorKeywordRoutes = require("./routes/competitorKeywordRoutes");
 const videoTaskRoutes = require("./routes/videoTaskRoutes");
 const youtubeRoutes = require("./routes/youtube");
 
@@ -70,6 +71,7 @@ app.use("/api/settings", settingRoutes);
 app.use("/api/trends", trendsRoutes);
 app.use("/api/competitors", competitorRoutes);
 app.use("/api/competitor-types", competitorTypeRoutes);
+app.use("/api/competitor-keywords", competitorKeywordRoutes);
 app.use("/api/video-tasks", videoTaskRoutes);
 app.use("/api/youtube", youtubeRoutes);
 

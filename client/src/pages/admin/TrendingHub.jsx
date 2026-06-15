@@ -38,6 +38,13 @@ import AdminLayout from "../../layout/AdminLayout";
 import VideoAIModal from "../../components/VideoAIModal";
 import api from "../../services/api";
 import { countWords } from "../../utils/aiPromptUtils";
+import {
+  hydrateCompetitorKeywords,
+  persistTypeKeywords,
+  persistCachedKeywords,
+  sortKeywordsByMatchCount,
+  unionKeywords,
+} from "../../utils/competitorKeywords";
 
 function normalizeCompetitorHandle(handle) {
   return String(handle || "").trim().replace(/^@/, "").toLowerCase();
@@ -349,8 +356,6 @@ const COMP_FORMATS = [
   { value: "short", label: "Short Videos" },
 ];
 
-const COMP_KEYWORDS_STORAGE_PREFIX = "competitor-keywords-";
-const COMP_CACHED_KEYWORDS_STORAGE = "competitor-keywords-cached";
 const COMP_VIDEO_CACHE_STORAGE = "competitor-video-cache";
 const COMP_VIDEO_CACHE_TTL_MS = 60 * 60 * 1000;
 
@@ -417,54 +422,25 @@ function isCompetitorVideoCacheExpired() {
   }
 }
 
-function loadCompetitorKeywords(typeId) {
-  if (!typeId) return [];
-  try {
-    const raw = localStorage.getItem(`${COMP_KEYWORDS_STORAGE_PREFIX}${typeId}`);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed)
-      ? parsed.filter((k) => typeof k === "string" && k.trim())
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveCompetitorKeywords(typeId, keywords) {
-  if (!typeId) return;
-  localStorage.setItem(`${COMP_KEYWORDS_STORAGE_PREFIX}${typeId}`, JSON.stringify(keywords));
-}
-
-function loadCachedTabKeywords() {
-  try {
-    const raw = localStorage.getItem(COMP_CACHED_KEYWORDS_STORAGE);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed)
-      ? parsed.filter((k) => typeof k === "string" && k.trim())
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveCachedTabKeywords(keywords) {
-  localStorage.setItem(COMP_CACHED_KEYWORDS_STORAGE, JSON.stringify(keywords));
-}
-
-function loadUnionKeywords(types, cachedKeywords = []) {
+function parseKeywordInput(input) {
   const seen = new Set();
   const result = [];
-  const add = (keyword) => {
-    const trimmed = String(keyword || "").trim();
-    if (!trimmed) return;
+  for (const part of String(input || "").split("|")) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
     const key = trimmed.toLowerCase();
-    if (seen.has(key)) return;
+    if (seen.has(key)) continue;
     seen.add(key);
     result.push(trimmed);
-  };
-  (types || []).forEach((type) => loadCompetitorKeywords(type._id).forEach(add));
-  (cachedKeywords || []).forEach(add);
+  }
   return result;
+}
+
+function filterNewKeywords(candidates, existing) {
+  const existingKeys = new Set(
+    (existing || []).map((k) => String(k).trim().toLowerCase()),
+  );
+  return candidates.filter((kw) => !existingKeys.has(kw.toLowerCase()));
 }
 
 function mergeAllCachedVideos(cacheRef) {
@@ -1631,7 +1607,7 @@ function CompetitorSettingsModal({ open, onClose, onTypesChanged }) {
   );
 }
 
-function CompetitorWatch({ cacheRef, onCacheChange }) {
+function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeywordsChange }) {
   const [types, setTypes] = useState([]);
   const [activeType, setActiveType] = useState(null);
   const [videos, setVideos] = useState([]);
@@ -1734,27 +1710,28 @@ function CompetitorWatch({ cacheRef, onCacheChange }) {
 
   useEffect(() => {
     if (activeType) {
-      setCompKeywords(loadCompetitorKeywords(activeType));
+      setCompKeywords(keywordsState?.byType?.[activeType] || []);
     } else {
       setCompKeywords([]);
     }
     setActiveKeyword(null);
-  }, [activeType]);
+  }, [activeType, keywordsState?.byType]);
 
   const persistKeywords = useCallback((keywords) => {
+    if (!activeType) return;
     setCompKeywords(keywords);
-    if (activeType) saveCompetitorKeywords(activeType, keywords);
-  }, [activeType]);
+    onTypeKeywordsChange(activeType, keywords);
+  }, [activeType, onTypeKeywordsChange]);
 
   const addCompKeyword = useCallback(() => {
-    const trimmed = newKeywordInput.trim();
-    if (!trimmed) return;
-    const exists = compKeywords.some((k) => k.toLowerCase() === trimmed.toLowerCase());
-    if (exists) {
+    const parsed = parseKeywordInput(newKeywordInput);
+    if (!parsed.length) return;
+    const toAdd = filterNewKeywords(parsed, compKeywords);
+    if (!toAdd.length) {
       toast.error("Keyword already exists");
       return;
     }
-    persistKeywords([...compKeywords, trimmed]);
+    persistKeywords([...compKeywords, ...toAdd]);
     setNewKeywordInput("");
   }, [newKeywordInput, compKeywords, persistKeywords]);
 
@@ -1888,6 +1865,11 @@ function CompetitorWatch({ cacheRef, onCacheChange }) {
     });
     return counts;
   }, [baseFiltered, period, minViews, compKeywords]);
+
+  const sortedCompKeywords = useMemo(
+    () => sortKeywordsByMatchCount(compKeywords, keywordCounts),
+    [compKeywords, keywordCounts],
+  );
 
   // Counts for format buttons — respect active period and view filters
   const formatCounts = useMemo(() => {
@@ -2266,7 +2248,7 @@ function CompetitorWatch({ cacheRef, onCacheChange }) {
                             addCompKeyword();
                           }
                         }}
-                        placeholder="e.g. gold, loans"
+                        placeholder="e.g. gold | silver | loans"
                         className="flex-1 min-w-0 h-8 px-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[11px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:border-indigo-400"
                       />
                       <button
@@ -2284,7 +2266,7 @@ function CompetitorWatch({ cacheRef, onCacheChange }) {
                     {compKeywords.length === 0 ? (
                       <p className="px-4 py-3 text-[10px] text-gray-400 text-center">No keywords yet — add terms to filter by title</p>
                     ) : (
-                      compKeywords.map((kw) => (
+                      sortedCompKeywords.map((kw) => (
                         <div
                           key={kw}
                           className="flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/40 group"
@@ -2457,7 +2439,7 @@ function CompetitorWatch({ cacheRef, onCacheChange }) {
         {/* Keyword pills — click to toggle title filter */}
         {activeType && compKeywords.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 mt-2 px-1">
-            {compKeywords.map((kw) => (
+            {sortedCompKeywords.map((kw) => (
               <FilterChip
                 key={kw}
                 active={activeKeyword === kw}
@@ -2587,14 +2569,14 @@ function PageTabBar({ activeTab, onChange }) {
   );
 }
 
-function CachedVideosView({ cacheRef, cacheVersion }) {
+function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywordsChange, onTypeKeywordsChange }) {
   const [types, setTypes] = useState([]);
   const [typesLoading, setTypesLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [compFormat, setCompFormat] = useState("long");
   const [compSort, setCompSort] = useState("views");
   const [activeKeyword, setActiveKeyword] = useState(null);
-  const [cachedTabKeywords, setCachedTabKeywords] = useState(() => loadCachedTabKeywords());
+  const cachedTabKeywords = keywordsState?.cached || [];
   const [newKeywordInput, setNewKeywordInput] = useState("");
   const [showKeywordsDropdown, setShowKeywordsDropdown] = useState(false);
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
@@ -2639,8 +2621,8 @@ function CachedVideosView({ cacheRef, cacheVersion }) {
   }, []);
 
   const allKeywords = useMemo(
-    () => loadUnionKeywords(types, cachedTabKeywords),
-    [types, cachedTabKeywords],
+    () => unionKeywords(types, keywordsState),
+    [types, keywordsState],
   );
 
   const cachedTypeCount = useMemo(() => {
@@ -2689,6 +2671,27 @@ function CachedVideosView({ cacheRef, cacheVersion }) {
     return counts;
   }, [baseFiltered, allKeywords]);
 
+  const visibleKeywords = useMemo(
+    () => allKeywords.filter((kw) => (keywordCounts[kw] || 0) > 0),
+    [allKeywords, keywordCounts],
+  );
+
+  const sortedAllKeywords = useMemo(
+    () => sortKeywordsByMatchCount(allKeywords, keywordCounts),
+    [allKeywords, keywordCounts],
+  );
+
+  const sortedVisibleKeywords = useMemo(
+    () => sortKeywordsByMatchCount(visibleKeywords, keywordCounts),
+    [visibleKeywords, keywordCounts],
+  );
+
+  useEffect(() => {
+    if (activeKeyword && !(keywordCounts[activeKeyword] > 0)) {
+      setActiveKeyword(null);
+    }
+  }, [activeKeyword, keywordCounts]);
+
   const filtered = useMemo(() => {
     let list = applyKeywordFilter([...baseFiltered]);
 
@@ -2709,32 +2712,53 @@ function CachedVideosView({ cacheRef, cacheVersion }) {
     return list;
   }, [baseFiltered, compSort, applyKeywordFilter]);
 
-  const persistCachedKeywords = useCallback((keywords) => {
-    setCachedTabKeywords(keywords);
-    saveCachedTabKeywords(keywords);
-  }, []);
+  const persistCachedKeywordsLocal = useCallback((keywords) => {
+    onCachedKeywordsChange(keywords);
+  }, [onCachedKeywordsChange]);
 
   const addKeyword = useCallback(() => {
-    const trimmed = newKeywordInput.trim();
-    if (!trimmed) return;
-    if (allKeywords.some((k) => k.toLowerCase() === trimmed.toLowerCase())) {
+    const parsed = parseKeywordInput(newKeywordInput);
+    if (!parsed.length) return;
+    const toAdd = filterNewKeywords(parsed, allKeywords);
+    if (!toAdd.length) {
       toast.error("Keyword already exists");
       return;
     }
-    setCachedTabKeywords((prev) => {
-      const next = [...prev, trimmed];
-      saveCachedTabKeywords(next);
-      return next;
-    });
+    persistCachedKeywordsLocal([...cachedTabKeywords, ...toAdd]);
     setNewKeywordInput("");
-  }, [newKeywordInput, allKeywords]);
+  }, [newKeywordInput, allKeywords, cachedTabKeywords, persistCachedKeywordsLocal]);
 
   const removeKeyword = useCallback((keyword) => {
-    const isGlobal = cachedTabKeywords.some((k) => k.toLowerCase() === keyword.toLowerCase());
-    if (!isGlobal) return;
-    persistCachedKeywords(cachedTabKeywords.filter((k) => k !== keyword));
-    if (activeKeyword === keyword) setActiveKeyword(null);
-  }, [cachedTabKeywords, activeKeyword, persistCachedKeywords]);
+    const key = String(keyword || "").trim().toLowerCase();
+    if (!key) return;
+
+    const nextCached = cachedTabKeywords.filter((k) => k.toLowerCase() !== key);
+    if (nextCached.length !== cachedTabKeywords.length) {
+      persistCachedKeywordsLocal(nextCached);
+    }
+
+    for (const type of types) {
+      const typeId = type?._id;
+      if (!typeId) continue;
+      const typeKeywords = keywordsState?.byType?.[typeId] || [];
+      if (!typeKeywords.some((k) => k.toLowerCase() === key)) continue;
+      onTypeKeywordsChange(
+        typeId,
+        typeKeywords.filter((k) => k.toLowerCase() !== key),
+      );
+    }
+
+    if (activeKeyword && activeKeyword.toLowerCase() === key) {
+      setActiveKeyword(null);
+    }
+  }, [
+    cachedTabKeywords,
+    activeKeyword,
+    persistCachedKeywordsLocal,
+    types,
+    keywordsState?.byType,
+    onTypeKeywordsChange,
+  ]);
 
   const scheduleTypeName = useMemo(() => {
     if (!scheduleVideo?._cachedFromTypes?.length) return "";
@@ -2812,7 +2836,7 @@ function CachedVideosView({ cacheRef, cacheVersion }) {
                             addKeyword();
                           }
                         }}
-                        placeholder="e.g. gold, loans"
+                        placeholder="e.g. gold | silver | loans"
                         className="flex-1 min-w-0 h-8 px-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[11px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:border-blue-400"
                       />
                       <button
@@ -2825,7 +2849,7 @@ function CachedVideosView({ cacheRef, cacheVersion }) {
                       </button>
                     </div>
                     <p className="text-[9px] text-gray-400 mt-2 leading-snug">
-                      Includes keywords from all categories plus any you add here.
+                      Includes keywords from all categories plus any you add here. Hover a row and use × to remove.
                     </p>
                   </div>
                   <div className="h-px bg-gray-100 dark:bg-gray-800 mx-2" />
@@ -2833,9 +2857,18 @@ function CachedVideosView({ cacheRef, cacheVersion }) {
                     {allKeywords.length === 0 ? (
                       <p className="px-4 py-3 text-[10px] text-gray-400 text-center">No keywords yet — add terms to filter by title</p>
                     ) : (
-                      allKeywords.map((kw) => {
-                        const isRemovable = cachedTabKeywords.some((k) => k.toLowerCase() === kw.toLowerCase());
+                      sortedAllKeywords.map((kw) => {
                         const kwCount = keywordCounts[kw];
+                        const isCachedOnly = cachedTabKeywords.some((k) => k.toLowerCase() === kw.toLowerCase());
+                        const isFromCategory = types.some((type) => {
+                          const typeKeywords = keywordsState?.byType?.[type?._id] || [];
+                          return typeKeywords.some((k) => k.toLowerCase() === kw.toLowerCase());
+                        });
+                        const removeTitle = isCachedOnly && !isFromCategory
+                          ? "Remove from cached tab keywords"
+                          : isFromCategory && !isCachedOnly
+                            ? "Remove from category keywords"
+                            : "Remove keyword";
                         return (
                           <div key={kw} className="flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/40 group">
                             <button
@@ -2857,16 +2890,17 @@ function CachedVideosView({ cacheRef, cacheVersion }) {
                                 </span>
                               )}
                             </button>
-                            {isRemovable && (
-                              <button
-                                type="button"
-                                onClick={() => removeKeyword(kw)}
-                                className="p-1 rounded-md text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
-                                title="Remove keyword"
-                              >
-                                <X size={12} />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeKeyword(kw);
+                              }}
+                              className="p-1 rounded-md text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                              title={removeTitle}
+                            >
+                              <X size={12} />
+                            </button>
                           </div>
                         );
                       })
@@ -3025,7 +3059,7 @@ function CachedVideosView({ cacheRef, cacheVersion }) {
 
         {/* Row 3: Keyword pills — z-0 so filter-bar dropdowns stack above */}
         <div className="relative z-0 flex flex-wrap items-center gap-1.5 px-0.5">
-          {allKeywords.map((kw) => (
+          {sortedVisibleKeywords.map((kw) => (
             <FilterChip
               key={kw}
               active={activeKeyword === kw}
@@ -3102,14 +3136,43 @@ function CachedVideosView({ cacheRef, cacheVersion }) {
   );
 }
 
+const EMPTY_KEYWORDS_STATE = { cached: [], byType: {} };
+
 export default function TrendingHub() {
   const [pageTab, setPageTab] = useState("watch");
   const competitorVideoCacheRef = useRef(loadCompetitorVideoCacheMap());
   const [cacheVersion, setCacheVersion] = useState(0);
+  const [keywordsState, setKeywordsState] = useState(EMPTY_KEYWORDS_STATE);
+  const [keywordsReady, setKeywordsReady] = useState(false);
 
   const handleCacheChange = useCallback(() => {
     persistCompetitorVideoCacheMap(competitorVideoCacheRef.current);
     setCacheVersion((v) => v + 1);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const state = await hydrateCompetitorKeywords();
+      if (!cancelled) {
+        setKeywordsState(state);
+        setKeywordsReady(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleTypeKeywordsChange = useCallback(async (typeId, keywords) => {
+    const normalized = await persistTypeKeywords(typeId, keywords);
+    setKeywordsState((prev) => ({
+      ...prev,
+      byType: { ...prev.byType, [typeId]: normalized },
+    }));
+  }, []);
+
+  const handleCachedKeywordsChange = useCallback(async (keywords) => {
+    const normalized = await persistCachedKeywords(keywords);
+    setKeywordsState((prev) => ({ ...prev, cached: normalized }));
   }, []);
 
   useEffect(() => {
@@ -3130,10 +3193,30 @@ export default function TrendingHub() {
     <AdminLayout title="Trending Hub" titleInfo="Competitor video analysis & tracking" icon={Youtube} contentFit noPadding>
       <div className="flex flex-col h-full min-h-0 overflow-y-auto sm:overflow-hidden w-full max-w-[1600px] mx-auto custom-scrollbar px-3 sm:px-4 pt-2 pb-4 gap-1.5">
         <PageTabBar activeTab={pageTab} onChange={setPageTab} />
-        {pageTab === "watch" ? (
-          <CompetitorWatch cacheRef={competitorVideoCacheRef} onCacheChange={handleCacheChange} />
+        {keywordsReady ? (
+          pageTab === "watch" ? (
+            <CompetitorWatch
+              cacheRef={competitorVideoCacheRef}
+              onCacheChange={handleCacheChange}
+              keywordsState={keywordsState}
+              onTypeKeywordsChange={handleTypeKeywordsChange}
+            />
+          ) : (
+            <CachedVideosView
+              cacheRef={competitorVideoCacheRef}
+              cacheVersion={cacheVersion}
+              keywordsState={keywordsState}
+              onCachedKeywordsChange={handleCachedKeywordsChange}
+              onTypeKeywordsChange={handleTypeKeywordsChange}
+            />
+          )
         ) : (
-          <CachedVideosView cacheRef={competitorVideoCacheRef} cacheVersion={cacheVersion} />
+          <div className="flex-1 flex items-center justify-center py-24">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-3 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">Loading keywords…</p>
+            </div>
+          </div>
         )}
       </div>
     </AdminLayout>
