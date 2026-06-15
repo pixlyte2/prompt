@@ -359,6 +359,40 @@ const COMP_FORMATS = [
 const COMP_VIDEO_CACHE_STORAGE = "competitor-video-cache";
 const COMP_VIDEO_CACHE_TTL_MS = 60 * 60 * 1000;
 
+function normalizeVideoId(video) {
+  const id = video?.videoId ?? video?.id;
+  if (id == null || id === "") return null;
+  const normalized = String(id).trim();
+  return normalized || null;
+}
+
+/** Deduplicate by YouTube video ID; keeps the entry with higher view count when tied. */
+function dedupeVideosByVideoId(videos) {
+  const byId = new Map();
+  for (const video of videos || []) {
+    const videoId = normalizeVideoId(video);
+    if (!videoId) continue;
+
+    const existing = byId.get(videoId);
+    if (!existing) {
+      byId.set(videoId, { ...video, videoId });
+      continue;
+    }
+
+    if ((video.views || 0) > (existing.views || 0)) {
+      byId.set(videoId, { ...video, videoId });
+    }
+  }
+  return Array.from(byId.values());
+}
+
+function dedupeCacheEntry(entry) {
+  if (!entry?.videos?.length) return entry;
+  const videos = dedupeVideosByVideoId(entry.videos);
+  if (videos.length === entry.videos.length) return entry;
+  return { ...entry, videos };
+}
+
 function loadCompetitorVideoCacheMap() {
   try {
     const raw = sessionStorage.getItem(COMP_VIDEO_CACHE_STORAGE);
@@ -375,7 +409,19 @@ function loadCompetitorVideoCacheMap() {
       return new Map();
     }
 
-    return new Map(Object.entries(parsed.entries));
+    const map = new Map();
+    let needsPersist = false;
+    for (const [key, entry] of Object.entries(parsed.entries)) {
+      const deduped = dedupeCacheEntry(entry);
+      map.set(key, deduped);
+      if (deduped !== entry) needsPersist = true;
+    }
+
+    if (needsPersist) {
+      persistCompetitorVideoCacheMap(map);
+    }
+
+    return map;
   } catch {
     return new Map();
   }
@@ -451,15 +497,26 @@ function mergeAllCachedVideos(cacheRef) {
     const typeId = String(cacheKey).split("|")[0];
     if (!entry?.videos?.length) continue;
 
-    for (const video of entry.videos) {
-      if (!video?.videoId) continue;
-      const existing = byVideoId.get(video.videoId);
+    for (const video of dedupeVideosByVideoId(entry.videos)) {
+      const videoId = normalizeVideoId(video);
+      if (!videoId) continue;
+
+      const existing = byVideoId.get(videoId);
       if (!existing) {
-        byVideoId.set(video.videoId, {
+        byVideoId.set(videoId, {
           ...video,
+          videoId,
           _cachedFromTypes: [typeId],
         });
         continue;
+      }
+
+      if ((video.views || 0) > (existing.views || 0)) {
+        existing.views = video.views;
+        existing.viewsText = video.viewsText ?? existing.viewsText;
+        existing.publishedText = video.publishedText ?? existing.publishedText;
+        existing.publishedAt = video.publishedAt ?? existing.publishedAt;
+        existing.thumbnail = video.thumbnail ?? existing.thumbnail;
       }
       if (!existing._cachedFromTypes.includes(typeId)) {
         existing._cachedFromTypes.push(typeId);
@@ -1748,8 +1805,13 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
     if (!force) {
       const cached = competitorVideoCacheRef.current.get(cacheKey);
       if (cached) {
-        setVideos(cached.videos);
-        setChannels(cached.channels);
+        const entry = dedupeCacheEntry(cached);
+        if (entry !== cached) {
+          competitorVideoCacheRef.current.set(cacheKey, entry);
+          onCacheChange?.();
+        }
+        setVideos(entry.videos);
+        setChannels(entry.channels);
         return;
       }
     } else {
@@ -1765,7 +1827,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
       params.set("videoFormat", format || "all");
       const { data } = await api.get(`/competitors/videos?${params}`);
       const entry = {
-        videos: data.videos || [],
+        videos: dedupeVideosByVideoId(data.videos || []),
         channels: data.channels || [],
       };
       competitorVideoCacheRef.current.set(cacheKey, entry);
