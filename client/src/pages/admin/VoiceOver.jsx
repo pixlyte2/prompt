@@ -406,67 +406,15 @@ function VoiceOverTaskRow({
     setUploadingTaskId(taskKey);
     setUploadProgress(0);
 
-    const startTime = Date.now();
-    let intervalId;
-    
-    // Simulated smooth progress up to 99% over 5 seconds
-    const duration = 5000; // 5 seconds
-    const intervalTime = 50; // Update every 50ms
-    const totalSteps = duration / intervalTime;
-    let currentStep = 0;
-
-    intervalId = setInterval(() => {
-      currentStep++;
-      if (currentStep >= totalSteps) {
-        clearInterval(intervalId);
-        setUploadProgress(99);
-      } else {
-        const pct = Math.min(Math.round((currentStep / totalSteps) * 99), 99);
-        setUploadProgress(pct);
-      }
-    }, intervalTime);
-
     try {
-      // Run the upload request
-      await uploadVoiceOverFile(task._id, file);
-
-      // Clear the simulation interval
-      clearInterval(intervalId);
-
-      // Calculate how much time is remaining to reach 5 seconds
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, duration - elapsed);
-
-      if (remaining > 0) {
-        // Animate the remaining progress smoothly to 100% over the remaining time
-        const startProgress = currentStep >= totalSteps ? 99 : Math.round((currentStep / totalSteps) * 99);
-        const stepsLeft = Math.ceil(remaining / 50);
-        let currentStepLeft = 0;
-
-        await new Promise((resolve) => {
-          const finalInterval = setInterval(() => {
-            currentStepLeft++;
-            if (currentStepLeft >= stepsLeft) {
-              clearInterval(finalInterval);
-              setUploadProgress(100);
-              resolve();
-            } else {
-              const progressDiff = 100 - startProgress;
-              const nextPct = Math.round(startProgress + (currentStepLeft / stepsLeft) * progressDiff);
-              setUploadProgress(Math.min(nextPct, 100));
-            }
-          }, 50);
-        });
-      } else {
-        setUploadProgress(100);
-        // Small delay to let the user see the 100% before hiding
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-
+      await uploadVoiceOverFile(task._id, file, (percent) => {
+        setUploadProgress(percent);
+      });
+      setUploadProgress(100);
+      await new Promise((resolve) => setTimeout(resolve, 300));
       toast.success("Voice-over uploaded");
       await onReload();
     } catch (err) {
-      clearInterval(intervalId);
       toast.error(err.message || "Upload failed");
     } finally {
       setUploadingTaskId(null);

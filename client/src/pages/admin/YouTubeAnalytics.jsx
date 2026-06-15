@@ -245,10 +245,10 @@ function ChartHeaderStats({ stats }) {
 function ChartCard({ title, subtitle, icon: Icon, children, className = "", stats, headerExtra }) {
   return (
     <div
-      className={`rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 shadow-sm flex flex-col min-h-[260px] ${className}`}
+      className={`rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 shadow-sm flex flex-col min-h-[240px] ${className}`}
     >
-      <div className="px-4 pt-4 pb-2 border-b border-slate-100 dark:border-slate-800/80">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3 min-w-0">
+      <div className="px-3 pt-2.5 pb-1.5 border-b border-slate-100 dark:border-slate-800/80">
+        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-2 min-w-0">
           <div className="flex items-start gap-2 min-w-0 flex-1">
             {Icon && <Icon size={14} className="text-slate-400 flex-shrink-0 mt-0.5" />}
             <div className="min-w-0">
@@ -262,7 +262,7 @@ function ChartCard({ title, subtitle, icon: Icon, children, className = "", stat
           </div>
         </div>
       </div>
-      <div className="flex-1 min-h-[200px] p-3 pt-2 pl-4 overflow-visible">{children}</div>
+      <div className="flex-1 min-h-[180px] p-2 pt-1.5 pl-3 overflow-visible">{children}</div>
     </div>
   );
 }
@@ -321,6 +321,7 @@ function UploadsPerformanceTooltip({ active, payload, contentStyle }) {
 }
 
 function LastUploadsPerformanceChart({ chartType, items, count, avgViews, yMax, accentHex, tooltipStyle }) {
+  const chartItems = useMemo(() => [...items].reverse(), [items]);
   const xAxis = (
     <XAxis
       dataKey="chartLabel"
@@ -357,7 +358,7 @@ function LastUploadsPerformanceChart({ chartType, items, count, avgViews, yMax, 
   if (chartType === "line") {
     return (
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={items} margin={CHART_MARGIN_VIEWS}>
+        <LineChart data={chartItems} margin={CHART_MARGIN_VIEWS}>
           {shared}
           <Line
             type="monotone"
@@ -375,7 +376,7 @@ function LastUploadsPerformanceChart({ chartType, items, count, avgViews, yMax, 
   if (chartType === "area") {
     return (
       <ResponsiveContainer width="100%" height={300}>
-        <AreaChart data={items} margin={CHART_MARGIN_VIEWS}>
+        <AreaChart data={chartItems} margin={CHART_MARGIN_VIEWS}>
           {shared}
           <Area
             type="monotone"
@@ -393,7 +394,7 @@ function LastUploadsPerformanceChart({ chartType, items, count, avgViews, yMax, 
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={items} margin={CHART_MARGIN_VIEWS}>
+      <BarChart data={chartItems} margin={CHART_MARGIN_VIEWS}>
         {shared}
         <Bar dataKey="views" fill={accentHex} radius={[4, 4, 0, 0]} maxBarSize={28} />
       </BarChart>
@@ -471,6 +472,7 @@ function CompareUploadsPerformanceChart({
   channelBName,
   tooltipStyle,
 }) {
+  const chartItems = useMemo(() => [...items].reverse(), [items]);
   const xAxis = (
     <XAxis
       dataKey="chartLabel"
@@ -529,7 +531,7 @@ function CompareUploadsPerformanceChart({
   if (chartType === "line") {
     return (
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={items} margin={CHART_MARGIN_VIEWS}>
+        <LineChart data={chartItems} margin={CHART_MARGIN_VIEWS}>
           {shared}
           <Line
             type="monotone"
@@ -559,7 +561,7 @@ function CompareUploadsPerformanceChart({
   if (chartType === "area") {
     return (
       <ResponsiveContainer width="100%" height={300}>
-        <AreaChart data={items} margin={CHART_MARGIN_VIEWS}>
+        <AreaChart data={chartItems} margin={CHART_MARGIN_VIEWS}>
           {shared}
           <Area
             type="monotone"
@@ -590,7 +592,7 @@ function CompareUploadsPerformanceChart({
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={items} margin={CHART_MARGIN_VIEWS}>
+      <BarChart data={chartItems} margin={CHART_MARGIN_VIEWS}>
         {shared}
         <Bar dataKey="viewsA" name={channelAName} fill={accentAHex} radius={[4, 4, 0, 0]} maxBarSize={16} />
         <Bar dataKey="viewsB" name={channelBName} fill={accentBHex} radius={[4, 4, 0, 0]} maxBarSize={16} />
@@ -676,28 +678,6 @@ function useAttentionPulse(shouldShow) {
   return [active, dismiss];
 }
 
-function AttentionHighlight({ active, rounded = "rounded-lg", ringClass = "", className = "", children }) {
-  return (
-    <div className={`relative inline-flex ${className}`}>
-      {active && (
-        <span
-          className={`absolute -inset-1 ${rounded} bg-blue-400/40 dark:bg-blue-500/30 animate-ping motion-reduce:animate-none pointer-events-none`}
-          aria-hidden="true"
-        />
-      )}
-      <div
-        className={
-          active
-            ? `relative z-[1] ring-2 ring-blue-400/70 dark:ring-blue-500/50 ring-offset-1 ring-offset-gray-100 dark:ring-offset-gray-800 motion-reduce:ring-0 ${ringClass}`
-            : `relative z-[1] ${ringClass}`
-        }
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
 /** Room for formatCompact Y ticks (e.g. "74.0K") — avoid negative margin.left clipping tspan labels. */
 const CHART_MARGIN_VIEWS = { top: 8, right: 12, left: 4, bottom: 4 };
 const CHART_MARGIN_DUAL_AXIS = { top: 8, right: 12, left: 4, bottom: 4 };
@@ -722,7 +702,7 @@ function PageTabBar({ activeTab, onChange }) {
             role="tab"
             aria-selected={isActive}
             onClick={() => onChange(tab.id)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap ${
               isActive
                 ? "border-blue-600 text-blue-600"
                 : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
@@ -740,7 +720,7 @@ function PageTabBar({ activeTab, onChange }) {
 function CompareChannelSelect({ label, value, onChange, channels, excludeHandle, disabled }) {
   return (
     <div className="min-w-0 flex-1">
-      <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+      <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
         {label}
       </label>
       <select
@@ -750,7 +730,7 @@ function CompareChannelSelect({ label, value, onChange, channels, excludeHandle,
           const ch = channels.find((c) => c.id === e.target.value) || null;
           onChange(ch);
         }}
-        className="w-full h-10 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-900 dark:text-white disabled:opacity-50"
+        className="w-full h-9 px-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-900 dark:text-white disabled:opacity-50"
       >
         <option value="">Select channel…</option>
         {channels
@@ -788,7 +768,7 @@ function CompareMetricRow({ metric, valueA, valueB }) {
 
   return (
     <tr className="border-b border-slate-100 dark:border-slate-800/80 last:border-0">
-      <td className="py-2.5 pr-3 text-[11px] font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+      <td className="py-2 pr-3 text-[11px] font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
         <span className="inline-flex items-center gap-1" title={metric.tooltip}>
           {metric.label}
           {metric.tooltip && (
@@ -797,7 +777,7 @@ function CompareMetricRow({ metric, valueA, valueB }) {
         </span>
       </td>
       <td
-        className={`py-2.5 px-2 text-right text-sm tabular-nums font-semibold ${
+        className={`py-2 px-2 text-right text-sm tabular-nums font-semibold ${
           aWins && !tie ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white"
         }`}
       >
@@ -805,7 +785,7 @@ function CompareMetricRow({ metric, valueA, valueB }) {
         {aWins && !tie && <CompareWinnerBadge />}
       </td>
       <td
-        className={`py-2.5 pl-2 text-right text-sm tabular-nums font-semibold ${
+        className={`py-2 pl-2 text-right text-sm tabular-nums font-semibold ${
           bWins && !tie ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white"
         }`}
       >
@@ -823,7 +803,7 @@ function CompareSampleCard({ limit, statsA, statsB, channelA, channelB, accentA,
 
   return (
     <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/30">
+      <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/30">
         <div className="flex items-center justify-between gap-2">
           <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
             Newest {limit} uploads
@@ -1494,12 +1474,6 @@ function YouTubeAnalytics() {
     pageTab === "analytics" && videos.length === 0 && !refreshing && !!activeChannel;
   const [analyzeAttention, dismissAnalyzeAttention] = useAttentionPulse(needsAnalyzeAttention);
 
-  const compareNeedsAttention =
-    pageTab === "compare" && !!compareChannelA && !!compareChannelB && !compareReady && !compareLoading;
-  const [compareFormatAttention, dismissCompareFormatAttention] = useAttentionPulse(compareNeedsAttention);
-  const [compareSampleAttention, dismissCompareSampleAttention] = useAttentionPulse(compareNeedsAttention);
-  const [compareRefreshAttention, dismissCompareRefreshAttention] = useAttentionPulse(compareNeedsAttention);
-
   const compareScrapeChannels = useMemo(() => {
     if (!compareLoading) return [];
     const list = [];
@@ -1584,16 +1558,14 @@ function YouTubeAnalytics() {
       {
         label: "Subscribers",
         value: activeChannel?.subscribers > 0 ? formatCompact(activeChannel.subscribers) : "—",
-        sub: "Live from YouTube",
+        sub: "Live",
         icon: Users,
         color: "text-violet-500",
       },
       {
         label: isShortChannel ? "Shorts in sample" : "Videos in sample",
         value: `${stats.videoCount} / ${videos.length || videoLimit}`,
-        sub: videos.length
-          ? `Analyzing newest ${videoLimit} · ${videos.length} scraped`
-          : `Analyzing newest ${videoLimit} uploads`,
+        sub: `Newest ${videoLimit}`,
         icon: Video,
         color: accent.text,
       },
@@ -1691,12 +1663,14 @@ function YouTubeAnalytics() {
       titleInfo="Scrapes recent public videos per channel (10–500, configurable via Videos filter)"
       icon={BarChart3}
       contentFit
+      noPadding
     >
-      <div className="flex-shrink-0 mb-4">
+      <div className="flex flex-col h-full min-h-0 px-2 py-1.5 sm:px-3 sm:py-2">
+      <div className="flex-shrink-0 mb-2">
         <PageTabBar activeTab={pageTab} onChange={setPageTab} />
       </div>
 
-      <div className="flex h-full min-h-0 gap-0 lg:gap-4 overflow-hidden">
+      <div className="flex h-full min-h-0 gap-0 lg:gap-3 overflow-hidden">
         {/* Sidebar — collapsible channel list (desktop, analytics tab only) */}
         {pageTab === "analytics" && (
         <aside
@@ -1706,7 +1680,7 @@ function YouTubeAnalytics() {
         >
           <div
             className={`flex-shrink-0 border-b border-slate-200/80 dark:border-slate-800 flex items-center gap-1 ${
-              channelPanelOpen ? "p-3 justify-between" : "p-2 flex-col"
+              channelPanelOpen ? "p-2 justify-between" : "p-1.5 flex-col"
             }`}
           >
             {channelPanelOpen && (
@@ -1747,7 +1721,7 @@ function YouTubeAnalytics() {
                   onClick={() => setActiveChannel(c)}
                   title={channelPanelOpen ? undefined : `${c.name} (@${c.handle})`}
                   className={`w-full text-left rounded-xl transition-all ${
-                    channelPanelOpen ? "px-3 py-2.5" : "p-1.5 flex justify-center"
+                    channelPanelOpen ? "px-2.5 py-2" : "p-1.5 flex justify-center"
                   } ${
                     active
                       ? "bg-white dark:bg-slate-800 shadow-sm ring-1 ring-slate-200/80 dark:ring-slate-600"
@@ -1795,19 +1769,19 @@ function YouTubeAnalytics() {
         {/* Main — header, KPIs, and charts scroll together on all breakpoints */}
         <div className="flex-1 min-w-0 flex flex-col min-h-0 overflow-y-auto custom-scrollbar relative isolate">
           {pageTab === "compare" ? (
-            <div className="space-y-4 pb-6">
+            <div className="space-y-2 sm:space-y-2.5 pb-3 sm:pb-4">
               <header className="buffer-card overflow-hidden flex-shrink-0">
-                <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700/80">
-                  <div className="flex items-center gap-2.5 mb-1">
-                    <GitCompareArrows size={18} className="text-blue-500 flex-shrink-0" />
-                    <h2 className="text-base font-semibold text-gray-900 dark:text-white">Channel Compare</h2>
+                <div className="p-2 sm:p-2.5 border-b border-gray-100 dark:border-gray-700/80">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <GitCompareArrows size={16} className="text-blue-500 flex-shrink-0" />
+                    <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">Channel Compare</h2>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 leading-snug">
                     Compare performance across sample sizes (10–500 newest uploads) for two channels.
                   </p>
                 </div>
-                <div className="p-3 sm:p-4 space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch">
+                <div className="p-2 sm:p-2.5 space-y-2 sm:space-y-2.5">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch">
                     <CompareChannelSelect
                       label="Channel A"
                       value={compareChannelA}
@@ -1816,8 +1790,8 @@ function YouTubeAnalytics() {
                       excludeHandle={compareChannelB?.handle}
                       disabled={compareLoading}
                     />
-                    <div className="hidden sm:flex items-end pb-2 flex-shrink-0">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">vs</span>
+                    <div className="hidden sm:flex items-end pb-1 flex-shrink-0">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">vs</span>
                     </div>
                     <CompareChannelSelect
                       label="Channel B"
@@ -1828,103 +1802,83 @@ function YouTubeAnalytics() {
                       disabled={compareLoading}
                     />
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Format
                     </span>
-                    <AttentionHighlight active={compareFormatAttention}>
-                      <div
-                        className={`inline-flex rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 ${
-                          compareLoading ? "opacity-50 pointer-events-none" : ""
-                        }`}
-                      >
-                        {[
-                          { label: "Long", value: "long" },
-                          { label: "Shorts", value: "short" },
-                        ].map((f) => (
-                          <button
-                            key={f.value}
-                            type="button"
-                            disabled={compareLoading}
-                            onClick={() => {
-                              dismissCompareFormatAttention();
-                              setCompareFormat(f.value);
-                            }}
-                            className={`px-3 py-1.5 rounded-md text-xs transition-colors ${
-                              compareFormat === f.value ? SEGMENT_ACTIVE : SEGMENT_IDLE
-                            }`}
-                          >
-                            {f.label}
-                          </button>
-                        ))}
-                      </div>
-                    </AttentionHighlight>
+                    <div
+                      className={`inline-flex rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 ${
+                        compareLoading ? "opacity-50 pointer-events-none" : ""
+                      }`}
+                    >
+                      {[
+                        { label: "Long", value: "long" },
+                        { label: "Shorts", value: "short" },
+                      ].map((f) => (
+                        <button
+                          key={f.value}
+                          type="button"
+                          disabled={compareLoading}
+                          onClick={() => setCompareFormat(f.value)}
+                          className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
+                            compareFormat === f.value ? SEGMENT_ACTIVE : SEGMENT_IDLE
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
                     <div className="flex flex-nowrap items-center gap-1.5 sm:gap-2">
                       <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex-shrink-0">
                         Sample
                       </span>
-                      <AttentionHighlight active={compareSampleAttention}>
-                        <div
-                          className="inline-flex flex-nowrap flex-shrink-0 rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
-                          role="group"
-                          aria-label="Comparison sample size"
-                        >
-                          {VIDEO_LIMIT_OPTIONS.map((n) => (
-                            <button
-                              key={n}
-                              type="button"
-                              onClick={() => {
-                                dismissCompareSampleAttention();
-                                handleCompareSampleLimitSelect(n);
-                              }}
-                              className={`px-1.5 py-1 sm:px-2 sm:py-1.5 md:px-2.5 rounded-md text-[10px] sm:text-xs tabular-nums transition-colors whitespace-nowrap ${
-                                compareSampleLimit === n ? SEGMENT_ACTIVE : SEGMENT_IDLE
-                              }`}
-                              aria-pressed={compareSampleLimit === n}
-                            >
-                              {n}
-                            </button>
-                          ))}
-                        </div>
-                      </AttentionHighlight>
-                    </div>
-                    <AttentionHighlight
-                      active={compareRefreshAttention}
-                      className="ml-auto"
-                    >
-                      <button
-                        type="button"
-                        disabled={compareLoading || !compareChannelA || !compareChannelB}
-                        onClick={() => {
-                          dismissCompareRefreshAttention();
-                          setCompareLoadingA(true);
-                          setCompareLoadingB(true);
-                          if (compareChannelA) {
-                            loadCompareSide("a", compareChannelA, {
-                              force: true,
-                              showToast: false,
-                              maxVideos: compareSampleLimitRef.current,
-                            });
-                          }
-                          if (compareChannelB) {
-                            loadCompareSide("b", compareChannelB, {
-                              force: true,
-                              showToast: true,
-                              maxVideos: compareSampleLimitRef.current,
-                            });
-                          }
-                        }}
-                        className={`buffer-button-primary inline-flex items-center justify-center gap-1.5 text-xs py-2 px-3.5 h-9 disabled:opacity-50 ${
-                          compareRefreshAttention
-                            ? "ring-2 ring-white/70 dark:ring-blue-300/50 ring-offset-1 ring-offset-blue-600 dark:ring-offset-blue-700 motion-reduce:ring-0"
-                            : ""
-                        }`}
-                        aria-busy={compareLoading}
+                      <div
+                        className="inline-flex flex-nowrap flex-shrink-0 rounded-lg p-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                        role="group"
+                        aria-label="Comparison sample size"
                       >
-                        {compareLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                        {compareLoading ? "Refreshing…" : "Refresh both"}
-                      </button>
-                    </AttentionHighlight>
+                        {VIDEO_LIMIT_OPTIONS.map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => handleCompareSampleLimitSelect(n)}
+                            className={`px-1.5 py-1 sm:px-2 sm:py-1.5 md:px-2.5 rounded-md text-[10px] sm:text-xs tabular-nums transition-colors whitespace-nowrap ${
+                              compareSampleLimit === n ? SEGMENT_ACTIVE : SEGMENT_IDLE
+                            }`}
+                            aria-pressed={compareSampleLimit === n}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={compareLoading || !compareChannelA || !compareChannelB}
+                      onClick={() => {
+                        setCompareLoadingA(true);
+                        setCompareLoadingB(true);
+                        if (compareChannelA) {
+                          loadCompareSide("a", compareChannelA, {
+                            force: true,
+                            showToast: false,
+                            maxVideos: compareSampleLimitRef.current,
+                          });
+                        }
+                        if (compareChannelB) {
+                          loadCompareSide("b", compareChannelB, {
+                            force: true,
+                            showToast: true,
+                            maxVideos: compareSampleLimitRef.current,
+                          });
+                        }
+                      }}
+                      className="buffer-button-primary inline-flex items-center justify-center gap-1.5 text-xs py-1.5 px-3 h-8 disabled:opacity-50 ml-auto"
+                      aria-busy={compareLoading}
+                    >
+                      {compareLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                      {compareLoading ? "Refreshing…" : "Refresh both"}
+                    </button>
                   </div>
                 </div>
               </header>
@@ -1941,8 +1895,8 @@ function YouTubeAnalytics() {
               )}
 
               {!compareChannelA || !compareChannelB ? (
-                <div className="flex flex-col items-center justify-center text-center p-12 rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-900/30">
-                  <GitCompareArrows size={40} className="text-slate-400 mb-3" />
+                <div className="flex flex-col items-center justify-center text-center p-6 sm:p-8 rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-900/30">
+                  <GitCompareArrows size={32} className="text-slate-400 mb-2" />
                   <p className="font-bold text-slate-800 dark:text-slate-100">Select two channels</p>
                   <p className="text-sm text-slate-500 mt-1 max-w-sm">
                     Choose Channel A and Channel B above to see a head-to-head comparison.
@@ -1951,36 +1905,37 @@ function YouTubeAnalytics() {
                     <button
                       type="button"
                       onClick={() => setSettingsOpen(true)}
-                      className="mt-4 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
+                      className="mt-3 px-3.5 py-1.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
                     >
                       Add more channels
                     </button>
                   )}
                 </div>
               ) : compareLoading && !compareReady ? (
-                <div className="flex flex-col items-center justify-center text-center p-12 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/60">
-                  <Loader2 size={32} className="text-red-500 animate-spin mb-3" />
+                <div className="flex flex-col items-center justify-center text-center p-6 sm:p-8 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/60">
+                  <Loader2 size={28} className="text-red-500 animate-spin mb-2" />
                   <p className="font-bold text-slate-800 dark:text-slate-100">Loading channel data…</p>
                   <p className="text-sm text-slate-500 mt-1">Scraping up to {compareSampleLimit} videos per channel.</p>
                 </div>
               ) : (
                 <>
                   {!compareReady && !compareLoading && (
-                    <div className="rounded-xl border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/80 dark:bg-amber-950/30 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="rounded-xl border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/80 dark:bg-amber-950/30 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
                       <p className="text-xs text-amber-800 dark:text-amber-200">
                         No cached data for the selected channel{compareFormat === "short" ? " shorts" : ""} format.
                         Click <span className="font-semibold">Refresh both</span> to scrape.
                       </p>
                     </div>
                   )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
                     {[compareChannelA, compareChannelB].map((ch, i) => {
                       const accent = i === 0 ? compareAccentA : compareAccentB;
                       const scraped = i === 0 ? compareVideosA.length : compareVideosB.length;
                       return (
                         <div
                           key={ch.id}
-                          className="rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white dark:bg-slate-900/60 p-2 sm:p-2.5"
+                          className="rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white dark:bg-slate-900/60 p-2"
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <ChannelAvatar
@@ -2029,9 +1984,11 @@ function YouTubeAnalytics() {
                   </div>
 
                   {compareChannelA?.subscribers > 0 && compareChannelB?.subscribers > 0 && (
-                    <div className="rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-slate-50/80 dark:bg-slate-800/40 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Subscriber lead</span>
-                      <span className="text-sm font-bold tabular-nums">
+                    <div className="rounded-lg border border-slate-200/80 dark:border-slate-700/50 bg-slate-50/80 dark:bg-slate-800/40 px-2.5 py-1.5 sm:px-3 flex items-center justify-between gap-x-2 gap-y-0 min-w-0">
+                      <span className="text-[10px] sm:text-xs font-semibold text-slate-600 dark:text-slate-300 flex-shrink-0 leading-none">
+                        Subscriber lead
+                      </span>
+                      <span className="text-[10px] sm:text-xs font-bold tabular-nums text-right min-w-0 truncate leading-none">
                         {compareChannelA.subscribers > compareChannelB.subscribers ? (
                           <span className="text-emerald-600 dark:text-emerald-400">
                             {compareChannelA.name} (+{formatCompact(compareChannelA.subscribers - compareChannelB.subscribers)})
@@ -2051,7 +2008,7 @@ function YouTubeAnalytics() {
                     <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 shadow-sm">
                       <ChartCard
                         title={`Last ${compareSampleLimit} uploads — head-to-head`}
-                        subtitle={`Newest ${compareSampleLimit} in sample · #1 = newest. Dashed lines = each channel's average views.`}
+                        subtitle={`Newest ${compareSampleLimit} in sample · #1 = newest (right). Dashed lines = each channel's average views.`}
                         icon={Clapperboard}
                         className="border-0 shadow-none rounded-none min-h-0"
                         headerExtra={
@@ -2106,6 +2063,7 @@ function YouTubeAnalytics() {
                         />
                       );
                     })()}
+                  </div>
 
                   {compareReady && (
                     <p className="text-[10px] text-center text-slate-400">
@@ -2116,14 +2074,14 @@ function YouTubeAnalytics() {
               )}
             </div>
           ) : !activeChannel ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-              <Youtube size={48} className="text-red-500 mb-4" />
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 sm:p-8">
+              <Youtube size={40} className="text-red-500 mb-3" />
               <p className="font-bold text-slate-800 dark:text-slate-100">No channel selected</p>
               <p className="text-sm text-slate-500 mt-1 max-w-sm">Add YouTube channels to start analytics.</p>
               <button
                 type="button"
                 onClick={() => setSettingsOpen(true)}
-                className="mt-4 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
+                className="mt-3 px-3.5 py-1.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
               >
                 Configure channels
               </button>
@@ -2131,12 +2089,12 @@ function YouTubeAnalytics() {
           ) : (
             <>
               {/* Channel header — identity + controls */}
-              <header className="buffer-card overflow-hidden flex-shrink-0 mb-3">
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700/80 min-w-0">
+              <header className="buffer-card overflow-hidden flex-shrink-0 mb-2">
+                <div className="flex flex-wrap items-center gap-2 p-2 sm:p-2.5 border-b border-gray-100 dark:border-gray-700/80 min-w-0">
                   <button
                     type="button"
                     onClick={toggleChannelPanel}
-                    className="hidden lg:inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+                    className="hidden lg:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 transition-colors flex-shrink-0"
                     title={channelPanelOpen ? "Collapse channel panel" : "Expand channel panel"}
                   >
                     {channelPanelOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
@@ -2147,7 +2105,7 @@ function YouTubeAnalytics() {
                     <button
                       type="button"
                       onClick={() => setMobileChannelOpen((o) => !o)}
-                      className="w-full flex items-center justify-between gap-2 h-11 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50/80 dark:bg-gray-800/80"
+                      className="w-full flex items-center justify-between gap-2 h-10 px-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50/80 dark:bg-gray-800/80"
                       aria-expanded={mobileChannelOpen}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -2165,7 +2123,7 @@ function YouTubeAnalytics() {
                       />
                     </button>
                     {mobileChannelOpen && (
-                      <div className="mt-2 p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 max-h-52 overflow-y-auto custom-scrollbar space-y-1">
+                      <div className="mt-1.5 p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
                         {channels.map((c) => {
                           const col = PRESET_COLORS[c.color] || PRESET_COLORS.blue;
                           const active = activeChannel?.handle === c.handle;
@@ -2177,7 +2135,7 @@ function YouTubeAnalytics() {
                                 setActiveChannel(c);
                                 setMobileChannelOpen(false);
                               }}
-                              className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+                              className={`w-full text-left px-2.5 py-2 rounded-lg transition-all ${
                                 active
                                   ? "bg-blue-50 dark:bg-blue-950/40 ring-1 ring-blue-200 dark:ring-blue-800"
                                   : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
@@ -2202,7 +2160,7 @@ function YouTubeAnalytics() {
                     )}
                   </div>
 
-                  <div className="hidden lg:flex items-center gap-3 min-w-0 flex-1">
+                  <div className="hidden lg:flex items-center gap-2.5 min-w-0 flex-1">
                     <ChannelAvatar channel={activeChannel} size="lg" accentBg={accent.bg} />
                     <div className="min-w-0">
                       <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
@@ -2221,7 +2179,7 @@ function YouTubeAnalytics() {
                   </div>
                 </div>
 
-                <div className="flex flex-nowrap items-center gap-1.5 sm:gap-2 md:gap-3 p-2 sm:p-3 md:p-4 bg-gray-50/60 dark:bg-gray-900/40 min-w-0 overflow-x-auto custom-scrollbar">
+                <div className="flex flex-nowrap items-center gap-1.5 sm:gap-2 p-2 sm:p-2.5 bg-gray-50/60 dark:bg-gray-900/40 min-w-0 overflow-x-auto custom-scrollbar">
                   <div className="flex flex-nowrap items-center gap-1.5 sm:gap-2 flex-shrink-0">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex-shrink-0">
                       Format
@@ -2262,17 +2220,6 @@ function YouTubeAnalytics() {
                         );
                       })}
                     </div>
-                    {!usingChannelFormatDefault && (
-                      <button
-                        type="button"
-                        disabled={refreshing}
-                        onClick={() => setFormatOverride(null)}
-                        className="text-[9px] sm:text-[10px] font-semibold text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 underline-offset-2 hover:underline px-0.5 sm:px-1 flex-shrink-0 whitespace-nowrap"
-                        title={`Revert to channel default (${channelDefaultFormat === "short" ? "Shorts" : "Long"})`}
-                      >
-                        Reset
-                      </button>
-                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5 sm:gap-2 ml-auto flex-shrink-0">
@@ -2315,6 +2262,7 @@ function YouTubeAnalytics() {
                 </div>
               </header>
 
+              <div className="space-y-2">
               {refreshing && (
                 <ScrapeProgressBanner
                   title={videos.length === 0 ? "Analyzing channel…" : "Refreshing channel data…"}
@@ -2327,7 +2275,7 @@ function YouTubeAnalytics() {
               )}
 
               {/* Sample size — controls KPIs and charts below */}
-              <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-slate-50/60 dark:bg-slate-800/30 px-3 py-2 sm:px-4 sm:py-2.5 min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-slate-50/60 dark:bg-slate-800/30 px-2.5 py-1.5 sm:px-3 sm:py-2 min-w-0">
                 <div className="flex flex-nowrap items-center gap-1.5 sm:gap-2 min-w-0 overflow-x-auto custom-scrollbar">
                   <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex-shrink-0">
                     Videos
@@ -2362,7 +2310,7 @@ function YouTubeAnalytics() {
 
               {/* KPIs — single row, equal-width cards (Users filter pattern) */}
               <div
-                className={`flex flex-shrink-0 flex-nowrap items-stretch gap-1 sm:gap-1.5 md:gap-3 w-full min-w-0 py-3 pl-2 md:pl-3 lg:pl-0 overflow-x-auto overflow-y-visible custom-scrollbar ${
+                className={`flex flex-shrink-0 flex-nowrap items-stretch gap-1 sm:gap-1.5 md:gap-2 w-full min-w-0 py-1 pl-2 md:pl-3 lg:pl-0 overflow-x-auto overflow-y-visible custom-scrollbar ${
                   refreshing ? "opacity-60 pointer-events-none transition-opacity" : ""
                 }`}
                 role="group"
@@ -2371,32 +2319,32 @@ function YouTubeAnalytics() {
                 {kpiCards.map((k) => (
                   <div
                     key={k.label}
-                    className="flex-1 min-w-[8.75rem] sm:min-w-0 basis-0 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-700/50 bg-white dark:bg-slate-900/60 px-2 py-2 sm:px-3 sm:py-3 md:p-4 min-h-[5.25rem] sm:min-h-[5.5rem]"
+                    className="flex-1 min-w-[7.5rem] sm:min-w-0 basis-0 rounded-lg sm:rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white dark:bg-slate-900/60 px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-3 md:py-2"
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1 sm:mb-2">
-                      <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">
+                    <div className="flex items-center justify-between gap-0.5 mb-0.5">
+                      <span className="text-[7px] sm:text-[9px] font-bold uppercase tracking-wider text-slate-500 truncate leading-none">
                         {k.label}
                       </span>
-                      <k.icon size={14} className={`${k.color} flex-shrink-0 sm:hidden`} />
-                      <k.icon size={16} className={`${k.color} flex-shrink-0 hidden sm:block`} />
+                      <k.icon size={12} className={`${k.color} flex-shrink-0 sm:hidden`} />
+                      <k.icon size={13} className={`${k.color} flex-shrink-0 hidden sm:block`} />
                     </div>
-                    <p className="text-sm sm:text-lg md:text-xl font-bold text-slate-900 dark:text-white tabular-nums leading-tight">
+                    <p className="text-xs sm:text-sm md:text-base font-bold text-slate-900 dark:text-white tabular-nums leading-none">
                       {k.value}
                     </p>
-                    <p className="text-[8px] sm:text-[10px] text-slate-500 mt-0.5 sm:mt-1 line-clamp-2">{k.sub}</p>
+                    <p className="text-[7px] sm:text-[8px] text-slate-500 mt-0.5 line-clamp-1 leading-none">{k.sub}</p>
                   </div>
                 ))}
               </div>
 
               {/* Charts */}
-              <div className={`pr-1 pb-4 space-y-4 ${refreshing ? "opacity-60 pointer-events-none transition-opacity" : ""}`}>
+              <div className={`pr-1 pb-3 space-y-2 sm:space-y-2.5 ${refreshing ? "opacity-60 pointer-events-none transition-opacity" : ""}`}>
                 {/* First chart: recent uploads (vertical bars — upload # on X, views on Y) */}
                 <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900/80 shadow-sm">
                   <ChartCard
                     title={`Last ${videoLimit} uploads — performance`}
                     subtitle={
                       last30Performance.count > 0
-                        ? `Newest ${videoLimit} in sample · #1 = newest. Orange dashed line = average views.`
+                        ? `Newest ${videoLimit} in sample · #1 = newest (right). Orange dashed line = average views.`
                         : "Refresh to load videos"
                     }
                     icon={Clapperboard}
@@ -2417,7 +2365,7 @@ function YouTubeAnalytics() {
                     }
                   >
                     {last30Performance.count === 0 ? (
-                      <p className="text-center text-sm text-slate-400 py-16">Refresh the channel to compare your latest uploads.</p>
+                      <p className="text-center text-sm text-slate-400 py-10">Refresh the channel to compare your latest uploads.</p>
                     ) : (
                       <LastUploadsPerformanceChart
                         chartType={uploadsChartType}
@@ -2433,7 +2381,7 @@ function YouTubeAnalytics() {
                 </div>
 
                 {!isShortChannel && (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-2.5">
                       <ChartCard
                         title="Uploads per week"
                         subtitle="Count & views in each week bucket"
@@ -2495,10 +2443,10 @@ function YouTubeAnalytics() {
 
                 {/* Top 10 most viewed */}
                 <section className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-gradient-to-b from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/50 overflow-hidden shadow-sm">
-                  <div className="px-4 py-3.5 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center">
-                        <Trophy size={18} className="text-amber-600 dark:text-amber-400" />
+                  <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center">
+                        <Trophy size={16} className="text-amber-600 dark:text-amber-400" />
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white">Top 10 most viewed</h3>
@@ -2576,6 +2524,7 @@ function YouTubeAnalytics() {
                     )}
                   </div>
                 </section>
+              </div>
               </div>
             </>
           )}
@@ -2699,6 +2648,7 @@ function YouTubeAnalytics() {
           </div>
         </div>
       )}
+      </div>
     </AdminLayout>
   );
 }

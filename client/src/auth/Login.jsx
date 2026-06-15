@@ -37,32 +37,32 @@ const BRAND_FEATURES = [
   {
     icon: TrendingUp,
     label: "YouTube competitor analysis",
-    caption: "Trending Hub · Competitor Watch",
+    caption: "Competitor Watch · schedule with Get Script AI",
   },
   {
     icon: Youtube,
     label: "YouTube video analysis",
-    caption: "YouTube Video Inspector",
+    caption: "Video Inspector · metadata & stats",
   },
   {
     icon: LineChart,
     label: "YouTube Analytics",
-    caption: "Channel metrics & video performance",
+    caption: "Analytics & Channel Compare · 10–500 sample",
   },
   {
     icon: LayoutDashboard,
     label: "Production Hub",
-    caption: "Schedule tasks, scripts & delivery",
+    caption: "Task board · assignee filters · Add Content",
   },
   {
     icon: Mic,
     label: "Voice-over",
-    caption: "Upload & manage task audio",
+    caption: "Schedule tasks · VO Training library",
   },
   {
     icon: MessageSquare,
     label: "AI Chat",
-    caption: "Completed Scripts & Content Guard",
+    caption: "Prompts · Completed Scripts · Content Guard",
   },
 ];
 
@@ -173,8 +173,8 @@ export default function Login() {
             <span className="block text-blue-200 mt-0.5">AI-powered creativity</span>
           </h1>
           <p className="mt-2.5 text-sm xl:text-base text-blue-100/90 leading-snug">
-            Research competitors, inspect any YouTube video, track channel analytics, and
-            run production—from prompts to voice-over—in one workspace.
+            Research competitors, compare channel analytics, inspect any YouTube video, and
+            run production—from scripts and scheduling to voice-over—in one workspace.
           </p>
           <ul className="mt-5 xl:mt-6 space-y-2 xl:space-y-2.5" aria-label="Product capabilities">
             {BRAND_FEATURES.map(({ icon: Icon, label, caption }) => (

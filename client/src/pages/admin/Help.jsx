@@ -10,6 +10,7 @@ import {
   BarChart3,
   Mic,
   Youtube,
+  LineChart,
   Menu,
   Database,
 } from "lucide-react";
@@ -34,7 +35,8 @@ export default function Help() {
       color: "text-blue-600",
       items: [
         "Invite and manage team accounts from the Users screen.",
-        "Admin accounts use this full console; content managers, viewers, and Voice Over users sign in at the same login and only see their allowed areas.",
+        "Roles: Admin (full console), Content Manager and Viewer (their own prompt libraries), Voice Over (Voice-over Schedule tab only), and Voice Over Training (VO Training tab only).",
+        "Assign roles when adding or editing a user; limited roles use the same login page and only see their allowed areas.",
       ],
     },
     {
@@ -52,9 +54,9 @@ export default function Help() {
       icon: MessageSquare,
       color: "text-emerald-600",
       items: [
-        "Run context-aware generation with your saved prompts and source material.",
-        "Sessions can be restored from the Dashboard activity list or the top bar history (clock).",
-        "Shift+Enter for a new line; Enter sends when appropriate for the active field.",
+        "Tabs: AI Chat, Completed Scripts, Content Guard, and Settings (API key for Gemini).",
+        "Run context-aware generation with saved prompts and source material; paste a YouTube URL to fetch captions into source.",
+        "Sessions restore from the Dashboard activity list or the top bar history (clock). Shift+Enter for a new line.",
       ],
     },
     {
@@ -62,9 +64,10 @@ export default function Help() {
       icon: TrendingUp,
       color: "text-pink-500",
       items: [
-        "Competitor watch: pick a category (type), channel, time window (4h, 8h, 12h, 24h, 7d, or All), minimum views, search, and sort (trending / views / latest).",
-        "Configure categories and YouTube sources from the settings entry in the category menu.",
-        "Add a video to Production Hub with Schedule / backlog, platform, format, assignees, optional notes, and optional script.",
+        "Competitor Watch: filter by category (type), channel, time window (4h–7d or All), minimum views, Long/Short format, search, and sort (trending / views / latest).",
+        "Competitor settings: per-channel Long/Shorts format, videos per channel (1–500), and reorder types with the up/down arrows.",
+        "Schedule from a video card: set date or backlog, platform, format, assignees, notes, and script—with a live word count.",
+        "Get Script opens Video AI to generate from captions; target video length and prompt choice are remembered on this device.",
       ],
     },
     {
@@ -72,8 +75,9 @@ export default function Help() {
       icon: LayoutDashboard,
       color: "text-blue-500",
       items: [
-        "Board for video tasks: scheduled dates, backlog, assignees, Long/Short format pills, platform, notes, script, and optional voice-over audio.",
-        "Create and edit tasks, move work through your team’s pipeline alongside the Dashboard Delivery Monitor.",
+        "Task board grouped by scheduled date (plus backlog): Long/Short pills, platform, notes, script, and optional voice-over audio.",
+        "Each date group has assignee filter pills (Pooja, Mahalakshmi, Unassigned) with Long/Short counts—click to filter tasks in that group.",
+        "Tasks with a script show a word-count pill (e.g. 450w). Use Add Content to create or edit tasks, or push from Trending Hub Schedule.",
       ],
     },
     {
@@ -81,9 +85,22 @@ export default function Help() {
       icon: Mic,
       color: "text-emerald-600",
       items: [
-        "Lists scheduled Production Hub tasks by date (same as the schedule board).",
-        "Users with the Voice Over role only see this screen after login (no other admin pages or assistant).",
-        "Voice-over audio is stored in MongoDB (GridFS). View script in a modal, download it as .txt, upload or replace the file (common audio formats), download the audio, or remove it.",
+        "Two tabs: Schedule (Production Hub tasks by date) and VO Training (last 10 completed videos with script and voice-over attached).",
+        "Schedule: view script, download .txt, upload/replace/download/remove voice-over audio (stored in MongoDB GridFS).",
+        "VO Training: browse recent completed work and download script or voice-over files for reference.",
+        "voice_over role sees Schedule only; voice_over_training sees VO Training only; Admin sees both tabs.",
+      ],
+    },
+    {
+      title: "YouTube Analytics",
+      icon: LineChart,
+      color: "text-red-500",
+      items: [
+        "Analytics tab: pick a tracked channel, toggle Long/Shorts (or use the channel default from Competitor settings)—changing format auto-scrapes.",
+        "Sample size pills (10, 50, 100, 200, 500): clicking a size re-scrapes that many newest uploads for KPIs and charts.",
+        "Channel avatars and subscriber counts come from the database and refresh on scrape.",
+        "Channel Compare tab: pick two channels (selection saved on this device), compare KPIs side-by-side, and view a dual-line uploads chart.",
+        "Compare has its own Long/Short toggle and sample size; changing sample size auto-scrapes both channels.",
       ],
     },
     {
@@ -107,7 +124,7 @@ export default function Help() {
 
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 max-w-3xl">
           The left sidebar matches this order: Dashboard, Users, Prompts, AI Chat, Trending Hub, Production Hub, Voice-over,
-          YouTube inspector, and Help. Collapse the sidebar with the chevron on its edge; the choice is remembered on this device.
+          YouTube Analytics, and Help. Collapse the sidebar with the chevron on its edge; the choice is remembered on this device.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
@@ -148,7 +165,7 @@ export default function Help() {
             </div>
             <div className="flex items-start gap-2">
               <span className="text-cyan-600 dark:text-cyan-400">✓</span>
-              <span>Production Hub uses Long/Short pills and backlog mode; Trending Hub can push the same video onto the board in one flow.</span>
+              <span>Trending Hub Schedule and Production Hub Add Content share the same task fields; YouTube Analytics compare channels persist on this device.</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-cyan-600 dark:text-cyan-400">✓</span>

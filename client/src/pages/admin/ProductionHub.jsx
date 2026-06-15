@@ -244,6 +244,17 @@ const getAssigneeDisplayName = (key) => {
   return k.charAt(0).toUpperCase() + k.slice(1);
 };
 
+const taskMatchesAssigneeFilter = (task, filterKey) => {
+  if (!filterKey) return true;
+  const assignees = Array.isArray(task.assignedTo)
+    ? task.assignedTo.filter(Boolean)
+    : task.assignedTo
+      ? [task.assignedTo]
+      : [];
+  if (filterKey === "Unassigned") return assignees.length === 0;
+  return assignees.some((a) => String(a).toLowerCase() === filterKey.toLowerCase());
+};
+
 const FORMAT_PILL = {
   short: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
   long: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
@@ -1284,6 +1295,24 @@ const DateGroup = memo(function DateGroup({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [isOver, setIsOver] = useState(false);
+  const [assigneeFilter, setAssigneeFilter] = useState(null);
+
+  const displayedTasks = useMemo(
+    () => (assigneeFilter ? tasks.filter((t) => taskMatchesAssigneeFilter(t, assigneeFilter)) : tasks),
+    [tasks, assigneeFilter],
+  );
+
+  const handleAssigneeFilterClick = (e, name) => {
+    e.stopPropagation();
+    const next = assigneeFilter === name ? null : name;
+    setAssigneeFilter(next);
+    if (next && !open) setOpen(true);
+  };
+
+  const handleClearAssigneeFilter = (e) => {
+    e.stopPropagation();
+    setAssigneeFilter(null);
+  };
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -1396,100 +1425,128 @@ const DateGroup = memo(function DateGroup({
         )}
         <div
           onClick={() => setOpen(!open)}
-          className={`w-full flex items-center gap-2 px-3 py-1 sm:py-1.5 ${headerBg} backdrop-blur-md transition-colors hover:brightness-95 cursor-pointer select-none`}
+          className={`w-full flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2 px-3 py-1.5 sm:py-1.5 ${headerBg} backdrop-blur-md transition-colors hover:brightness-95 cursor-pointer select-none`}
         >
-          <span className="flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-300" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
-            <ChevronRight size={14} />
-          </span>
+          <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto sm:flex-1">
+            <span className="flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-300" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
+              <ChevronRight size={14} />
+            </span>
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 overflow-hidden">
-            <div className="flex items-center gap-3">
-              <span className={`text-sm font-black whitespace-nowrap ${(!isHistory && cat === "overdue") ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : isHistory ? "text-emerald-700 dark:text-emerald-400" : cat === "backlog" ? "text-gray-500 dark:text-gray-400 italic" : "text-gray-800 dark:text-gray-200"}`}>
-                {formatDateLabel(dateKey)}
-              </span>
-              
-              {dailySummary.total > 0 && (
-                <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700/50 shadow-sm">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">{dailySummary.total} Tasks</span>
-                  <div className="w-px h-3 bg-gray-200 dark:bg-gray-700 mx-1" />
-                  <div className="flex items-center gap-1.5">
-                    {dailySummary.long > 0 && <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{dailySummary.long}L</span>}
-                    {dailySummary.short > 0 && <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400">{dailySummary.short}S</span>}
-                  </div>
+            <span className={`text-sm font-black whitespace-nowrap ${(!isHistory && cat === "overdue") ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : isHistory ? "text-emerald-700 dark:text-emerald-400" : cat === "backlog" ? "text-gray-500 dark:text-gray-400 italic" : "text-gray-800 dark:text-gray-200"}`}>
+              {formatDateLabel(dateKey)}
+            </span>
+
+            {dailySummary.total > 0 && (
+              <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700/50 shadow-sm shrink-0">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">{dailySummary.total} Tasks</span>
+                <div className="w-px h-3 bg-gray-200 dark:bg-gray-700 mx-1" />
+                <div className="flex items-center gap-1.5">
+                  {dailySummary.long > 0 && <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{dailySummary.long}L</span>}
+                  {dailySummary.short > 0 && <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400">{dailySummary.short}S</span>}
                 </div>
+              </div>
+            )}
+
+            {cat === "overdue" && <AlertTriangle size={14} className="text-red-500 flex-shrink-0 animate-pulse" />}
+
+            <div className="flex items-center gap-2 ml-auto shrink-0">
+              {inProgress > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
+                  <PlayCircle size={10} /> {inProgress}
+                </span>
               )}
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50">
+                {completed}/{total}
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); onPreview(dateKey, tasks); }}
+                className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors shadow-sm"
+                title="Preview tasks"
+              >
+                <Eye size={10} /> <span className="hidden sm:inline">Preview</span>
+              </button>
+              <div className="hidden sm:flex w-20 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden shadow-inner">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-blue-500 to-indigo-500"}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
             </div>
-            
-            <div className="flex flex-wrap items-center gap-2.5">
+          </div>
+
+          {Object.keys(assignmentSummary).length > 0 && (
+            <div
+              className="flex flex-nowrap items-center gap-2 overflow-x-auto max-w-full min-w-0 w-full sm:w-auto pb-0.5 pl-5 sm:pl-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {assigneeFilter && (
+                <button
+                  type="button"
+                  onClick={handleClearAssigneeFilter}
+                  className="inline-flex items-center shrink-0 px-2 py-0.5 rounded-xl text-[9px] font-bold uppercase tracking-wider bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-all shadow-sm"
+                  title="Show all assignees"
+                >
+                  All
+                </button>
+              )}
               {Object.entries(assignmentSummary).map(([name, counts]) => {
                 const isUn = name === "Unassigned";
+                const isActive = assigneeFilter === name;
                 const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "mahalakshmi" ? "bg-purple-400" : "bg-blue-400"));
                 const textColor = isUn ? "text-amber-600 dark:text-amber-400" : (ASSIGNED_PILL[name.toLowerCase()]?.split(' ').pop() || "text-gray-700 dark:text-gray-300");
                 const totalSum = (counts.long || 0) + (counts.short || 0);
-                
+
                 return (
-                  <div key={name} className="flex items-center gap-1 bg-white/60 dark:bg-gray-800/60 pl-2 pr-1 py-0.5 rounded-xl border border-white/50 dark:border-gray-700/50 shadow-sm backdrop-blur-md group/assignment transition-all hover:bg-white dark:hover:bg-gray-800 hover:shadow-md hover:-translate-y-px">
-                    <div className="flex items-center gap-1.5 mr-1">
-                      <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-[0_0_8px_rgba(0,0,0,0.1)] group-hover/assignment:scale-110 transition-transform`} />
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={(e) => handleAssigneeFilterClick(e, name)}
+                    title={`Filter by ${isUn ? name : getAssigneeDisplayName(name)}`}
+                    className={`flex items-center gap-1 shrink-0 pl-2 pr-1.5 py-0.5 rounded-xl border shadow-sm backdrop-blur-md group/assignment transition-all cursor-pointer ${
+                      isActive
+                        ? "ring-2 ring-blue-500/50 border-blue-300 dark:border-blue-600 bg-blue-50/90 dark:bg-blue-900/30 shadow-md scale-[1.02]"
+                        : "bg-white/60 dark:bg-gray-800/60 border-white/50 dark:border-gray-700/50 hover:bg-white dark:hover:bg-gray-800 hover:shadow-md hover:-translate-y-px"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 mr-0.5">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor} shadow-[0_0_8px_rgba(0,0,0,0.1)] group-hover/assignment:scale-110 transition-transform`} />
                       <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${textColor}`}>
                         {isUn ? name : getAssigneeDisplayName(name)}
                       </span>
                     </div>
-                    
-                    <div className="flex items-center gap-0.5">
+
+                    <div className="flex items-center gap-0.5 shrink-0">
                       {totalSum > 0 && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-black bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 shadow-sm border border-transparent mr-1" title="Total (L+S)">
+                        <span className={`inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-lg text-[9px] font-black shadow-sm border border-transparent mr-0.5 ${
+                          isActive
+                            ? "bg-white/80 dark:bg-gray-900/60 text-blue-600 dark:text-blue-300"
+                            : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                        }`} title="Total (L+S)">
                           {totalSum}
                         </span>
                       )}
                       {counts.long > 0 && (
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.long} shadow-sm border border-transparent`} title="Long Format">
+                        <span className={`inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-lg text-[9px] font-bold shrink-0 ${FORMAT_PILL.long} shadow-sm border border-transparent`} title="Long Format">
                           {counts.long}L
                         </span>
                       )}
                       {counts.short > 0 && (
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.short} shadow-sm border border-transparent`} title="Shorts">
+                        <span className={`inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-lg text-[9px] font-bold shrink-0 ${FORMAT_PILL.short} shadow-sm border border-transparent`} title="Shorts">
                           {counts.short}S
                         </span>
                       )}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
-          </div>
-
-          {cat === "overdue" && <AlertTriangle size={14} className="text-red-500 flex-shrink-0 animate-pulse" />}
-
-          <div className="flex items-center gap-2 ml-auto">
-            {inProgress > 0 && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
-                <PlayCircle size={10} /> {inProgress}
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50">
-              {completed}/{total}
-            </span>
-            <button
-              onClick={(e) => { e.stopPropagation(); onPreview(dateKey, tasks); }}
-              className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors shadow-sm"
-              title="Preview tasks"
-            >
-              <Eye size={10} /> Preview
-            </button>
-            <div className="hidden sm:flex w-20 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden shadow-inner">
-              <div
-                className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-blue-500 to-indigo-500"}`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
       {open && (
         <div className="p-3 space-y-2 bg-gray-50/50 dark:bg-gray-800/20">
-          {tasks.map((t) => (
+          {displayedTasks.map((t) => (
             <TaskRow 
               key={t._id} 
               task={t} 
@@ -1506,9 +1563,11 @@ const DateGroup = memo(function DateGroup({
               onPlayToggle={onPlayToggle}
             />
           ))}
-          {tasks.length === 0 && (
+          {displayedTasks.length === 0 && (
             <div className="py-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[10px] text-gray-400">
-              No tasks for this date
+              {assigneeFilter
+                ? `No tasks assigned to ${assigneeFilter === "Unassigned" ? "Unassigned" : getAssigneeDisplayName(assigneeFilter)}`
+                : "No tasks for this date"}
             </div>
           )}
         </div>

@@ -5,6 +5,18 @@ const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 const cacheMap = new Map();
+
+/**
+ * In-memory scrape cache keys (15 min TTL via CACHE_TTL):
+ * - Multi-channel (CompetitorWatch): `${typeId}_${format}` e.g. "abc123_all", "abc123_long"
+ * - Single-channel (YouTube Analytics): `${typeId}_${format}_${handle}_${maxVideos}`
+ * force=true clears every key for that typeId (prefix match).
+ */
+function buildScrapeCacheKey(typeId, videoFormat, handleKey, maxVideos) {
+  const fmt = videoFormat || "all";
+  if (handleKey) return `${typeId}_${fmt}_${handleKey}_${maxVideos}`;
+  return `${typeId}_${fmt}`;
+}
 /** Max recent videos per channel (YouTube Analytics & single-channel scrape). */
 const CHANNEL_VIDEO_CAP = 500;
 /** Default scrape size for single-channel YouTube Analytics requests. */
@@ -506,11 +518,7 @@ async function fetchVideosForType(typeId, videoFormat, channelHandleFilter = nul
       )
     : Math.min(type.videosPerChannel || 30, CHANNEL_VIDEO_CAP);
 
-  const cacheKey = handleKey
-    ? `${typeId}_${videoFormat || "all"}_${handleKey}_${maxVideos}`
-    : videoFormat
-      ? `${typeId}_${videoFormat}`
-      : typeId;
+  const cacheKey = buildScrapeCacheKey(typeId, videoFormat, handleKey, maxVideos);
   const cached = cacheMap.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached;
 
