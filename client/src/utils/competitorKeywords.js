@@ -17,10 +17,34 @@ function normalizeKeywordList(keywords) {
   return result;
 }
 
+function normalizeByType(byType) {
+  const result = {};
+  for (const [typeId, keywords] of Object.entries(byType || {})) {
+    result[String(typeId)] = normalizeKeywordList(keywords);
+  }
+  return result;
+}
+
+function toScopeKey(typeId) {
+  return String(typeId || "").trim();
+}
+
+function apiErrorMessage(err) {
+  return err?.response?.data?.message || err?.message || "Could not save keywords";
+}
+
+function stateHasKeywords(state) {
+  return Boolean(
+    state?.cached?.length ||
+    Object.values(state?.byType || {}).some((keywords) => keywords?.length),
+  );
+}
+
 export function loadLocalTypeKeywords(typeId) {
-  if (!typeId) return [];
+  const scope = toScopeKey(typeId);
+  if (!scope) return [];
   try {
-    const raw = localStorage.getItem(`${COMP_KEYWORDS_STORAGE_PREFIX}${typeId}`);
+    const raw = localStorage.getItem(`${COMP_KEYWORDS_STORAGE_PREFIX}${scope}`);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? normalizeKeywordList(parsed) : [];
   } catch {
@@ -29,10 +53,11 @@ export function loadLocalTypeKeywords(typeId) {
 }
 
 export function saveLocalTypeKeywords(typeId, keywords) {
-  if (!typeId) return;
+  const scope = toScopeKey(typeId);
+  if (!scope) return;
   try {
     localStorage.setItem(
-      `${COMP_KEYWORDS_STORAGE_PREFIX}${typeId}`,
+      `${COMP_KEYWORDS_STORAGE_PREFIX}${scope}`,
       JSON.stringify(normalizeKeywordList(keywords)),
     );
   } catch {
@@ -112,7 +137,7 @@ export function unionKeywords(types, keywordsState) {
   };
 
   (types || []).forEach((type) => {
-    const typeId = type?._id;
+    const typeId = toScopeKey(type?._id);
     if (!typeId) return;
     const keywords = keywordsState?.byType?.[typeId] || loadLocalTypeKeywords(typeId);
     keywords.forEach(add);
@@ -125,64 +150,63 @@ export async function fetchCompetitorKeywords() {
   const { data } = await api.get("/competitor-keywords");
   return {
     cached: normalizeKeywordList(data?.cached),
-    byType: data?.byType && typeof data.byType === "object" ? data.byType : {},
+    byType: normalizeByType(data?.byType),
   };
 }
 
 export async function hydrateCompetitorKeywords() {
   try {
     let state = await fetchCompetitorKeywords();
-    const isEmpty =
-      !state.cached.length &&
-      !Object.values(state.byType).some((keywords) => keywords?.length);
+    const isEmpty = !stateHasKeywords(state);
 
     if (isEmpty) {
       const local = collectLocalStorageKeywords();
-      const hasLocal =
-        local.cached.length ||
-        Object.values(local.byType).some((keywords) => keywords?.length);
+      const hasLocal = stateHasKeywords(local);
       if (hasLocal) {
         const { data } = await api.post("/competitor-keywords/migrate", local);
-        state = {
+        const migrated = {
           cached: normalizeKeywordList(data?.cached),
-          byType: data?.byType && typeof data.byType === "object" ? data.byType : {},
+          byType: normalizeByType(data?.byType),
         };
+        state = stateHasKeywords(migrated) || data?.migrated ? migrated : local;
       }
     }
 
-    Object.keys(state.byType).forEach((typeId) => {
-      state.byType[typeId] = normalizeKeywordList(state.byType[typeId]);
-    });
     syncToLocalStorage(state);
     return state;
   } catch {
     const local = collectLocalStorageKeywords();
-    Object.keys(local.byType).forEach((typeId) => {
-      local.byType[typeId] = normalizeKeywordList(local.byType[typeId]);
-    });
+    local.byType = normalizeByType(local.byType);
     local.cached = normalizeKeywordList(local.cached);
     return local;
   }
 }
 
 export async function persistTypeKeywords(typeId, keywords) {
+  const scope = toScopeKey(typeId);
   const normalized = normalizeKeywordList(keywords);
-  saveLocalTypeKeywords(typeId, normalized);
-  try {
-    await api.put(`/competitor-keywords/${typeId}`, { keywords: normalized });
-  } catch {
-    // Offline — localStorage keeps keywords for this device until next sync.
+  if (!scope) {
+    return { ok: false, keywords: normalized, error: "Missing category id" };
   }
-  return normalized;
+
+  try {
+    await api.put(`/competitor-keywords/${encodeURIComponent(scope)}`, { keywords: normalized });
+    saveLocalTypeKeywords(scope, normalized);
+    return { ok: true, keywords: normalized };
+  } catch (err) {
+    saveLocalTypeKeywords(scope, normalized);
+    return { ok: false, keywords: normalized, error: apiErrorMessage(err) };
+  }
 }
 
 export async function persistCachedKeywords(keywords) {
   const normalized = normalizeKeywordList(keywords);
-  saveLocalCachedKeywords(normalized);
   try {
     await api.put("/competitor-keywords/cached", { keywords: normalized });
-  } catch {
-    // Offline fallback
+    saveLocalCachedKeywords(normalized);
+    return { ok: true, keywords: normalized };
+  } catch (err) {
+    saveLocalCachedKeywords(normalized);
+    return { ok: false, keywords: normalized, error: apiErrorMessage(err) };
   }
-  return normalized;
 }

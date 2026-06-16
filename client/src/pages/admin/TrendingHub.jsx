@@ -1780,7 +1780,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
 
   useEffect(() => {
     if (activeType) {
-      setCompKeywords(keywordsState?.byType?.[activeType] || []);
+      setCompKeywords(keywordsState?.byType?.[String(activeType)] || []);
     } else {
       setCompKeywords([]);
     }
@@ -1790,7 +1790,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
   const persistKeywords = useCallback((keywords) => {
     if (!activeType) return;
     setCompKeywords(keywords);
-    onTypeKeywordsChange(activeType, keywords);
+    onTypeKeywordsChange(String(activeType), keywords);
   }, [activeType, onTypeKeywordsChange]);
 
   const addCompKeyword = useCallback(() => {
@@ -2196,23 +2196,25 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
 
           <div className="hidden md:block w-[1px] h-6 bg-gray-200 dark:bg-gray-800 flex-shrink-0 mx-0.5" />
 
-          {/* Group B: Filter Options (Time, Views, Format, Sort) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 md:flex md:items-center gap-2 flex-shrink-0">
+          {/* Group B: Filter Options (Time, Views, Format, Keywords, Sort) */}
+          <div className="flex flex-col gap-2 md:flex md:flex-row md:items-center flex-shrink-0">
+            {/* Mobile row 1: Time, Views, Long — md:contents merges into parent flex row */}
+            <div className="grid grid-cols-3 gap-1.5 md:contents">
             {/* Time Filter */}
-            <div className="relative flex-1 md:flex-initial" ref={periodDropdownRef}>
+            <div className="relative flex-1 md:flex-initial min-w-0" ref={periodDropdownRef}>
               <button
                 onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
-                className={`flex items-center justify-between w-full md:w-auto h-9 px-2.5 rounded-xl border text-[11px] font-semibold transition-all duration-200 ${
+                className={`flex items-center justify-between w-full md:w-auto h-9 px-1.5 md:px-2.5 rounded-xl border text-[10px] md:text-[11px] font-semibold transition-all duration-200 ${
                   period !== "all"
                     ? "bg-rose-500/10 dark:bg-rose-500/20 border-rose-500/30 text-rose-700 dark:text-rose-400 hover:bg-rose-500/15"
                     : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-rose-400 hover:bg-white dark:hover:bg-gray-800/60"
                 }`}
               >
                 <div className="flex items-center min-w-0">
-                  <Clock size={13} className={`mr-1.5 flex-shrink-0 ${period !== "all" ? "text-rose-500" : "text-gray-400"}`} />
-                  <span className="truncate max-w-[80px]">{period === "all" ? "Time" : COMP_PERIODS.find(p => p.value === period)?.label}</span>
+                  <Clock size={12} className={`mr-1 md:mr-1.5 flex-shrink-0 ${period !== "all" ? "text-rose-500" : "text-gray-400"}`} />
+                  <span className="truncate max-w-[56px] md:max-w-[80px]">{period === "all" ? "Time" : COMP_PERIODS.find(p => p.value === period)?.label}</span>
                 </div>
-                <ChevronDown size={12} className="ml-1.5 opacity-50 flex-shrink-0" />
+                <ChevronDown size={11} className="ml-1 md:ml-1.5 opacity-50 flex-shrink-0" />
               </button>
 
               {showPeriodDropdown && (
@@ -2228,20 +2230,20 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
             </div>
 
             {/* Views Filter */}
-            <div className="relative flex-1 md:flex-initial" ref={viewDropdownRef}>
+            <div className="relative flex-1 md:flex-initial min-w-0" ref={viewDropdownRef}>
               <button
                 onClick={() => setShowViewDropdown(!showViewDropdown)}
-                className={`flex items-center justify-between w-full md:w-auto h-9 px-2.5 rounded-xl border text-[11px] font-semibold transition-all duration-200 ${
+                className={`flex items-center justify-between w-full md:w-auto h-9 px-1.5 md:px-2.5 rounded-xl border text-[10px] md:text-[11px] font-semibold transition-all duration-200 ${
                   minViews > 0 
                     ? "bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/15" 
                     : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-emerald-400 hover:bg-white dark:hover:bg-gray-800/60"
                 }`}
               >
                 <div className="flex items-center min-w-0">
-                  <Eye size={13} className={`mr-1.5 flex-shrink-0 ${minViews > 0 ? "text-emerald-500" : "text-gray-400"}`} />
-                  <span className="truncate max-w-[80px]">{minViews === 0 ? "Views" : COMP_VIEW_FILTERS.find(vf => vf.value === minViews)?.label}</span>
+                  <Eye size={12} className={`mr-1 md:mr-1.5 flex-shrink-0 ${minViews > 0 ? "text-emerald-500" : "text-gray-400"}`} />
+                  <span className="truncate max-w-[56px] md:max-w-[80px]">{minViews === 0 ? "Views" : COMP_VIEW_FILTERS.find(vf => vf.value === minViews)?.label}</span>
                 </div>
-                <ChevronDown size={12} className="ml-1.5 opacity-50 flex-shrink-0" />
+                <ChevronDown size={11} className="ml-1 md:ml-1.5 opacity-50 flex-shrink-0" />
               </button>
 
               {showViewDropdown && (
@@ -2257,20 +2259,20 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
             </div>
 
             {/* Format Filter */}
-            <div className="relative flex-1 md:flex-initial" ref={formatDropdownRef}>
+            <div className="relative flex-1 md:flex-initial min-w-0" ref={formatDropdownRef}>
               <button
                 onClick={() => setShowFormatDropdown(!showFormatDropdown)}
-                className={`flex items-center justify-between w-full md:w-auto h-9 px-2.5 rounded-xl border text-[11px] font-semibold transition-all duration-200 ${
+                className={`flex items-center justify-between w-full md:w-auto h-9 px-1.5 md:px-2.5 rounded-xl border text-[10px] md:text-[11px] font-semibold transition-all duration-200 ${
                   compFormat !== "all" 
                     ? "bg-amber-500/10 dark:bg-amber-500/20 border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15" 
                     : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-amber-400 hover:bg-white dark:hover:bg-gray-800/60"
                 }`}
               >
                 <div className="flex items-center min-w-0">
-                  <Video size={13} className={`mr-1.5 flex-shrink-0 ${compFormat !== "all" ? "text-amber-500" : "text-gray-400"}`} />
-                  <span className="truncate max-w-[80px]">{compFormat === "all" ? "Format" : COMP_FORMATS.find(f => f.value === compFormat)?.label.replace(" Videos", "")}</span>
+                  <Video size={12} className={`mr-1 md:mr-1.5 flex-shrink-0 ${compFormat !== "all" ? "text-amber-500" : "text-gray-400"}`} />
+                  <span className="truncate max-w-[56px] md:max-w-[80px]">{compFormat === "all" ? "Format" : COMP_FORMATS.find(f => f.value === compFormat)?.label.replace(" Videos", "")}</span>
                 </div>
-                <ChevronDown size={12} className="ml-1.5 opacity-50 flex-shrink-0" />
+                <ChevronDown size={11} className="ml-1 md:ml-1.5 opacity-50 flex-shrink-0" />
               </button>
 
               {showFormatDropdown && (
@@ -2284,9 +2286,12 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                 </div>
               )}
             </div>
+            </div>
 
+            {/* Mobile row 2: Keywords — md:contents merges into parent flex row */}
+            <div className="w-full md:contents">
             {/* Keywords Filter / Configure */}
-            <div className="relative flex-1 md:flex-initial" ref={keywordsDropdownRef}>
+            <div className="relative flex-1 md:flex-initial min-w-0" ref={keywordsDropdownRef}>
               <button
                 type="button"
                 onClick={() => setShowKeywordsDropdown(!showKeywordsDropdown)}
@@ -2378,18 +2383,28 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                 </div>
               )}
             </div>
+            </div>
+          </div>
 
+          <div className="hidden md:block w-[1px] h-6 bg-gray-200 dark:bg-gray-800 flex-shrink-0 mx-0.5" />
+
+          {/* Group C: Sort, Search & Actions — one row on mobile */}
+          <div className="flex items-center gap-1.5 md:gap-2 w-full md:w-auto md:ml-auto flex-1 md:flex-initial min-w-0">
             {/* Rank Select */}
-            <div className="relative flex-1 md:flex-initial" ref={sortDropdownRef}>
+            <div className="relative flex-shrink-0 md:flex-initial min-w-0" ref={sortDropdownRef}>
               <button
+                type="button"
                 onClick={() => setShowSortDropdown(!showSortDropdown)}
-                className="flex items-center justify-between w-full md:w-auto h-9 px-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 text-gray-700 dark:text-gray-200 text-[11px] font-semibold transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-white dark:hover:bg-gray-800/60"
+                title={COMP_SORTS.find((s) => s.value === compSort)?.label}
+                className="flex items-center justify-between h-9 px-1.5 md:px-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 text-gray-700 dark:text-gray-200 text-[10px] md:text-[11px] font-semibold transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-white dark:hover:bg-gray-800/60 md:w-auto"
               >
                 <div className="flex items-center min-w-0">
-                  <ArrowDownWideNarrow size={13} className="mr-1.5 text-gray-400 flex-shrink-0" />
-                  <span className="truncate max-w-[80px]">{COMP_SORTS.find(s => s.value === compSort)?.label}</span>
+                  <ArrowDownWideNarrow size={13} className="mr-1 md:mr-1.5 text-gray-400 flex-shrink-0" />
+                  <span className="truncate max-w-[56px] max-[359px]:hidden md:max-w-[80px] md:inline">
+                    {COMP_SORTS.find((s) => s.value === compSort)?.label}
+                  </span>
                 </div>
-                <ChevronDown size={12} className="ml-1.5 opacity-50 flex-shrink-0" />
+                <ChevronDown size={11} className="ml-0.5 md:ml-1.5 opacity-50 flex-shrink-0" />
               </button>
 
               {showSortDropdown && (
@@ -2411,14 +2426,9 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                 </div>
               )}
             </div>
-          </div>
 
-          <div className="hidden md:block w-[1px] h-6 bg-gray-200 dark:bg-gray-800 flex-shrink-0 mx-0.5" />
-
-          {/* Group C: Search & Actions */}
-          <div className="flex items-center justify-between md:justify-end gap-2 w-full md:w-auto md:ml-auto flex-1 md:flex-initial">
             {/* Expandable Search Component */}
-            <div className="relative flex-1 md:flex-initial">
+            <div className="relative flex-1 min-w-0 md:flex-initial">
               <div 
                 className={`flex items-center h-9 border rounded-xl bg-white/70 dark:bg-gray-900/70 border-gray-200 dark:border-gray-700 transition-all duration-300 w-full px-3 md:px-0 ${
                   searchExpanded || compSearch ? "md:w-44 md:px-3" : "md:w-9 md:justify-center"
@@ -2488,7 +2498,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
             </div>
 
             {/* Action & Stats (Refresh, Match count) */}
-            <div className="flex items-center gap-2 h-9 p-1 bg-white/40 dark:bg-gray-900/40 border border-gray-200/60 dark:border-gray-700 rounded-xl shadow-sm flex-shrink-0">
+            <div className="flex items-center gap-1 md:gap-2 h-9 p-1 bg-white/40 dark:bg-gray-900/40 border border-gray-200/60 dark:border-gray-700 rounded-xl shadow-sm flex-shrink-0">
               <button
                 type="button"
                 onClick={() => fetchVideos(activeType, { silent: true, force: true, format: "all" })}
@@ -2503,8 +2513,17 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                 <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
               </button>
               <div className="h-4 w-[1px] bg-gray-200 dark:bg-gray-800" />
-              <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 px-1 whitespace-nowrap">
+              <span
+                className="text-[10px] font-bold text-gray-600 dark:text-gray-300 px-0.5 md:px-1 whitespace-nowrap max-[359px]:hidden"
+                title={`${filtered.length} ${filtered.length === 1 ? "match" : "matches"}`}
+              >
                 {filtered.length} {filtered.length === 1 ? "match" : "matches"}
+              </span>
+              <span
+                className="hidden max-[359px]:inline text-[10px] font-bold text-gray-600 dark:text-gray-300 px-0.5 whitespace-nowrap"
+                title={`${filtered.length} ${filtered.length === 1 ? "match" : "matches"}`}
+              >
+                {filtered.length}
               </span>
             </div>
           </div>
@@ -3165,7 +3184,7 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
     }
 
     for (const type of types) {
-      const typeId = type?._id;
+      const typeId = String(type?._id || "").trim();
       if (!typeId) continue;
       const typeKeywords = keywordsState?.byType?.[typeId] || [];
       if (!typeKeywords.some((k) => k.toLowerCase() === key)) continue;
@@ -3288,7 +3307,7 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
                         const kwCount = keywordCounts[kw];
                         const isCachedOnly = cachedTabKeywords.some((k) => k.toLowerCase() === kw.toLowerCase());
                         const isFromCategory = types.some((type) => {
-                          const typeKeywords = keywordsState?.byType?.[type?._id] || [];
+                          const typeKeywords = keywordsState?.byType?.[String(type?._id || "")] || [];
                           return typeKeywords.some((k) => k.toLowerCase() === kw.toLowerCase());
                         });
                         const removeTitle = isCachedOnly && !isFromCategory
@@ -3565,6 +3584,32 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
 
 const EMPTY_KEYWORDS_STATE = { cached: [], byType: {} };
 
+/** Keeps tab content mounted while hidden so local filter/UI state survives tab switches. */
+function TrendingHubTabPanel({ tabId, activeTab, children }) {
+  const isActive = activeTab === tabId;
+  return (
+    <div
+      role="tabpanel"
+      hidden={!isActive}
+      aria-hidden={!isActive}
+      className={isActive ? "flex flex-1 min-h-0 flex-col overflow-hidden" : "hidden"}
+    >
+      {children}
+    </div>
+  );
+}
+
+function TrendingHubKeywordsLoading() {
+  return (
+    <div className="flex-1 flex items-center justify-center py-24">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-10 h-10 border-3 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading keywords…</p>
+      </div>
+    </div>
+  );
+}
+
 export default function TrendingHub() {
   const [pageTab, setPageTab] = useState("watch");
   const competitorVideoCacheRef = useRef(loadCompetitorVideoCacheMap());
@@ -3634,16 +3679,24 @@ export default function TrendingHub() {
   }, []);
 
   const handleTypeKeywordsChange = useCallback(async (typeId, keywords) => {
-    const normalized = await persistTypeKeywords(typeId, keywords);
+    const scope = String(typeId || "").trim();
+    if (!scope) return;
+    const result = await persistTypeKeywords(scope, keywords);
     setKeywordsState((prev) => ({
       ...prev,
-      byType: { ...prev.byType, [typeId]: normalized },
+      byType: { ...prev.byType, [scope]: result.keywords },
     }));
+    if (!result.ok) {
+      toast.error(result.error || "Could not save category keywords");
+    }
   }, []);
 
   const handleCachedKeywordsChange = useCallback(async (keywords) => {
-    const normalized = await persistCachedKeywords(keywords);
-    setKeywordsState((prev) => ({ ...prev, cached: normalized }));
+    const result = await persistCachedKeywords(keywords);
+    setKeywordsState((prev) => ({ ...prev, cached: result.keywords }));
+    if (!result.ok) {
+      toast.error(result.error || "Could not save keywords");
+    }
   }, []);
 
   useEffect(() => {
@@ -3672,47 +3725,53 @@ export default function TrendingHub() {
           labelOverrides={tabLabels}
           alwaysShowBadgeFor={["today", "tomorrow"]}
         />
-        {pageTab === "today" ? (
-          <ScheduledPipelineView
-            dateKey={todayTabKey}
-            todayTabKey={todayTabKey}
-            tomorrowTabKey={tomorrowTabKey}
-            tasks={scheduleTasks}
-            loading={scheduleLoading}
-            onRefresh={loadScheduleTasks}
-          />
-        ) : pageTab === "tomorrow" ? (
-          <ScheduledPipelineView
-            dateKey={tomorrowTabKey}
-            todayTabKey={todayTabKey}
-            tomorrowTabKey={tomorrowTabKey}
-            tasks={scheduleTasks}
-            loading={scheduleLoading}
-            onRefresh={loadScheduleTasks}
-          />
-        ) : !keywordsReady ? (
-          <div className="flex-1 flex items-center justify-center py-24">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-3 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">Loading keywords…</p>
-            </div>
-          </div>
-        ) : pageTab === "watch" ? (
-          <CompetitorWatch
-            cacheRef={competitorVideoCacheRef}
-            onCacheChange={handleCacheChange}
-            keywordsState={keywordsState}
-            onTypeKeywordsChange={handleTypeKeywordsChange}
-          />
-        ) : (
-          <CachedVideosView
-            cacheRef={competitorVideoCacheRef}
-            cacheVersion={cacheVersion}
-            keywordsState={keywordsState}
-            onCachedKeywordsChange={handleCachedKeywordsChange}
-            onTypeKeywordsChange={handleTypeKeywordsChange}
-          />
-        )}
+        <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
+          <TrendingHubTabPanel tabId="today" activeTab={pageTab}>
+            <ScheduledPipelineView
+              dateKey={todayTabKey}
+              todayTabKey={todayTabKey}
+              tomorrowTabKey={tomorrowTabKey}
+              tasks={scheduleTasks}
+              loading={scheduleLoading}
+              onRefresh={loadScheduleTasks}
+            />
+          </TrendingHubTabPanel>
+          <TrendingHubTabPanel tabId="tomorrow" activeTab={pageTab}>
+            <ScheduledPipelineView
+              dateKey={tomorrowTabKey}
+              todayTabKey={todayTabKey}
+              tomorrowTabKey={tomorrowTabKey}
+              tasks={scheduleTasks}
+              loading={scheduleLoading}
+              onRefresh={loadScheduleTasks}
+            />
+          </TrendingHubTabPanel>
+          <TrendingHubTabPanel tabId="watch" activeTab={pageTab}>
+            {keywordsReady ? (
+              <CompetitorWatch
+                cacheRef={competitorVideoCacheRef}
+                onCacheChange={handleCacheChange}
+                keywordsState={keywordsState}
+                onTypeKeywordsChange={handleTypeKeywordsChange}
+              />
+            ) : (
+              <TrendingHubKeywordsLoading />
+            )}
+          </TrendingHubTabPanel>
+          <TrendingHubTabPanel tabId="cached" activeTab={pageTab}>
+            {keywordsReady ? (
+              <CachedVideosView
+                cacheRef={competitorVideoCacheRef}
+                cacheVersion={cacheVersion}
+                keywordsState={keywordsState}
+                onCachedKeywordsChange={handleCachedKeywordsChange}
+                onTypeKeywordsChange={handleTypeKeywordsChange}
+              />
+            ) : (
+              <TrendingHubKeywordsLoading />
+            )}
+          </TrendingHubTabPanel>
+        </div>
       </div>
     </AdminLayout>
   );
