@@ -15,6 +15,41 @@ export function getTomorrowDateKey() {
   return toDateKey(tmrw);
 }
 
+/** Mon–Sat; Sunday rolls forward to Monday. */
+export function advanceToWorkingDay(date) {
+  const d = new Date(date);
+  if (d.getDay() === 0) {
+    d.setDate(d.getDate() + 1);
+  }
+  return d;
+}
+
+/** Today's tab date — skips Sunday when today is Sunday. */
+export function getTodayTabDateKey() {
+  return toDateKey(advanceToWorkingDay(new Date()));
+}
+
+/** Tomorrow's tab date — next working day after today's tab date. */
+export function getTomorrowTabDateKey() {
+  const todayTab = advanceToWorkingDay(new Date());
+  const next = new Date(todayTab);
+  next.setDate(next.getDate() + 1);
+  return toDateKey(advanceToWorkingDay(next));
+}
+
+export function formatScheduleTabLabel(dateKey) {
+  const calendarToday = toDateKey(new Date());
+  const calendarTomorrow = getTomorrowDateKey();
+  const todayTabKey = getTodayTabDateKey();
+  const tomorrowTabKey = getTomorrowTabDateKey();
+
+  if (dateKey === todayTabKey && dateKey === calendarToday) return "Today's";
+  if (dateKey === tomorrowTabKey && dateKey === calendarTomorrow) return "Tomorrow's";
+
+  const d = new Date(`${dateKey}T00:00:00`);
+  return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+}
+
 export function filterTomorrowScriptsReady(tasks) {
   const tomorrowKey = getTomorrowDateKey();
   return (Array.isArray(tasks) ? tasks : []).filter(

@@ -24,6 +24,11 @@ import {
   ChevronsDown,
   Save,
   CalendarPlus,
+  CalendarDays,
+  ChevronRight,
+  CheckCircle2,
+  PlayCircle,
+  ScrollText,
   ExternalLink,
   Filter,
   Layers,
@@ -35,6 +40,7 @@ import {
   Database,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
+import PageTabBar from "../../components/PageTabBar";
 import VideoAIModal from "../../components/VideoAIModal";
 import api from "../../services/api";
 import { countWords } from "../../utils/aiPromptUtils";
@@ -45,6 +51,13 @@ import {
   sortKeywordsByMatchCount,
   unionKeywords,
 } from "../../utils/competitorKeywords";
+import {
+  toDateKey,
+  getTomorrowDateKey,
+  getTodayTabDateKey,
+  getTomorrowTabDateKey,
+  formatScheduleTabLabel,
+} from "../../utils/videoTaskSchedule";
 
 function normalizeCompetitorHandle(handle) {
   return String(handle || "").trim().replace(/^@/, "").toLowerCase();
@@ -2069,7 +2082,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
     <div className="flex flex-col h-full min-h-0 overflow-hidden gap-3 px-4 pt-3 pb-4">
       {/* Premium Compact Single-Row Filter Dashboard */}
       <div className="flex-shrink-0 z-30">
-        <div className="relative flex flex-col md:flex-row items-stretch md:items-center gap-2 p-2 bg-white/40 dark:bg-gray-900/40 backdrop-blur-2xl border border-white/60 dark:border-gray-800/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.02)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.25)] w-full overflow-visible">
+        <div className={`relative flex flex-col md:flex-row items-stretch md:items-center gap-2 p-2 bg-white/40 dark:bg-gray-900/40 backdrop-blur-2xl border border-white/60 dark:border-gray-800/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.02)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.25)] w-full overflow-visible ${showTypeDropdown || showChannelDropdown || showPeriodDropdown || showViewDropdown || showFormatDropdown || showKeywordsDropdown || showSortDropdown ? "z-[110]" : ""}`}>
           
           {/* Group A: Source Selection (Category & Sources) */}
           <div className="grid grid-cols-2 md:flex md:items-center gap-2 flex-shrink-0">
@@ -2102,7 +2115,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
               </button>
 
               {showTypeDropdown && (
-                <div className="absolute top-full left-0 mt-2 w-56 rounded-[18px] bg-white/95 dark:bg-gray-950/95 backdrop-blur-2xl border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute top-full left-0 mt-2 w-56 rounded-[18px] bg-white dark:bg-gray-950 border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                   <div className="max-h-80 overflow-y-auto custom-scrollbar">
                     {types.map((t) => (
                       <button
@@ -2149,7 +2162,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
               </button>
 
               {showChannelDropdown && (
-                <div className="absolute top-full right-0 md:left-0 mt-2 w-52 rounded-[18px] bg-white/95 dark:bg-gray-955/95 backdrop-blur-2xl border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute top-full right-0 md:left-0 mt-2 w-52 rounded-[18px] bg-white dark:bg-gray-950 border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                   <button
                     onClick={() => {
                       setActiveChannel("all");
@@ -2203,7 +2216,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
               </button>
 
               {showPeriodDropdown && (
-                <div className="absolute top-full left-0 mt-2 w-36 rounded-[18px] bg-white/95 dark:bg-gray-950/95 backdrop-blur-2xl border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute top-full left-0 mt-2 w-36 rounded-[18px] bg-white dark:bg-gray-950 border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 animate-in fade-in zoom-in-95 duration-200">
                   {COMP_PERIODS.map((p) => (
                     <button key={p.value} onClick={() => { setPeriod(p.value); setShowPeriodDropdown(false); }} className="w-full flex items-center justify-between px-4 py-2 text-[10px] font-bold hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors dark:text-white">
                       {p.label}
@@ -2232,7 +2245,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
               </button>
 
               {showViewDropdown && (
-                <div className="absolute top-full right-0 md:left-0 mt-2 w-40 rounded-[18px] bg-white/95 dark:bg-gray-950/95 backdrop-blur-2xl border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute top-full right-0 md:left-0 mt-2 w-40 rounded-[18px] bg-white dark:bg-gray-950 border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 animate-in fade-in zoom-in-95 duration-200">
                   {COMP_VIEW_FILTERS.map((vf) => (
                     <button key={vf.value} onClick={() => { setMinViews(vf.value); setShowViewDropdown(false); }} className="w-full flex items-center justify-between px-4 py-2 text-[10px] font-bold hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors dark:text-white">
                       {vf.label}
@@ -2261,7 +2274,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
               </button>
 
               {showFormatDropdown && (
-                <div className="absolute top-full left-0 mt-2 w-36 rounded-[18px] bg-white/95 dark:bg-gray-955/95 backdrop-blur-2xl border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute top-full left-0 mt-2 w-36 rounded-[18px] bg-white dark:bg-gray-950 border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 animate-in fade-in zoom-in-95 duration-200">
                   {COMP_FORMATS.map((f) => (
                     <button key={f.value} onClick={() => { setCompFormat(f.value); setShowFormatDropdown(false); }} className="w-full flex items-center justify-between px-4 py-2 text-[10px] font-bold hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors dark:text-white">
                       {f.label}
@@ -2296,7 +2309,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
               </button>
 
               {showKeywordsDropdown && activeType && (
-                <div className="absolute top-full right-0 md:left-0 mt-2 w-56 rounded-[18px] bg-white/95 dark:bg-gray-950/95 backdrop-blur-2xl border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-2 animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute top-full right-0 md:left-0 mt-2 w-56 rounded-[18px] bg-white dark:bg-gray-950 border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-2 animate-in fade-in zoom-in-95 duration-200">
                   <div className="px-3 pb-2">
                     <p className="text-[9px] font-black uppercase tracking-wider text-gray-400 mb-2">Title keywords</p>
                     <div className="flex items-center gap-1.5">
@@ -2380,7 +2393,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
               </button>
 
               {showSortDropdown && (
-                <div className="absolute top-full right-0 mt-2 w-36 rounded-[18px] bg-white/95 dark:bg-gray-955/95 backdrop-blur-2xl border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute top-full right-0 mt-2 w-36 rounded-[18px] bg-white dark:bg-gray-950 border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                   {COMP_SORTS.map((s) => (
                     <button
                       key={s.value}
@@ -2498,9 +2511,9 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
 
         </div>
 
-        {/* Keyword pills — click to toggle title filter */}
+        {/* Keyword pills — z-0 so filter-bar dropdowns stack above */}
         {activeType && compKeywords.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 mt-2 px-1">
+          <div className="relative z-0 flex flex-wrap items-center gap-1.5 mt-2 px-1">
             {sortedCompKeywords.map((kw) => (
               <FilterChip
                 key={kw}
@@ -2595,38 +2608,390 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
 }
 
 const TRENDING_PAGE_TABS = [
-  { id: "watch", label: "Competitor Watch", icon: Eye },
-  { id: "cached", label: "Cached", icon: Database },
+  { id: "watch", label: "Competitor Watch", shortLabel: "Watch", icon: Eye },
+  { id: "cached", label: "Cached", shortLabel: "Cached", icon: Database },
+  { id: "today", label: "Today's", shortLabel: "Today", icon: CalendarDays },
+  { id: "tomorrow", label: "Tomorrow's", shortLabel: "Tomorrow", icon: CalendarDays },
 ];
 
-function PageTabBar({ activeTab, onChange }) {
+const SCHEDULE_ASSIGNED_PILL = {
+  pooja: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
+  mahalakshmi: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+};
+
+const SCHEDULE_FORMAT_PILL = {
+  short: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+  long: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+};
+
+const SCHEDULE_STATUS_META = {
+  todo: { label: "To Do", pill: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300" },
+  in_progress: { label: "In Progress", pill: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+  completed: { label: "Done", pill: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+};
+
+function getScheduleAssigneeDisplayName(key) {
+  if (!key) return "";
+  const k = String(key).toLowerCase();
+  return k.charAt(0).toUpperCase() + k.slice(1);
+}
+
+function taskMatchesScheduleAssigneeFilter(task, filterKey) {
+  if (!filterKey) return true;
+  const assignees = Array.isArray(task.assignedTo)
+    ? task.assignedTo.filter(Boolean)
+    : task.assignedTo
+      ? [task.assignedTo]
+      : [];
+  if (filterKey === "Unassigned") return assignees.length === 0;
+  return assignees.some((a) => String(a).toLowerCase() === filterKey.toLowerCase());
+}
+
+function buildScheduleAssignmentSummary(tasks) {
+  const summary = {};
+  const unassigned = { short: 0, long: 0, count: 0 };
+  let hasUnassigned = false;
+
+  tasks.forEach((t) => {
+    const assignees = Array.isArray(t.assignedTo) ? t.assignedTo : [t.assignedTo].filter(Boolean);
+    const formats = Array.isArray(t.contentFormat) ? t.contentFormat : [t.contentFormat].filter(Boolean);
+
+    if (assignees.length === 0) {
+      hasUnassigned = true;
+      unassigned.count += 1;
+      formats.forEach((f) => {
+        const fl = f.toLowerCase();
+        if (fl.includes("short")) unassigned.short += 1;
+        else if (fl.includes("long")) unassigned.long += 1;
+      });
+    } else {
+      assignees.forEach((name) => {
+        if (!summary[name]) summary[name] = { short: 0, long: 0, count: 0 };
+        summary[name].count += 1;
+        formats.forEach((f) => {
+          const fl = f.toLowerCase();
+          if (fl.includes("short")) summary[name].short += 1;
+          else if (fl.includes("long")) summary[name].long += 1;
+        });
+      });
+    }
+  });
+
+  if (hasUnassigned && unassigned.count > 0) {
+    summary.Unassigned = unassigned;
+  }
+  return summary;
+}
+
+function buildScheduleDailySummary(tasks) {
+  let long = 0;
+  let short = 0;
+  tasks.forEach((t) => {
+    const formats = Array.isArray(t.contentFormat) ? t.contentFormat : [t.contentFormat].filter(Boolean);
+    formats.forEach((f) => {
+      const fl = f.toLowerCase();
+      if (fl.includes("short")) short += 1;
+      else if (fl.includes("long")) long += 1;
+    });
+  });
+  return { long, short, total: long + short };
+}
+
+function formatScheduleDateLabel(key, todayTabKey, tomorrowTabKey) {
+  if (!key) return "";
+  const d = new Date(`${key}T00:00:00`);
+  const calendarToday = toDateKey(new Date());
+  const calendarTomorrow = getTomorrowDateKey();
+  const label = d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+  if (key === todayTabKey && key === calendarToday) return `Today — ${label}`;
+  if (key === tomorrowTabKey && key === calendarTomorrow) return `Tomorrow — ${label}`;
+  return label;
+}
+
+function getScheduleTaskUrl(task) {
+  if (task.url) return task.url;
+  if (task.videoId && (task.platform === "youtube" || !task.platform)) {
+    return `https://www.youtube.com/watch?v=${task.videoId}`;
+  }
+  return null;
+}
+
+function sortScheduleTasksForDisplay(a, b) {
+  const idA = a.customVideoId != null ? Number(a.customVideoId) : Infinity;
+  const idB = b.customVideoId != null ? Number(b.customVideoId) : Infinity;
+  if (idA !== idB) return idA - idB;
+  return String(a.title || "").localeCompare(String(b.title || ""), undefined, { sensitivity: "base" });
+}
+
+function ScheduleAssigneeBadges({ summary, assigneeFilter, onFilterChange, onClearFilter }) {
+  if (Object.keys(summary).length === 0) return null;
+
   return (
-    <div
-      className="flex gap-1 border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide -mx-1 px-1 flex-shrink-0"
-      role="tablist"
-      aria-label="Trending Hub views"
-    >
-      {TRENDING_PAGE_TABS.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
+    <div className="flex flex-nowrap items-center gap-2 overflow-x-auto max-w-full min-w-0 pb-0.5 scrollbar-hide">
+      {assigneeFilter && (
+        <button
+          type="button"
+          onClick={onClearFilter}
+          className="inline-flex items-center shrink-0 px-2 py-0.5 rounded-xl text-[9px] font-bold uppercase tracking-wider bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-all shadow-sm"
+        >
+          All
+        </button>
+      )}
+      {Object.entries(summary).map(([name, counts]) => {
+        const isUn = name === "Unassigned";
+        const isActive = assigneeFilter === name;
+        const dotColor = isUn
+          ? "bg-amber-400"
+          : name.toLowerCase() === "pooja"
+            ? "bg-pink-400"
+            : name.toLowerCase() === "mahalakshmi"
+              ? "bg-purple-400"
+              : "bg-blue-400";
+        const textColor = isUn
+          ? "text-amber-600 dark:text-amber-400"
+          : SCHEDULE_ASSIGNED_PILL[name.toLowerCase()]?.split(" ").pop() || "text-gray-700 dark:text-gray-300";
+        const totalSum = (counts.long || 0) + (counts.short || 0);
+
         return (
           <button
-            key={tab.id}
+            key={name}
             type="button"
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onChange(tab.id)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap ${
+            onClick={() => onFilterChange(isActive ? null : name)}
+            title={`Filter by ${isUn ? name : getScheduleAssigneeDisplayName(name)}`}
+            className={`flex items-center gap-1 shrink-0 pl-2 pr-1.5 py-0.5 rounded-xl border shadow-sm backdrop-blur-md transition-all cursor-pointer ${
               isActive
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                ? "ring-2 ring-blue-500/50 border-blue-300 dark:border-blue-600 bg-blue-50/90 dark:bg-blue-900/30 shadow-md scale-[1.02]"
+                : "bg-white/60 dark:bg-gray-800/60 border-white/50 dark:border-gray-700/50 hover:bg-white dark:hover:bg-gray-800 hover:shadow-md hover:-translate-y-px"
             }`}
           >
-            <Icon size={16} className="flex-shrink-0" />
-            {tab.label}
+            <div className="flex items-center gap-1.5 mr-0.5">
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor} shadow-[0_0_8px_rgba(0,0,0,0.1)]`} />
+              <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${textColor}`}>
+                {isUn ? name : getScheduleAssigneeDisplayName(name)}
+              </span>
+            </div>
+            <div className="flex items-center gap-0.5 shrink-0">
+              {totalSum > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-lg text-[9px] font-black bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 shadow-sm border border-transparent mr-0.5">
+                  {totalSum}
+                </span>
+              )}
+              {counts.long > 0 && (
+                <span className={`inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-lg text-[9px] font-bold shrink-0 ${SCHEDULE_FORMAT_PILL.long} shadow-sm border border-transparent`}>
+                  {counts.long}L
+                </span>
+              )}
+              {counts.short > 0 && (
+                <span className={`inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-lg text-[9px] font-bold shrink-0 ${SCHEDULE_FORMAT_PILL.short} shadow-sm border border-transparent`}>
+                  {counts.short}S
+                </span>
+              )}
+            </div>
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function ScheduledPipelineView({ dateKey, todayTabKey, tomorrowTabKey, tasks, loading, onRefresh }) {
+  const navigate = useNavigate();
+  const [assigneeFilter, setAssigneeFilter] = useState(null);
+
+  const dayTasks = useMemo(
+    () =>
+      tasks
+        .filter((t) => t.scheduledDate && toDateKey(t.scheduledDate) === dateKey)
+        .sort(sortScheduleTasksForDisplay),
+    [tasks, dateKey],
+  );
+
+  const displayedTasks = useMemo(
+    () => (assigneeFilter ? dayTasks.filter((t) => taskMatchesScheduleAssigneeFilter(t, assigneeFilter)) : dayTasks),
+    [dayTasks, assigneeFilter],
+  );
+
+  const assignmentSummary = useMemo(() => buildScheduleAssignmentSummary(dayTasks), [dayTasks]);
+  const dailySummary = useMemo(() => buildScheduleDailySummary(dayTasks), [dayTasks]);
+  const completed = dayTasks.filter((t) => t.status === "completed").length;
+  const inProgress = dayTasks.filter((t) => t.status === "in_progress").length;
+  const isTodayTab = dateKey === todayTabKey;
+  const emptyDateLabel = useMemo(() => {
+    const calendarToday = toDateKey(new Date());
+    const calendarTomorrow = getTomorrowDateKey();
+    if (dateKey === todayTabKey && dateKey === calendarToday) return "today";
+    if (dateKey === tomorrowTabKey && dateKey === calendarTomorrow) return "tomorrow";
+    return formatScheduleTabLabel(dateKey);
+  }, [dateKey, todayTabKey, tomorrowTabKey]);
+
+  useEffect(() => {
+    setAssigneeFilter(null);
+  }, [dateKey]);
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 sm:p-4 bg-white/70 dark:bg-gray-900/60 backdrop-blur border border-gray-200/80 dark:border-gray-800/80 rounded-xl sm:rounded-2xl flex-shrink-0">
+        <div className="flex flex-col gap-2 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`text-sm font-black whitespace-nowrap ${isTodayTab ? "text-blue-600 dark:text-blue-400" : "text-gray-800 dark:text-gray-200"}`}>
+              {formatScheduleDateLabel(dateKey, todayTabKey, tomorrowTabKey)}
+            </span>
+            {dailySummary.total > 0 && (
+              <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gray-50 dark:bg-gray-800/60 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700/50 shadow-sm shrink-0">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  {dailySummary.total} Tasks
+                </span>
+                <div className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
+                <div className="flex items-center gap-1.5">
+                  {dailySummary.long > 0 && (
+                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{dailySummary.long}L</span>
+                  )}
+                  {dailySummary.short > 0 && (
+                    <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400">{dailySummary.short}S</span>
+                  )}
+                </div>
+              </div>
+            )}
+            {dayTasks.length > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50">
+                <CheckCircle2 size={10} /> {completed}/{dayTasks.length}
+              </span>
+            )}
+            {inProgress > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
+                <PlayCircle size={10} /> {inProgress}
+              </span>
+            )}
+          </div>
+          <ScheduleAssigneeBadges
+            summary={assignmentSummary}
+            assigneeFilter={assigneeFilter}
+            onFilterChange={setAssigneeFilter}
+            onClearFilter={() => setAssigneeFilter(null)}
+          />
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => navigate("/admin/production-hub")}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/50 transition-colors"
+          >
+            Production Hub
+            <ChevronRight size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={loading}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+            title="Refresh schedule"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <div className="w-10 h-10 border-3 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">Loading schedule…</p>
+          </div>
+        ) : dayTasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 px-6 text-center rounded-2xl border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50/40 dark:bg-gray-800/20">
+            <CalendarDays className="h-10 w-10 text-gray-400 dark:text-gray-500 mb-3" aria-hidden />
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              No tasks scheduled for {emptyDateLabel}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-sm">
+              Schedule competitor videos from Competitor Watch or Cached tabs, or add tasks in Production Hub.
+            </p>
+          </div>
+        ) : displayedTasks.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-12">No tasks match this assignee filter.</p>
+        ) : (
+          <div className="space-y-2 pb-2">
+            {displayedTasks.map((task) => {
+              const taskUrl = getScheduleTaskUrl(task);
+              const statusMeta = SCHEDULE_STATUS_META[task.status] || SCHEDULE_STATUS_META.todo;
+              const formats = Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat].filter(Boolean);
+              const assignees = Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo].filter(Boolean);
+              const hasTaskScript = Boolean(String(task.script ?? "").trim());
+
+              return (
+                <div
+                  key={task._id}
+                  className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/60 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    {task.thumbnail ? (
+                      <img src={task.thumbnail} alt="" className="w-16 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-800 flex-shrink-0" />
+                    ) : (
+                      <div className="w-16 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                        <Video size={16} className="text-gray-400" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-2">
+                        {hasTaskScript && (
+                          <ScrollText size={12} className="text-emerald-500 flex-shrink-0 mt-0.5" aria-label="Has script" />
+                        )}
+                        {taskUrl ? (
+                          <a
+                            href={taskUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          >
+                            {task.title}
+                          </a>
+                        ) : (
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">{task.title}</p>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                        {[task.channelType, task.channelName].filter(Boolean).join(" • ")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 sm:justify-end pl-[4.25rem] sm:pl-0">
+                    {assignees.map((name) => (
+                      <span
+                        key={name}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide ${SCHEDULE_ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+                      >
+                        {getScheduleAssigneeDisplayName(name)}
+                      </span>
+                    ))}
+                    {formats.map((fmt) => (
+                      <span
+                        key={fmt}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide ${SCHEDULE_FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+                      >
+                        {fmt === "short" ? "Shorts" : fmt === "long" ? "Long" : fmt}
+                      </span>
+                    ))}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide ${statusMeta.pill}`}>
+                      {statusMeta.label}
+                    </span>
+                    {taskUrl && (
+                      <a
+                        href={taskUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center h-7 w-7 rounded-lg text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        title="Open video"
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -3206,6 +3571,50 @@ export default function TrendingHub() {
   const [cacheVersion, setCacheVersion] = useState(0);
   const [keywordsState, setKeywordsState] = useState(EMPTY_KEYWORDS_STATE);
   const [keywordsReady, setKeywordsReady] = useState(false);
+  const [scheduleTasks, setScheduleTasks] = useState([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+
+  const todayTabKey = useMemo(() => getTodayTabDateKey(), []);
+  const tomorrowTabKey = useMemo(() => getTomorrowTabDateKey(), []);
+
+  const loadScheduleTasks = useCallback(async () => {
+    setScheduleLoading(true);
+    try {
+      const { data } = await api.get("/video-tasks?bucket=schedule");
+      setScheduleTasks(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error("Could not load schedule");
+    } finally {
+      setScheduleLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadScheduleTasks();
+  }, [loadScheduleTasks]);
+
+  useEffect(() => {
+    if (pageTab === "today" || pageTab === "tomorrow") {
+      void loadScheduleTasks();
+    }
+  }, [pageTab, loadScheduleTasks]);
+
+  const tabCounts = useMemo(() => {
+    const countForDate = (dateKey) =>
+      scheduleTasks.filter((t) => t.scheduledDate && toDateKey(t.scheduledDate) === dateKey).length;
+    return {
+      today: countForDate(todayTabKey),
+      tomorrow: countForDate(tomorrowTabKey),
+    };
+  }, [scheduleTasks, todayTabKey, tomorrowTabKey]);
+
+  const tabLabels = useMemo(
+    () => ({
+      today: formatScheduleTabLabel(todayTabKey),
+      tomorrow: formatScheduleTabLabel(tomorrowTabKey),
+    }),
+    [todayTabKey, tomorrowTabKey],
+  );
 
   const handleCacheChange = useCallback(() => {
     persistCompetitorVideoCacheMap(competitorVideoCacheRef.current);
@@ -3254,31 +3663,55 @@ export default function TrendingHub() {
   return (
     <AdminLayout title="Trending Hub" titleInfo="Competitor video analysis & tracking" icon={Youtube} contentFit noPadding>
       <div className="flex flex-col h-full min-h-0 overflow-y-auto sm:overflow-hidden w-full max-w-[1600px] mx-auto custom-scrollbar px-3 sm:px-4 pt-2 pb-4 gap-1.5">
-        <PageTabBar activeTab={pageTab} onChange={setPageTab} />
-        {keywordsReady ? (
-          pageTab === "watch" ? (
-            <CompetitorWatch
-              cacheRef={competitorVideoCacheRef}
-              onCacheChange={handleCacheChange}
-              keywordsState={keywordsState}
-              onTypeKeywordsChange={handleTypeKeywordsChange}
-            />
-          ) : (
-            <CachedVideosView
-              cacheRef={competitorVideoCacheRef}
-              cacheVersion={cacheVersion}
-              keywordsState={keywordsState}
-              onCachedKeywordsChange={handleCachedKeywordsChange}
-              onTypeKeywordsChange={handleTypeKeywordsChange}
-            />
-          )
-        ) : (
+        <PageTabBar
+          tabs={TRENDING_PAGE_TABS}
+          activeTab={pageTab}
+          onChange={setPageTab}
+          ariaLabel="Trending Hub views"
+          tabCounts={tabCounts}
+          labelOverrides={tabLabels}
+          alwaysShowBadgeFor={["today", "tomorrow"]}
+        />
+        {pageTab === "today" ? (
+          <ScheduledPipelineView
+            dateKey={todayTabKey}
+            todayTabKey={todayTabKey}
+            tomorrowTabKey={tomorrowTabKey}
+            tasks={scheduleTasks}
+            loading={scheduleLoading}
+            onRefresh={loadScheduleTasks}
+          />
+        ) : pageTab === "tomorrow" ? (
+          <ScheduledPipelineView
+            dateKey={tomorrowTabKey}
+            todayTabKey={todayTabKey}
+            tomorrowTabKey={tomorrowTabKey}
+            tasks={scheduleTasks}
+            loading={scheduleLoading}
+            onRefresh={loadScheduleTasks}
+          />
+        ) : !keywordsReady ? (
           <div className="flex-1 flex items-center justify-center py-24">
             <div className="flex flex-col items-center gap-3">
               <div className="w-10 h-10 border-3 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
               <p className="text-sm text-gray-500 dark:text-gray-400">Loading keywords…</p>
             </div>
           </div>
+        ) : pageTab === "watch" ? (
+          <CompetitorWatch
+            cacheRef={competitorVideoCacheRef}
+            onCacheChange={handleCacheChange}
+            keywordsState={keywordsState}
+            onTypeKeywordsChange={handleTypeKeywordsChange}
+          />
+        ) : (
+          <CachedVideosView
+            cacheRef={competitorVideoCacheRef}
+            cacheVersion={cacheVersion}
+            keywordsState={keywordsState}
+            onCachedKeywordsChange={handleCachedKeywordsChange}
+            onTypeKeywordsChange={handleTypeKeywordsChange}
+          />
         )}
       </div>
     </AdminLayout>

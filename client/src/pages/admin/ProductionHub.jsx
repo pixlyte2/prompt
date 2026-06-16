@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api, { httpClient } from "../../services/api";
-import { downloadVoiceOverFile, uploadVoiceOverFile } from "../../utils/voiceOverDownload";
+import { downloadVoiceOverFile, uploadVoiceOverFile, formatVoiceOverMaxSize, validateVoiceOverFileSize } from "../../utils/voiceOverDownload";
 import { VOICE_OVER_ACCEPT, isVoiceOverFileAllowed, voiceOverFileTypeHint } from "../../constants/voiceOverFileTypes";
 import { countWords } from "../../utils/aiPromptUtils";
 
@@ -1686,7 +1686,7 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
       onClose();
       void onSaved?.();
     } catch (err) {
-      const msg = err.response?.data?.message || (isEdit ? "Failed to update" : "Failed to add");
+      const msg = err.message || err.response?.data?.message || (isEdit ? "Failed to update" : "Failed to add");
       setError(msg);
       toast.error(msg);
     } finally {
@@ -1941,13 +1941,19 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
                     e.target.value = "";
                     return;
                   }
+                  const sizeError = validateVoiceOverFileSize(f);
+                  if (sizeError) {
+                    toast.error(sizeError);
+                    e.target.value = "";
+                    return;
+                  }
                   setPendingVoiceFile(f);
                   setMarkVoiceOverRemoved(false);
                 }
               }}
             />
             <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-              Max 40 MB. Formats: {voiceOverFileTypeHint()}. Saving replaces any existing voice-over file.
+              Max {formatVoiceOverMaxSize()}. Formats: {voiceOverFileTypeHint()}. Saving replaces any existing voice-over file.
             </p>
             {pendingVoiceFile && (
               <p className="text-[10px] text-emerald-700 dark:text-emerald-300 mt-1 font-medium truncate" title={pendingVoiceFile.name}>

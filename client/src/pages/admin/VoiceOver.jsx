@@ -28,9 +28,10 @@ import {
   CalendarDays,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
+import PageTabBar from "../../components/PageTabBar";
 import api, { httpClient } from "../../services/api";
 import { getRole } from "../../utils/api";
-import { downloadVoiceOverFile, uploadVoiceOverFile } from "../../utils/voiceOverDownload";
+import { downloadVoiceOverFile, uploadVoiceOverFile, validateVoiceOverFileSize } from "../../utils/voiceOverDownload";
 import { VOICE_OVER_ACCEPT, isVoiceOverFileAllowed, voiceOverFileTypeHint } from "../../constants/voiceOverFileTypes";
 
 const PLATFORM_META = {
@@ -115,8 +116,8 @@ function formatCompletedDate(task) {
 }
 
 const PAGE_TABS = [
-  { id: "schedule", label: "Schedule", icon: CalendarDays },
-  { id: "vo-training", label: "VO Training", icon: GraduationCap },
+  { id: "schedule", label: "Schedule", shortLabel: "Schedule", icon: CalendarDays },
+  { id: "vo-training", label: "VO Training", shortLabel: "Training", icon: GraduationCap },
 ];
 
 const SCHEDULE_FILTERS = (metrics) => [
@@ -134,41 +135,6 @@ function getAllowedTabsForRole(role) {
 function getDefaultTabForRole(role) {
   if (role === "voice_over_training") return "vo-training";
   return "schedule";
-}
-
-function PageTabBar({ tabs, activeTab, onChange, trainingCount }) {
-  if (!tabs.length) return null;
-  return (
-    <div
-      className="flex gap-1 border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide -mx-1 px-1 flex-shrink-0"
-      role="tablist"
-      aria-label="Voice-over views"
-    >
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
-        const label =
-          tab.id === "vo-training" ? `${tab.label} (${trainingCount})` : tab.label;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onChange(tab.id)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap ${
-              isActive
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
-            }`}
-          >
-            <Icon size={16} className="flex-shrink-0" />
-            {label}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 function sanitizeFilenameBase(title) {
@@ -401,6 +367,11 @@ function VoiceOverTaskRow({
     if (!file) return;
     if (!isVoiceOverFileAllowed(file)) {
       toast.error(`Unsupported file type. Allowed: ${voiceOverFileTypeHint()}`);
+      return;
+    }
+    const sizeError = validateVoiceOverFileSize(file);
+    if (sizeError) {
+      toast.error(sizeError);
       return;
     }
     setUploadingTaskId(taskKey);
@@ -1151,7 +1122,14 @@ export default function VoiceOver() {
           tabs={allowedTabs}
           activeTab={pageTab}
           onChange={setPageTab}
-          trainingCount={trainingTasks.length}
+          ariaLabel="Voice-over views"
+          getTabLabel={(tab, { mobile }) => {
+            if (tab.id === "vo-training") {
+              const base = mobile ? "Training" : tab.label;
+              return `${base} (${trainingTasks.length})`;
+            }
+            return mobile ? (tab.shortLabel ?? tab.label) : tab.label;
+          }}
         />
         
         {/* Search and Action Bar — schedule tab only */}

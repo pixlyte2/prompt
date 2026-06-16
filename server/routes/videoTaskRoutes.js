@@ -5,11 +5,16 @@ const allowRoles = require("../middleware/roleMiddleware");
 const ctrl = require("../controllers/videoTaskController");
 const voiceOverUpload = require("../middleware/voiceOverUpload");
 
+const VOICE_OVER_MAX_BYTES = 4 * 1024 * 1024;
+
 function handleVoiceOverUpload(req, res, next) {
   voiceOverUpload.single("file")(req, res, (err) => {
     if (err) {
-      const msg = err.message || "Upload failed";
       const code = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+      const msg =
+        err.code === "LIMIT_FILE_SIZE"
+          ? `File is too large. Maximum upload size is ${Math.round(VOICE_OVER_MAX_BYTES / (1024 * 1024))} MB. Use MP3 or M4A instead of WAV.`
+          : err.message || "Upload failed";
       return res.status(code).json({ message: msg });
     }
     next();

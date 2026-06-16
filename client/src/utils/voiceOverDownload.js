@@ -1,8 +1,33 @@
 import axios from "axios";
 import api, { httpClient } from "../services/api";
 
-/** Keep in sync with server/middleware/voiceOverUpload.js */
-export const VOICE_OVER_MAX_BYTES = 40 * 1024 * 1024;
+/** Keep in sync with server/middleware/voiceOverUpload.js (Vercel request body cap is 4.5 MB) */
+export const VOICE_OVER_MAX_BYTES = 4 * 1024 * 1024;
+
+/**
+ * @param {number} bytes
+ * @returns {string}
+ */
+export function formatFileSizeBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes < 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** @returns {string} */
+export function formatVoiceOverMaxSize() {
+  return formatFileSizeBytes(VOICE_OVER_MAX_BYTES);
+}
+
+/**
+ * @param {File | null | undefined} file
+ * @returns {string | null} error message, or null if size is OK
+ */
+export function validateVoiceOverFileSize(file) {
+  if (!file || file.size <= VOICE_OVER_MAX_BYTES) return null;
+  return `File is too large (${formatFileSizeBytes(file.size)}). Maximum size is ${formatVoiceOverMaxSize()}. Use MP3 or M4A, or shorten the recording.`;
+}
 
 /** Assume ~256 Kbps upload — timeout scales with file size for slow connections */
 const MIN_UPLOAD_BYTES_PER_SEC = 32 * 1024;
@@ -56,6 +81,10 @@ function uploadErrorMessage(err) {
   if (!err || typeof err !== "object") return "Upload failed";
   if (err.code === "ECONNABORTED" || String(err.message || "").includes("timeout")) {
     return "Upload timed out on a slow connection. Please wait and try again, or use a smaller file.";
+  }
+  const status = err.response?.status;
+  if (status === 413) {
+    return `File is too large. Maximum upload size is ${formatVoiceOverMaxSize()}. Use MP3 or M4A instead of WAV, or shorten the recording.`;
   }
   if (err.code === "ERR_NETWORK" || !err.response) {
     return "Network error during upload. Check your connection and try again.";
@@ -118,6 +147,9 @@ export async function downloadVoiceOverFile(task) {
  * @param {function(number): void} [onProgress]
  */
 export async function uploadVoiceOverFile(taskId, file, onProgress) {
+  const sizeError = validateVoiceOverFileSize(file);
+  if (sizeError) throw new Error(sizeError);
+
   const timeout = voiceOverUploadTimeoutMs(file.size);
   const fd = new FormData();
   fd.append("file", file);

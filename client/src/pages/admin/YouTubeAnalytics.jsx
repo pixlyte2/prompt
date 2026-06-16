@@ -44,6 +44,7 @@ import {
 } from "recharts";
 import { toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
+import PageTabBar from "../../components/PageTabBar";
 import api from "../../services/api";
 import {
   formatCompact,
@@ -606,8 +607,8 @@ const VIDEO_LIMIT_OPTIONS = [10, 50, 100, 200, 500];
 const DEFAULT_VIDEO_LIMIT = 50;
 
 const PAGE_TABS = [
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "compare", label: "Channel Compare", icon: GitCompareArrows },
+  { id: "analytics", label: "Analytics", shortLabel: "Analytics", icon: BarChart3 },
+  { id: "compare", label: "Channel Compare", shortLabel: "Compare", icon: GitCompareArrows },
 ];
 
 const COMPARE_METRICS = [
@@ -684,38 +685,6 @@ const CHART_MARGIN_DUAL_AXIS = { top: 8, right: 12, left: 4, bottom: 4 };
 const CHART_MARGIN_COUNT = { top: 8, right: 12, left: 4, bottom: 4 };
 const Y_AXIS_VIEWS_WIDTH = 52;
 const Y_AXIS_COUNT_WIDTH = 36;
-
-function PageTabBar({ activeTab, onChange }) {
-  return (
-    <div
-      className="flex gap-1 border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide -mx-1 px-1"
-      role="tablist"
-      aria-label="YouTube Analytics views"
-    >
-      {PAGE_TABS.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onChange(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap ${
-              isActive
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
-            }`}
-          >
-            <Icon size={16} className="flex-shrink-0" />
-            {tab.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 function CompareChannelSelect({ label, value, onChange, channels, excludeHandle, disabled }) {
   return (
@@ -1667,7 +1636,12 @@ function YouTubeAnalytics() {
     >
       <div className="flex flex-col h-full min-h-0 px-2 py-1.5 sm:px-3 sm:py-2">
       <div className="flex-shrink-0 mb-2">
-        <PageTabBar activeTab={pageTab} onChange={setPageTab} />
+        <PageTabBar
+          tabs={PAGE_TABS}
+          activeTab={pageTab}
+          onChange={setPageTab}
+          ariaLabel="YouTube Analytics views"
+        />
       </div>
 
       <div className="flex h-full min-h-0 gap-0 lg:gap-3 overflow-hidden">

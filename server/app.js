@@ -97,7 +97,7 @@ const startServer = async () => {
     const server = app.listen(PORT, () => {
       console.log(`✅ Server running on port ${PORT}`);
     });
-    // Allow slow multipart uploads (up to 40 MB voice-over files)
+    // Allow slow multipart uploads (voice-over files up to 4 MB; Vercel cap is 4.5 MB)
     server.timeout = 900_000;
     server.keepAliveTimeout = 910_000;
     server.headersTimeout = 920_000;

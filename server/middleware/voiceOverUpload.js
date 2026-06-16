@@ -14,5 +14,6 @@ function fileFilter(req, file, cb) {
 module.exports = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 40 * 1024 * 1024 },
+  // Vercel serverless request body hard cap is 4.5 MB — keep in sync with client VOICE_OVER_MAX_BYTES
+  limits: { fileSize: 4 * 1024 * 1024 },
 });
