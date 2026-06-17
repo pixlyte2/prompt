@@ -32,7 +32,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://prompt-mjda.vercel.app",
   "https://prompt-de4a.vercel.app",
-  "https://prompt-taupe.vercel.app"
+  "https://prompt-taupe.vercel.app",
+  "https://creatorai.pixlyt.in"
 ];
 
 app.use(
