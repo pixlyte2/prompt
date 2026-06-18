@@ -365,6 +365,7 @@ const COMP_SORTS = [
 ];
 
 const COMP_FORMATS = [
+  { value: "all", label: "Default (per channel)" },
   { value: "long", label: "Long Videos" },
   { value: "short", label: "Short Videos" },
 ];
@@ -1698,7 +1699,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
   const [showViewDropdown, setShowViewDropdown] = useState(false);
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [compFormat, setCompFormat] = useState("long");
+  const [compFormat, setCompFormat] = useState("all");
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [compKeywords, setCompKeywords] = useState([]);
@@ -1778,20 +1779,34 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
     fetchTypes();
   }, [fetchTypes]);
 
+  const allAvailableKeywords = useMemo(
+    () => unionKeywords(types, keywordsState),
+    [types, keywordsState],
+  );
+
   useEffect(() => {
     if (activeType) {
-      setCompKeywords(keywordsState?.byType?.[String(activeType)] || []);
+      const typeKeywords = keywordsState?.byType?.[String(activeType)] || [];
+      const cachedKeywords = keywordsState?.cached || [];
+      // Merge cached keywords with category keywords, removing duplicates
+      const merged = [...new Set([...cachedKeywords, ...typeKeywords])];
+      setCompKeywords(merged);
     } else {
-      setCompKeywords([]);
+      setCompKeywords(keywordsState?.cached || []);
     }
     setActiveKeyword(null);
-  }, [activeType, keywordsState?.byType]);
+  }, [activeType, keywordsState?.byType, keywordsState?.cached]);
 
   const persistKeywords = useCallback((keywords) => {
     if (!activeType) return;
+    // Only update category-specific keywords, not cached ones
+    const cachedKeywords = keywordsState?.cached || [];
+    const categoryOnlyKeywords = keywords.filter(kw => 
+      !cachedKeywords.some(cached => cached.toLowerCase() === kw.toLowerCase())
+    );
     setCompKeywords(keywords);
-    onTypeKeywordsChange(String(activeType), keywords);
-  }, [activeType, onTypeKeywordsChange]);
+    onTypeKeywordsChange(String(activeType), categoryOnlyKeywords);
+  }, [activeType, onTypeKeywordsChange, keywordsState?.cached]);
 
   const addCompKeyword = useCallback(() => {
     const parsed = parseKeywordInput(newKeywordInput);
@@ -1861,11 +1876,11 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
     if (activeType) {
       fetchVideos(activeType, {
         force: forceRefresh.current,
-        format: "all",
+        format: compFormat,
       });
       forceRefresh.current = false;
     }
-  }, [activeType, fetchVideos, videoRefreshKey]);
+  }, [activeType, compFormat, fetchVideos, videoRefreshKey]);
 
   const handleTypesChanged = useCallback(() => {
     lastLoadedTypeRef.current = null;
@@ -2177,9 +2192,6 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                       <button
                         key={ch.handle}
                         onClick={() => {
-                          if (activeChannel === "all") {
-                            setCompFormat("long");
-                          }
                           setActiveChannel(ch.handle);
                           setShowChannelDropdown(false);
                         }}
@@ -2270,7 +2282,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
               >
                 <div className="flex items-center min-w-0">
                   <Video size={12} className={`mr-1 md:mr-1.5 flex-shrink-0 ${compFormat !== "all" ? "text-amber-500" : "text-gray-400"}`} />
-                  <span className="truncate max-w-[56px] md:max-w-[80px]">{compFormat === "all" ? "Format" : COMP_FORMATS.find(f => f.value === compFormat)?.label.replace(" Videos", "")}</span>
+                  <span className="truncate max-w-[56px] md:max-w-[80px]">{compFormat === "all" ? "Default" : COMP_FORMATS.find(f => f.value === compFormat)?.label.replace(" Videos", "")}</span>
                 </div>
                 <ChevronDown size={11} className="ml-1 md:ml-1.5 opacity-50 flex-shrink-0" />
               </button>
@@ -2278,7 +2290,20 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
               {showFormatDropdown && (
                 <div className="absolute top-full left-0 mt-2 w-36 rounded-[18px] bg-white dark:bg-gray-950 border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 animate-in fade-in zoom-in-95 duration-200">
                   {COMP_FORMATS.map((f) => (
-                    <button key={f.value} onClick={() => { setCompFormat(f.value); setShowFormatDropdown(false); }} className="w-full flex items-center justify-between px-4 py-2 text-[10px] font-bold hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors dark:text-white">
+                    <button
+                      key={f.value}
+                      type="button"
+                      onClick={() => {
+                        const newFormat = f.value;
+                        setCompFormat(newFormat);
+                        setShowFormatDropdown(false);
+                        // Trigger new scrape with the selected format
+                        if (activeType) {
+                          fetchVideos(activeType, { force: true, format: newFormat });
+                        }
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-2 text-[10px] font-bold hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors dark:text-white"
+                    >
                       {f.label}
                       {formatCounts[f.value] > 0 && <span className="text-[9px] font-black bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded border border-gray-200/50 dark:border-gray-700/50 text-gray-500">{formatCounts[f.value]}</span>}
                     </button>
@@ -2497,11 +2522,11 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
               </div>
             </div>
 
-            {/* Action & Stats (Refresh, Match count) */}
+            {/* Action & Stats (Refresh, Clear, Match count) */}
             <div className="flex items-center gap-1 md:gap-2 h-9 p-1 bg-white/40 dark:bg-gray-900/40 border border-gray-200/60 dark:border-gray-700 rounded-xl shadow-sm flex-shrink-0">
               <button
                 type="button"
-                onClick={() => fetchVideos(activeType, { silent: true, force: true, format: "all" })}
+                onClick={() => fetchVideos(activeType, { silent: true, force: true, format: compFormat })}
                 disabled={refreshing}
                 className={`p-1.5 rounded-lg transition-all duration-300 ${
                   refreshing 
@@ -2511,6 +2536,30 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                 title="Refresh"
               >
                 <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Clear all cached videos
+                  competitorVideoCacheRef.current.clear();
+                  clearCompetitorVideoCacheStorage();
+                  onCacheChange?.();
+                  // Reset current view
+                  setVideos([]);
+                  setChannels([]);
+                  // Clear search and filters
+                  setCompSearch("");
+                  setActiveKeyword(null);
+                  setCompFormat("all");
+                  setPeriod("all");
+                  setMinViews(0);
+                  setActiveChannel("all");
+                  toast.success("All cached videos cleared");
+                }}
+                className="p-1.5 rounded-lg transition-all duration-300 bg-white dark:bg-gray-900 text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:scale-105 active:scale-95"
+                title="Clear all cached videos and filters"
+              >
+                <X size={12} />
               </button>
               <div className="h-4 w-[1px] bg-gray-200 dark:bg-gray-800" />
               <span
@@ -2533,7 +2582,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
         {/* Keyword pills — z-0 so filter-bar dropdowns stack above */}
         {activeType && compKeywords.length > 0 && (
           <div className="relative z-0 flex flex-wrap items-center gap-1.5 mt-2 px-1">
-            {sortedCompKeywords.map((kw) => (
+            {sortedCompKeywords.filter(kw => (keywordCounts[kw] || 0) > 0).map((kw) => (
               <FilterChip
                 key={kw}
                 active={activeKeyword === kw}
@@ -3220,11 +3269,11 @@ function ScheduleView({ tasks, loading, onRefresh }) {
   );
 }
 
-function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywordsChange, onTypeKeywordsChange }) {
+function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywordsChange, onTypeKeywordsChange, onCacheChange }) {
   const [types, setTypes] = useState([]);
   const [typesLoading, setTypesLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [compFormat, setCompFormat] = useState("long");
+  const [compFormat, setCompFormat] = useState("all");
   const [compSort, setCompSort] = useState("views");
   const [activeKeyword, setActiveKeyword] = useState(null);
   const cachedTabKeywords = keywordsState?.cached || [];
@@ -3705,6 +3754,29 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
                 </div>
               </div>
             </div>
+
+            {/* Clear All Button */}
+            <button
+              type="button"
+              onClick={() => {
+                // Clear all cached videos from both tabs
+                cacheRef.current.clear();
+                clearCompetitorVideoCacheStorage();
+                onCacheChange?.();
+                // Clear all filters and search
+                setSearch("");
+                setActiveKeyword(null);
+                setCompFormat("all");
+                setCompSort("views");
+                setSearchExpanded(false);
+                toast.success("All cached videos and filters cleared");
+              }}
+              className="flex-shrink-0 h-9 px-2.5 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-[11px] font-semibold transition-all duration-200 hover:bg-red-100 dark:hover:bg-red-950/50 hover:border-red-300 dark:hover:border-red-700 flex items-center gap-1.5"
+              title="Clear all cached videos and filters"
+            >
+              <X size={12} />
+              <span className="hidden sm:inline">Clear All</span>
+            </button>
           </div>
         </div>
 
@@ -3935,6 +4007,7 @@ export default function TrendingHub() {
                 keywordsState={keywordsState}
                 onCachedKeywordsChange={handleCachedKeywordsChange}
                 onTypeKeywordsChange={handleTypeKeywordsChange}
+                onCacheChange={handleCacheChange}
               />
             ) : (
               <TrendingHubKeywordsLoading />

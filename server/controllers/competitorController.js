@@ -540,10 +540,9 @@ async function fetchVideosForType(typeId, videoFormat, channelHandleFilter = nul
       return [scrapeChannel(ch, maxVideos, "long")];
     }
     if (videoFormat === "all") {
-      return [
-        scrapeChannel(ch, maxVideos, "long"),
-        scrapeChannel(ch, maxVideos, "short"),
-      ];
+      // Respect individual channel videoFormat configuration
+      const channelFormat = ch.videoFormat || "long";
+      return [scrapeChannel(ch, maxVideos, channelFormat)];
     }
     const formatToScrape = (videoFormat === "long" || videoFormat === "short")
       ? videoFormat
