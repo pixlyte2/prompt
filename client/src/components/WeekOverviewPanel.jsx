@@ -538,24 +538,41 @@ function WeekOverviewPanel({ isCollapsed, onToggleCollapse }) {
           <div className="flex flex-col flex-1 min-h-0 p-1.5 gap-1 overflow-hidden">
             {weekDays.map(({ dateKey, shortLabel }) => {
               const dayCounts = byDay[dateKey] || {};
-              const dayTotal = Object.values(dayCounts).reduce((s, c) => s + (c?.count || 0), 0);
+              const dailySummary = buildDayDailySummary(dayCounts);
+              const dayTotal = dailySummary.total;
               const isToday = dateKey === todayKey;
+              const formatHint = [
+                dailySummary.long > 0 ? `${dailySummary.long}L` : "",
+                dailySummary.short > 0 ? `${dailySummary.short}S` : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
               return (
                 <div
                   key={dateKey}
-                  title={`${shortLabel}: ${dayTotal}`}
-                  className={`flex-1 flex flex-col items-center justify-center rounded-xl border min-h-0 transition-colors ${
+                  title={`${shortLabel}: ${dayTotal}${formatHint ? ` · ${formatHint}` : ""}`}
+                  className={`flex-1 flex flex-col items-center justify-center gap-1 rounded-xl border min-h-0 py-1 transition-colors ${
                     isToday
                       ? "bg-blue-100 dark:bg-blue-950/50 border-blue-400 dark:border-blue-600 shadow-sm shadow-blue-500/20"
                       : "bg-white/60 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800"
                   }`}
                 >
-                  <span className={`text-[9px] font-black uppercase ${isToday ? "text-blue-600" : "text-gray-500"}`}>
+                  <span className={`text-[10px] font-black uppercase leading-none tracking-wide ${isToday ? "text-blue-600" : "text-gray-500"}`}>
                     {shortLabel.slice(0, 2)}
                   </span>
-                  <span className={`text-xs font-black tabular-nums ${dayTotal ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>
+                  <span className={`text-sm font-black tabular-nums leading-none ${dayTotal ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>
                     {dayTotal || "·"}
                   </span>
+                  {formatHint ? (
+                    <div className="flex flex-col items-center gap-0.5 leading-none">
+                      {dailySummary.long > 0 && (
+                        <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">{dailySummary.long}L</span>
+                      )}
+                      {dailySummary.short > 0 && (
+                        <span className="text-[9px] font-bold text-orange-600 dark:text-orange-400">{dailySummary.short}S</span>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
