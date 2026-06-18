@@ -3263,7 +3263,7 @@ function ScheduleView({ tasks, loading, onRefresh }) {
               );
             })}
           </div>
-        )}}
+        )}
       </div>
     </div>
   );

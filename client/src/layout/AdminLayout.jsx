@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import AssistantWidget from "../components/AssistantWidget";
+import WeekOverviewPanel from "../components/WeekOverviewPanel";
 import { BarChart3, Users, FileText, MessageSquare, HelpCircle, TrendingUp, LayoutDashboard, Youtube, Mic, LineChart } from "lucide-react";
 import { getRole } from "../utils/api";
 
@@ -33,11 +34,22 @@ export default function AdminLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem("SIDEBAR_COLLAPSED") === "true";
   });
+  const [weekPanelCollapsed, setWeekPanelCollapsed] = useState(() => {
+    return localStorage.getItem("WEEK_PANEL_COLLAPSED") === "true";
+  });
 
   const handleToggleCollapse = () => {
     setSidebarCollapsed((prev) => {
       const newVal = !prev;
       localStorage.setItem("SIDEBAR_COLLAPSED", String(newVal));
+      return newVal;
+    });
+  };
+
+  const handleToggleWeekPanel = () => {
+    setWeekPanelCollapsed((prev) => {
+      const newVal = !prev;
+      localStorage.setItem("WEEK_PANEL_COLLAPSED", String(newVal));
       return newVal;
     });
   };
@@ -51,7 +63,7 @@ export default function AdminLayout({
   const showAssistant = !isVoLimitedRole;
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
       <Sidebar
         menu={sidebarMenu}
         mobileOpen={mobileNavOpen}
@@ -64,6 +76,8 @@ export default function AdminLayout({
       <div
         className={`flex-1 flex flex-col min-w-0 min-h-0 transition-all duration-300 ${
           sidebarCollapsed ? "md:ml-20" : "md:ml-64"
+        } ${
+          isVoLimitedRole ? "" : weekPanelCollapsed ? "md:mr-14" : "md:mr-[clamp(260px,25vw,420px)]"
         }`}
       >
         <Topbar
@@ -82,6 +96,13 @@ export default function AdminLayout({
         </div>
         {showAssistant ? <AssistantWidget /> : null}
       </div>
+      
+      {!isVoLimitedRole && (
+        <WeekOverviewPanel
+          isCollapsed={weekPanelCollapsed}
+          onToggleCollapse={handleToggleWeekPanel}
+        />
+      )}
     </div>
   );
 }
