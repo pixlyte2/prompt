@@ -468,26 +468,26 @@ function WeekOverviewPanel({ isCollapsed, onToggleCollapse }) {
 
   return (
     <aside
-      className={`hidden md:flex relative bg-gray-50/50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 fixed right-0 top-0 bottom-0 h-screen flex-col z-20 transition-[width] duration-300 ease-in-out ${
+      className={`hidden md:flex shrink-0 relative bg-gray-50/50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 h-screen flex-col z-20 transition-[width] duration-300 ease-in-out ${
         isCollapsed ? PANEL_COLLAPSED : PANEL_EXPANDED
       }`}
     >
       <div
-        className={`flex-shrink-0 border-b border-gray-200/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/60 backdrop-blur ${
-          isCollapsed ? "px-2 py-3 flex justify-center" : "px-3 py-2.5"
+        className={`flex-shrink-0 border-b border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-800 min-h-16 flex items-center ${
+          isCollapsed ? "px-2 justify-center" : "px-3"
         }`}
       >
         {!isCollapsed ? (
-          <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center justify-between gap-2 min-w-0 w-full">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 shrink-0">
-                <CalendarDays size={14} />
+              <div className="flex w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50 items-center justify-center shadow-sm shrink-0">
+                <CalendarDays size={16} className="text-blue-600 dark:text-blue-400" />
               </div>
-              <div className="min-w-0">
-                <h3 className="text-sm font-black text-gray-900 dark:text-white truncate leading-tight">
+              <div className="min-w-0 leading-tight">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                   Week Overview
                 </h3>
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                   {weekRangeLabel}
                 </p>
               </div>
@@ -495,24 +495,26 @@ function WeekOverviewPanel({ isCollapsed, onToggleCollapse }) {
             <div className="flex items-center gap-1 shrink-0">
               <Link
                 to="/admin/trending-hub"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 title="Open schedule"
               >
-                <ExternalLink size={12} />
+                <ExternalLink size={14} />
               </Link>
               <button
                 type="button"
                 onClick={() => fetchTasks(true)}
                 disabled={loading || refreshing}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-50"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
                 title="Refresh"
               >
-                <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+                <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
               </button>
             </div>
           </div>
         ) : (
-          <CalendarDays size={16} className="text-blue-600 dark:text-blue-400" aria-hidden />
+          <div className="flex w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50 items-center justify-center shadow-sm">
+            <CalendarDays size={16} className="text-blue-600 dark:text-blue-400" aria-hidden />
+          </div>
         )}
       </div>
 

@@ -74,35 +74,35 @@ export default function AdminLayout({
       />
 
       <div
-        className={`flex-1 flex flex-col min-w-0 min-h-0 transition-all duration-300 ${
+        className={`flex flex-1 min-w-0 min-h-0 flex-row transition-all duration-300 ${
           sidebarCollapsed ? "md:ml-20" : "md:ml-64"
-        } ${
-          isVoLimitedRole ? "" : weekPanelCollapsed ? "md:mr-14" : "md:mr-[clamp(260px,25vw,420px)]"
         }`}
       >
-        <Topbar
-          title={title}
-          titleInfo={titleInfo}
-          icon={Icon}
-          onCacheClear={onCacheClear}
-          onOpenMobileNav={() => setMobileNavOpen(true)}
-        />
-        <div
-          className={`flex-1 flex flex-col min-h-0 min-w-0 ${
-            contentFit ? "overflow-hidden" : "overflow-y-auto"
-          } ${noPadding ? "" : "p-3 sm:p-4 md:p-4"}`}
-        >
-          {children}
+        <div className="flex flex-1 flex-col min-w-0 min-h-0">
+          <Topbar
+            title={title}
+            titleInfo={titleInfo}
+            icon={Icon}
+            onCacheClear={onCacheClear}
+            onOpenMobileNav={() => setMobileNavOpen(true)}
+          />
+          <div
+            className={`flex-1 flex flex-col min-h-0 min-w-0 ${
+              contentFit ? "overflow-hidden" : "overflow-y-auto"
+            } ${noPadding ? "" : "p-3 sm:p-4 md:p-4"}`}
+          >
+            {children}
+          </div>
+          {showAssistant ? <AssistantWidget /> : null}
         </div>
-        {showAssistant ? <AssistantWidget /> : null}
+
+        {!isVoLimitedRole && (
+          <WeekOverviewPanel
+            isCollapsed={weekPanelCollapsed}
+            onToggleCollapse={handleToggleWeekPanel}
+          />
+        )}
       </div>
-      
-      {!isVoLimitedRole && (
-        <WeekOverviewPanel
-          isCollapsed={weekPanelCollapsed}
-          onToggleCollapse={handleToggleWeekPanel}
-        />
-      )}
     </div>
   );
 }

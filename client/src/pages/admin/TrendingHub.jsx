@@ -2097,7 +2097,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
     <div className="flex flex-col h-full min-h-0 overflow-hidden gap-3 px-4 pt-3 pb-4">
       {/* Premium Compact Single-Row Filter Dashboard */}
       <div className="flex-shrink-0 z-30">
-        <div className={`relative flex flex-col md:flex-row items-stretch md:items-center gap-2 p-2 bg-white/40 dark:bg-gray-900/40 backdrop-blur-2xl border border-white/60 dark:border-gray-800/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.02)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.25)] w-full overflow-visible ${showTypeDropdown || showChannelDropdown || showPeriodDropdown || showViewDropdown || showFormatDropdown || showKeywordsDropdown || showSortDropdown ? "z-[110]" : ""}`}>
+        <div className={`relative flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-1.5 md:gap-2 p-1.5 md:p-2 bg-white/40 dark:bg-gray-900/40 backdrop-blur-2xl border border-gray-200/70 dark:border-gray-700/50 rounded-xl shadow-sm w-full md:w-fit md:max-w-full min-w-0 overflow-visible ${showTypeDropdown || showChannelDropdown || showPeriodDropdown || showViewDropdown || showFormatDropdown || showKeywordsDropdown || showSortDropdown ? "z-[110]" : ""}`}>
           
           {/* Group A: Source Selection (Category & Sources) */}
           <div className="grid grid-cols-2 md:flex md:items-center gap-2 flex-shrink-0">
@@ -2206,17 +2206,17 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
             </div>
           </div>
 
-          <div className="hidden md:block w-[1px] h-6 bg-gray-200 dark:bg-gray-800 flex-shrink-0 mx-0.5" />
+          <div className="hidden md:block w-[1px] h-6 bg-gray-200 dark:bg-gray-800 shrink-0 mx-0.5 self-center" />
 
-          {/* Group B: Filter Options (Time, Views, Format, Keywords, Sort) */}
-          <div className="flex flex-col gap-2 md:flex md:flex-row md:items-center flex-shrink-0">
-            {/* Mobile row 1: Time, Views, Long — md:contents merges into parent flex row */}
+          {/* Group B: Filter Options (Time, Views, Format, Keywords) */}
+          <div className="flex flex-col gap-2 md:flex md:flex-row md:flex-wrap md:items-center md:gap-2 shrink-0 max-w-full">
+            {/* Mobile row 1: Time, Views, Format */}
             <div className="grid grid-cols-3 gap-1.5 md:contents">
             {/* Time Filter */}
-            <div className="relative flex-1 md:flex-initial min-w-0" ref={periodDropdownRef}>
+            <div className="relative shrink-0" ref={periodDropdownRef}>
               <button
                 onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
-                className={`flex items-center justify-between w-full md:w-auto h-9 px-1.5 md:px-2.5 rounded-xl border text-[10px] md:text-[11px] font-semibold transition-all duration-200 ${
+                className={`flex items-center justify-between w-full md:w-auto h-9 px-1.5 md:px-2.5 rounded-xl border text-[10px] md:text-[11px] font-semibold transition-all duration-200 whitespace-nowrap shrink-0 ${
                   period !== "all"
                     ? "bg-rose-500/10 dark:bg-rose-500/20 border-rose-500/30 text-rose-700 dark:text-rose-400 hover:bg-rose-500/15"
                     : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-rose-400 hover:bg-white dark:hover:bg-gray-800/60"
@@ -2242,10 +2242,10 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
             </div>
 
             {/* Views Filter */}
-            <div className="relative flex-1 md:flex-initial min-w-0" ref={viewDropdownRef}>
+            <div className="relative shrink-0" ref={viewDropdownRef}>
               <button
                 onClick={() => setShowViewDropdown(!showViewDropdown)}
-                className={`flex items-center justify-between w-full md:w-auto h-9 px-1.5 md:px-2.5 rounded-xl border text-[10px] md:text-[11px] font-semibold transition-all duration-200 ${
+                className={`flex items-center justify-between w-full md:w-auto h-9 px-1.5 md:px-2.5 rounded-xl border text-[10px] md:text-[11px] font-semibold transition-all duration-200 whitespace-nowrap shrink-0 ${
                   minViews > 0 
                     ? "bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/15" 
                     : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-emerald-400 hover:bg-white dark:hover:bg-gray-800/60"
@@ -2271,10 +2271,10 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
             </div>
 
             {/* Format Filter */}
-            <div className="relative flex-1 md:flex-initial min-w-0" ref={formatDropdownRef}>
+            <div className="relative shrink-0" ref={formatDropdownRef}>
               <button
                 onClick={() => setShowFormatDropdown(!showFormatDropdown)}
-                className={`flex items-center justify-between w-full md:w-auto h-9 px-1.5 md:px-2.5 rounded-xl border text-[10px] md:text-[11px] font-semibold transition-all duration-200 ${
+                className={`flex items-center justify-between w-full md:w-auto h-9 px-1.5 md:px-2.5 rounded-xl border text-[10px] md:text-[11px] font-semibold transition-all duration-200 whitespace-nowrap shrink-0 ${
                   compFormat !== "all" 
                     ? "bg-amber-500/10 dark:bg-amber-500/20 border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15" 
                     : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-amber-400 hover:bg-white dark:hover:bg-gray-800/60"
@@ -2316,7 +2316,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
             {/* Mobile row 2: Keywords — md:contents merges into parent flex row */}
             <div className="w-full md:contents">
             {/* Keywords Filter / Configure */}
-            <div className="relative flex-1 md:flex-initial min-w-0" ref={keywordsDropdownRef}>
+            <div className="relative shrink-0" ref={keywordsDropdownRef}>
               <button
                 type="button"
                 onClick={() => setShowKeywordsDropdown(!showKeywordsDropdown)}
@@ -2411,25 +2411,25 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
             </div>
           </div>
 
-          <div className="hidden md:block w-[1px] h-6 bg-gray-200 dark:bg-gray-800 flex-shrink-0 mx-0.5" />
+          <div className="hidden md:block w-[1px] h-6 bg-gray-200 dark:bg-gray-800 shrink-0 mx-0.5 self-center" />
 
-          {/* Group C: Sort, Search & Actions — one row on mobile */}
-          <div className="flex items-center gap-1.5 md:gap-2 w-full md:w-auto md:ml-auto flex-1 md:flex-initial min-w-0">
+          {/* Group C: Sort, Search & Actions */}
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0 w-full md:w-auto">
             {/* Rank Select */}
-            <div className="relative flex-shrink-0 md:flex-initial min-w-0" ref={sortDropdownRef}>
+            <div className="relative shrink-0" ref={sortDropdownRef}>
               <button
                 type="button"
                 onClick={() => setShowSortDropdown(!showSortDropdown)}
                 title={COMP_SORTS.find((s) => s.value === compSort)?.label}
-                className="flex items-center justify-between h-9 px-1.5 md:px-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 text-gray-700 dark:text-gray-200 text-[10px] md:text-[11px] font-semibold transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-white dark:hover:bg-gray-800/60 md:w-auto"
+                className="flex items-center justify-between h-9 px-1.5 xl:px-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 text-gray-700 dark:text-gray-200 text-[10px] xl:text-[11px] font-semibold transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-white dark:hover:bg-gray-800/60 shrink-0"
               >
                 <div className="flex items-center min-w-0">
-                  <ArrowDownWideNarrow size={13} className="mr-1 md:mr-1.5 text-gray-400 flex-shrink-0" />
-                  <span className="truncate max-w-[56px] max-[359px]:hidden md:max-w-[80px] md:inline">
+                  <ArrowDownWideNarrow size={13} className="mr-0 xl:mr-1.5 text-gray-400 shrink-0" />
+                  <span className="truncate max-w-[72px] hidden xl:inline">
                     {COMP_SORTS.find((s) => s.value === compSort)?.label}
                   </span>
                 </div>
-                <ChevronDown size={11} className="ml-0.5 md:ml-1.5 opacity-50 flex-shrink-0" />
+                <ChevronDown size={11} className="ml-0.5 xl:ml-1.5 opacity-50 shrink-0" />
               </button>
 
               {showSortDropdown && (
@@ -2453,14 +2453,14 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
             </div>
 
             {/* Expandable Search Component */}
-            <div className="relative flex-1 min-w-0 md:flex-initial">
+            <div className="relative flex-1 min-w-[120px] xl:flex-none xl:min-w-0 xl:shrink-0">
               <div 
-                className={`flex items-center h-9 border rounded-xl bg-white/70 dark:bg-gray-900/70 border-gray-200 dark:border-gray-700 transition-all duration-300 w-full px-3 md:px-0 ${
-                  searchExpanded || compSearch ? "md:w-44 md:px-3" : "md:w-9 md:justify-center"
+                className={`flex items-center h-9 border rounded-xl bg-white/70 dark:bg-gray-900/70 border-gray-200 dark:border-gray-700 transition-all duration-300 w-full px-3 xl:px-0 ${
+                  searchExpanded || compSearch ? "xl:w-44 xl:px-3" : "xl:w-9 xl:justify-center xl:px-0"
                 }`}
               >
                 {/* Desktop-only collapsed trigger */}
-                <div className="hidden md:flex items-center w-full h-full">
+                <div className="hidden xl:flex items-center w-full h-full">
                   {searchExpanded || compSearch ? (
                     <div className="flex items-center w-full">
                       <Search size={13} className="text-gray-400 mr-2 flex-shrink-0" />
@@ -2499,8 +2499,8 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                   )}
                 </div>
 
-                {/* Mobile-only always-expanded search bar */}
-                <div className="flex md:hidden items-center w-full">
+                {/* Mobile / tablet always-expanded search bar */}
+                <div className="flex xl:hidden items-center w-full">
                   <Search size={13} className="text-gray-400 mr-2 flex-shrink-0" />
                   <input
                     type="text"
@@ -2523,7 +2523,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
             </div>
 
             {/* Action & Stats (Refresh, Clear, Match count) */}
-            <div className="flex items-center gap-1 md:gap-2 h-9 p-1 bg-white/40 dark:bg-gray-900/40 border border-gray-200/60 dark:border-gray-700 rounded-xl shadow-sm flex-shrink-0">
+            <div className="flex items-center gap-1 xl:gap-2 h-9 p-1 bg-white/40 dark:bg-gray-900/40 border border-gray-200/60 dark:border-gray-700 rounded-xl shadow-sm shrink-0">
               <button
                 type="button"
                 onClick={() => fetchVideos(activeType, { silent: true, force: true, format: compFormat })}
@@ -2563,7 +2563,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
               </button>
               <div className="h-4 w-[1px] bg-gray-200 dark:bg-gray-800" />
               <span
-                className="text-[10px] font-bold text-gray-600 dark:text-gray-300 px-0.5 md:px-1 whitespace-nowrap max-[359px]:hidden"
+                className="text-[10px] font-bold text-gray-600 dark:text-gray-300 px-0.5 xl:px-1 whitespace-nowrap max-[359px]:hidden"
                 title={`${filtered.length} ${filtered.length === 1 ? "match" : "matches"}`}
               >
                 {filtered.length} {filtered.length === 1 ? "match" : "matches"}
@@ -3972,7 +3972,7 @@ export default function TrendingHub() {
 
   return (
     <AdminLayout title="Trending Hub" titleInfo="Competitor video analysis & tracking" icon={Youtube} contentFit noPadding>
-      <div className="flex flex-col h-full min-h-0 overflow-y-auto sm:overflow-hidden w-full max-w-[1600px] mx-auto custom-scrollbar px-3 sm:px-4 pt-2 pb-4 gap-1.5">
+      <div className="flex flex-col h-full min-h-0 overflow-y-auto sm:overflow-hidden w-full custom-scrollbar px-3 sm:px-4 pt-2 pb-4 gap-1.5">
         <PageTabBar
           tabs={TRENDING_PAGE_TABS}
           activeTab={pageTab}
