@@ -12,7 +12,7 @@ import api from "../utils/api";
 import { toDateKey } from "../utils/videoTaskSchedule";
 
 const WORK_DAYS = 6;
-const PANEL_EXPANDED = "w-[clamp(260px,25vw,420px)]";
+const PANEL_EXPANDED = "w-[clamp(195px,18.75vw,315px)]";
 const PANEL_COLLAPSED = "w-14";
 
 const ASSIGNEE_META = {
