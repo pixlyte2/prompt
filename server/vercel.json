@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/video-tasks/cron/purge-voice-overs",
+      "schedule": "0 3 * * *"
+    }
+  ],
   "functions": {
     "app.js": {
       "maxDuration": 300

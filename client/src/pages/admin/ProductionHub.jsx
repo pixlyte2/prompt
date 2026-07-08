@@ -469,6 +469,111 @@ function hasTaskVoiceOver(task) {
   return Boolean(String(task?.voiceOverStoredName ?? "").trim());
 }
 
+function formatTaskAssignees(task) {
+  const assignedTo = task?.assignedTo;
+  if (!assignedTo || (Array.isArray(assignedTo) && assignedTo.length === 0)) return "Unassigned";
+  const arr = Array.isArray(assignedTo) ? assignedTo.filter(Boolean) : [assignedTo].filter(Boolean);
+  return arr.map(getAssigneeDisplayName).join(", ");
+}
+
+function DeleteDateVoiceOversModal({ dateKey, tasks, onClose, onConfirm, loading }) {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape" && !loading) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, loading]);
+
+  if (!tasks?.length) return null;
+  const dateLabel = formatDateLabel(dateKey);
+
+  return (
+    <div className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={() => {
+          if (!loading) onClose();
+        }}
+        aria-label="Close"
+      />
+      <div
+        role="alertdialog"
+        aria-labelledby="date-vo-delete-title"
+        aria-describedby="date-vo-delete-desc"
+        className="relative z-10 w-full sm:max-w-lg overflow-hidden rounded-t-3xl sm:rounded-2xl border-t sm:border border-red-200/80 dark:border-red-900/50 bg-white dark:bg-gray-900 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in duration-300 max-h-[90vh] flex flex-col"
+      >
+        <div className="w-12 h-1 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto my-3 sm:hidden shrink-0" />
+
+        <div className="flex items-start gap-3 px-5 py-4 shrink-0">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400">
+            <Trash2 size={20} aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1 pt-0.5">
+            <h2 id="date-vo-delete-title" className="text-sm font-bold text-gray-900 dark:text-white leading-snug">
+              Delete voice-overs for {dateLabel}?
+            </h2>
+            <p id="date-vo-delete-desc" className="text-xs text-gray-600 dark:text-gray-400 mt-2 leading-relaxed">
+              This removes {tasks.length} audio file{tasks.length === 1 ? "" : "s"} from tasks on this date. You can upload new files later.
+            </p>
+          </div>
+        </div>
+
+        <div className="px-5 pb-2 min-h-0 flex-1 overflow-y-auto custom-scrollbar">
+          <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
+            Files to remove ({tasks.length})
+          </p>
+          <ul className="space-y-2">
+            {tasks.map((task) => {
+              const fileName = String(task.voiceOverOriginalName || "").trim() || "Uploaded file";
+              return (
+                <li
+                  key={task._id}
+                  className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-950 border border-gray-100 dark:border-gray-800"
+                >
+                  <p className="text-xs font-semibold text-gray-900 dark:text-white truncate" title={task.title || ""}>
+                    {task.title || "Untitled task"}
+                  </p>
+                  <div className="mt-1.5 flex flex-col sm:flex-row sm:items-center sm:gap-3 gap-0.5 text-[11px] text-gray-600 dark:text-gray-400">
+                    <span className="truncate min-w-0" title={fileName}>
+                      <Mic size={10} className="inline mr-1 text-emerald-500 shrink-0" aria-hidden />
+                      {fileName}
+                    </span>
+                    <span className="shrink-0 text-gray-500 dark:text-gray-500">
+                      {formatTaskAssignees(task)}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div className="flex justify-end gap-2 px-5 py-3.5 bg-gray-50/80 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800 shrink-0">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-850 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onConfirm}
+            className="inline-flex items-center justify-center gap-1.5 min-w-[7.5rem] px-4 py-2 rounded-xl text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 shadow-sm shadow-red-500/20 active:scale-95"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            <span>{loading ? "Removing…" : `Delete ${tasks.length}`}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Notes / script / voice-over detail modal ─── */
 function TaskDetailModal({ task, onClose, onDownloadVoiceOver, voiceOverDownloadingIds, playingTaskId, audioPlaying, audioLoading, onPlayToggle }) {
   if (!task) return null;
@@ -709,7 +814,7 @@ const TaskRow = memo(function TaskRow({
         </div>
       </div>
 
-      {/* Group 2: Pills (Script, VO, Notes, Format, HD/SD, Assignees, Status, Undo) */}
+      {/* Group 2: Pills (Notes, Assignees, Format, Script, Word count, VO, HD/SD, Status, Undo) */}
       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto pl-8 sm:pl-0 sm:contents">
         {/* Custom Video ID Pill on mobile */}
         {task.customVideoId && (
@@ -733,6 +838,52 @@ const TaskRow = memo(function TaskRow({
             </span>
           );
         })()}
+
+        {/* Notes — opens detail modal */}
+        {hasTaskNotes(task) && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetail?.(task);
+            }}
+            className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wide bg-sky-50 text-sky-800 border border-sky-200/90 dark:bg-sky-900/35 dark:text-sky-100 dark:border-sky-700/60 shadow-sm hover:bg-sky-100 dark:hover:bg-sky-900/55 hover:border-sky-300 dark:hover:border-sky-500 transition-colors cursor-pointer min-h-[22px] sm:min-h-[26px]"
+            title="Notes — tap to read"
+            aria-label="Open notes"
+          >
+            <FileText size={12} className="flex-shrink-0 opacity-90 sm:w-3.5 sm:h-3.5" aria-hidden />
+            <span>Notes</span>
+          </button>
+        )}
+
+        {/* Assigned Users */}
+        {task.assignedTo && task.assignedTo.length > 0 && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {task.assignedTo.map((name) => (
+              <span
+                key={name}
+                className={`inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide border border-transparent shadow-sm min-h-[22px] sm:min-h-[26px] ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+              >
+                {getAssigneeDisplayName(name)}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Content format pills */}
+        {task.contentFormat && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).map(fmt => (
+              <span
+                key={fmt}
+                className={`inline-flex items-center text-[9px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm border border-transparent min-h-[22px] sm:min-h-[26px] ${FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+              >
+                {FORMAT_OPTIONS.find((f) => f.value === fmt)?.label || fmt}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Script — opens same detail modal */}
         {hasTaskScript(task) && (
@@ -794,38 +945,6 @@ const TaskRow = memo(function TaskRow({
           </button>
         )}
 
-        {/* Notes — opens detail modal */}
-        {hasTaskNotes(task) && (
-          <button
-            type="button"
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenDetail?.(task);
-            }}
-            className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wide bg-sky-50 text-sky-800 border border-sky-200/90 dark:bg-sky-900/35 dark:text-sky-100 dark:border-sky-700/60 shadow-sm hover:bg-sky-100 dark:hover:bg-sky-900/55 hover:border-sky-300 dark:hover:border-sky-500 transition-colors cursor-pointer min-h-[22px] sm:min-h-[26px]"
-            title="Notes — tap to read"
-            aria-label="Open notes"
-          >
-            <FileText size={12} className="flex-shrink-0 opacity-90 sm:w-3.5 sm:h-3.5" aria-hidden />
-            <span>Notes</span>
-          </button>
-        )}
-
-        {/* Content format pills */}
-        {task.contentFormat && (
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).map(fmt => (
-              <span
-                key={fmt}
-                className={`inline-flex items-center text-[9px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm border border-transparent min-h-[22px] sm:min-h-[26px] ${FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
-              >
-                {FORMAT_OPTIONS.find((f) => f.value === fmt)?.label || fmt}
-              </span>
-            ))}
-          </div>
-        )}
-
         {/* Thumbnail pill (HD/SD buttons) */}
         {ytId && (
           <div className="inline-flex items-center gap-1.5 px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300/90 flex-shrink-0 shadow-sm border border-amber-100/50 dark:border-amber-800/30 min-h-[22px] sm:min-h-[26px]">
@@ -849,22 +968,8 @@ const TaskRow = memo(function TaskRow({
           </div>
         )}
 
-        {/* Assigned Users */}
-        {task.assignedTo && task.assignedTo.length > 0 && (
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {task.assignedTo.map((name) => (
-              <span
-                key={name}
-                className={`inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide border border-transparent shadow-sm min-h-[22px] sm:min-h-[26px] ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
-              >
-                {getAssigneeDisplayName(name)}
-              </span>
-            ))}
-          </div>
-        )}
-
         {/* Status text */}
-        <span className={`hidden md:inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full flex-shrink-0 shadow-sm border border-transparent min-h-[26px] ${meta.pill}`}>
+        <span className={`inline-flex items-center gap-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full flex-shrink-0 shadow-sm border border-transparent min-h-[22px] sm:min-h-[26px] ${meta.pill}`}>
           {meta.label}
         </span>
 
@@ -1291,7 +1396,9 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
 const DateGroup = memo(function DateGroup({ 
   dateKey, tasks, onMove, onDelete, onEdit, onPreview, onDropTask, onPreviewThumbnail, onOpenDetail, onDownloadVoiceOver, voiceOverDownloadingIds, defaultOpen, variant,
   isSelected, onSelect,
-  playingTaskId, audioPlaying, audioLoading, onPlayToggle
+  playingTaskId, audioPlaying, audioLoading, onPlayToggle,
+  onDeleteDateVoiceOvers, deletingDateVoiceOversKey,
+  showDeleteDateVoiceOvers = true,
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [isOver, setIsOver] = useState(false);
@@ -1385,6 +1492,12 @@ const DateGroup = memo(function DateGroup({
     return { long, short, total: long + short };
   }, [tasks]);
 
+  const tasksWithVoiceOver = useMemo(
+    () => tasks.filter(hasTaskVoiceOver),
+    [tasks],
+  );
+  const isDeletingDateVoiceOvers = deletingDateVoiceOversKey === (dateKey ?? "no-date");
+
   const isHistory = variant === "completed";
 
   const borderColor =
@@ -1465,6 +1578,26 @@ const DateGroup = memo(function DateGroup({
               >
                 <Eye size={10} /> <span className="hidden sm:inline">Preview</span>
               </button>
+              {showDeleteDateVoiceOvers && tasksWithVoiceOver.length > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteDateVoiceOvers(dateKey, tasksWithVoiceOver);
+                  }}
+                  disabled={isDeletingDateVoiceOvers}
+                  className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors shadow-sm disabled:opacity-50"
+                  title={`Delete ${tasksWithVoiceOver.length} voice-over${tasksWithVoiceOver.length === 1 ? "" : "s"}`}
+                >
+                  {isDeletingDateVoiceOvers ? (
+                    <Loader2 size={10} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={10} />
+                  )}
+                  <span className="hidden sm:inline">Delete VO</span>
+                  <span className="sm:hidden">{tasksWithVoiceOver.length}</span>
+                </button>
+              )}
               <div className="hidden sm:flex w-20 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden shadow-inner">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-blue-500 to-indigo-500"}`}
@@ -2027,6 +2160,9 @@ export default function ProductionHub() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [voiceOverDownloadingIds, setVoiceOverDownloadingIds] = useState(() => new Set());
+  const [voBulkDeleteModal, setVoBulkDeleteModal] = useState(null);
+  const [voBulkDeleting, setVoBulkDeleting] = useState(false);
+  const [deletingDateVoiceOversKey, setDeletingDateVoiceOversKey] = useState(null);
   const typeDropdownRef = useRef(null);
 
   // Custom Audio Player State
@@ -2442,6 +2578,45 @@ export default function ProductionHub() {
     }
   }, []);
 
+  const handleOpenDeleteDateVoiceOvers = useCallback((dateKey, tasksWithVo) => {
+    if (!tasksWithVo?.length) return;
+    setVoBulkDeleteModal({ dateKey, tasks: tasksWithVo });
+  }, []);
+
+  const handleCloseDeleteDateVoiceOvers = useCallback(() => {
+    if (voBulkDeleting) return;
+    setVoBulkDeleteModal(null);
+  }, [voBulkDeleting]);
+
+  const handleConfirmDeleteDateVoiceOvers = useCallback(async () => {
+    if (!voBulkDeleteModal?.tasks?.length) return;
+    const { dateKey, tasks } = voBulkDeleteModal;
+    const dateKeyNorm = dateKey ?? "no-date";
+    setVoBulkDeleting(true);
+    setDeletingDateVoiceOversKey(dateKeyNorm);
+    try {
+      const results = await Promise.allSettled(
+        tasks.map((t) => api.delete(`/video-tasks/${t._id}/voice-over`)),
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      const succeeded = results.length - failed;
+      if (failed === 0) {
+        toast.success(`Removed ${succeeded} voice-over${succeeded === 1 ? "" : "s"}`);
+      } else if (succeeded > 0) {
+        toast.error(`Removed ${succeeded}; ${failed} failed`);
+      } else {
+        toast.error("Failed to remove voice-overs");
+      }
+      setVoBulkDeleteModal(null);
+      await syncBoardAfterMutation();
+    } catch {
+      toast.error("Failed to remove voice-overs");
+    } finally {
+      setVoBulkDeleting(false);
+      setDeletingDateVoiceOversKey(null);
+    }
+  }, [voBulkDeleteModal, syncBoardAfterMutation]);
+
   const filterList = useCallback((list) => {
     let l = [...list];
     if (activeType !== "all") l = l.filter((t) => t.channelType === activeType);
@@ -2748,6 +2923,9 @@ export default function ProductionHub() {
                   audioPlaying={audioPlaying}
                   audioLoading={audioLoading}
                   onPlayToggle={handleTogglePlay}
+                  onDeleteDateVoiceOvers={handleOpenDeleteDateVoiceOvers}
+                  deletingDateVoiceOversKey={deletingDateVoiceOversKey}
+                  showDeleteDateVoiceOvers={false}
                 />
               ))
             )}
@@ -2784,6 +2962,8 @@ export default function ProductionHub() {
                   audioPlaying={audioPlaying}
                   audioLoading={audioLoading}
                   onPlayToggle={handleTogglePlay}
+                  onDeleteDateVoiceOvers={handleOpenDeleteDateVoiceOvers}
+                  deletingDateVoiceOversKey={deletingDateVoiceOversKey}
                 />
               ))
             )}
@@ -2854,6 +3034,8 @@ export default function ProductionHub() {
                   audioPlaying={audioPlaying}
                   audioLoading={audioLoading}
                   onPlayToggle={handleTogglePlay}
+                  onDeleteDateVoiceOvers={handleOpenDeleteDateVoiceOvers}
+                  deletingDateVoiceOversKey={deletingDateVoiceOversKey}
                 />
               ))
             )}
@@ -2892,6 +3074,15 @@ export default function ProductionHub() {
           audioPlaying={audioPlaying}
           audioLoading={audioLoading}
           onPlayToggle={handleTogglePlay}
+        />
+      )}
+      {voBulkDeleteModal && (
+        <DeleteDateVoiceOversModal
+          dateKey={voBulkDeleteModal.dateKey}
+          tasks={voBulkDeleteModal.tasks}
+          onClose={handleCloseDeleteDateVoiceOvers}
+          onConfirm={handleConfirmDeleteDateVoiceOvers}
+          loading={voBulkDeleting}
         />
       )}
 

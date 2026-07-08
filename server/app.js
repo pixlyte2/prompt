@@ -20,8 +20,13 @@ const competitorTypeRoutes = require("./routes/competitorTypeRoutes");
 const competitorKeywordRoutes = require("./routes/competitorKeywordRoutes");
 const videoTaskRoutes = require("./routes/videoTaskRoutes");
 const youtubeRoutes = require("./routes/youtube");
+const plannerRoutes = require("./routes/plannerRoutes");
 
 const VideoTask = require("./models/VideoTask");
+const {
+  purgeExpiredVoiceOvers,
+  scheduleVoiceOverCleanup,
+} = require("./utils/voiceOverCleanup");
 
 const app = express();
 
@@ -75,6 +80,7 @@ app.use("/api/competitor-types", competitorTypeRoutes);
 app.use("/api/competitor-keywords", competitorKeywordRoutes);
 app.use("/api/video-tasks", videoTaskRoutes);
 app.use("/api/youtube", youtubeRoutes);
+app.use("/api/planner", plannerRoutes);
 
 /**
  * 🧪 Health Check
@@ -92,6 +98,9 @@ const startServer = async () => {
   // One-shot data migrations (idempotent on subsequent boots)
   await VideoTask.migrateLegacyAssignees();
   await VideoTask.initializeCustomVideoIds();
+  await VideoTask.migrateVoiceOverExpiry();
+  await purgeExpiredVoiceOvers();
+  scheduleVoiceOverCleanup();
 
   if (process.env.NODE_ENV !== "production") {
     const PORT = process.env.PORT || 5000;

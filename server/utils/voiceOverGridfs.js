@@ -36,7 +36,7 @@ async function deleteVoiceOverGridFs(storedName) {
 
 /**
  * @param {Buffer} buffer
- * @param {{ originalName?: string, contentType?: string, taskMongoId: import("mongoose").Types.ObjectId }} opts
+ * @param {{ originalName?: string, contentType?: string, taskMongoId: import("mongoose").Types.ObjectId, expireAt?: Date }} opts
  * @returns {Promise<import("mongodb").ObjectId>}
  */
 function uploadVoiceOverBuffer(buffer, opts) {
@@ -48,6 +48,7 @@ function uploadVoiceOverBuffer(buffer, opts) {
     metadata: {
       taskId: opts.taskMongoId,
       contentType,
+      ...(opts.expireAt ? { expireAt: opts.expireAt } : {}),
     },
   });
   return new Promise((resolve, reject) => {

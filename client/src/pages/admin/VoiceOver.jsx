@@ -73,6 +73,17 @@ function formatDateLabel(key) {
   return label;
 }
 
+/** 10-day server retention — shown when voiceOverExpireAt is present on the task */
+function voiceOverExpiryHint(expireAt) {
+  if (!expireAt) return null;
+  const exp = new Date(expireAt);
+  if (Number.isNaN(exp.getTime())) return null;
+  const days = Math.ceil((exp.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+  if (days <= 0) return "Expired";
+  if (days === 1) return "Auto-deletes in 1 day";
+  return `Auto-deletes in ${days} days`;
+}
+
 function extractYoutubeId(url) {
   if (!url) return null;
   const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
@@ -437,14 +448,18 @@ function VoiceOverTaskRow({
   const uploadBusyClasses =
     "pointer-events-none cursor-wait border border-emerald-300 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-200 shadow-inner";
 
-  const iconActionBase =
-    "h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 border shadow-sm disabled:opacity-40 disabled:cursor-not-allowed active:scale-95";
-  const iconActionView =
-    `${iconActionBase} border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-200 dark:hover:border-blue-800`;
-  const iconActionDownload =
-    `${iconActionBase} border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-600`;
-  const iconActionAudio =
-    `${iconActionBase} border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:border-emerald-300 dark:hover:border-emerald-700 hover:text-emerald-800 dark:hover:text-emerald-200`;
+  const textActionBase =
+    "h-8 px-2.5 sm:h-9 sm:px-3 inline-flex items-center justify-center gap-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200 border shadow-sm disabled:opacity-40 disabled:cursor-not-allowed active:scale-95";
+  const textActionView =
+    `${textActionBase} border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-200 dark:hover:border-blue-800`;
+  const textActionDownload =
+    `${textActionBase} border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-600`;
+  const textActionAudio =
+    `${textActionBase} border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:border-emerald-300 dark:hover:border-emerald-700 hover:text-emerald-800 dark:hover:text-emerald-200`;
+  const textActionDelete =
+    `${textActionBase} border-red-200/70 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/25 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/40 hover:border-red-300 dark:hover:border-red-800 hover:text-red-700 dark:hover:text-red-300`;
+  const textActionUpload =
+    "h-8 px-2.5 sm:h-9 sm:px-3 inline-flex items-center justify-center gap-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200";
 
   return (
     <>
@@ -458,10 +473,9 @@ function VoiceOverTaskRow({
         />
       )}
       
-      <div className="group flex flex-col p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/40 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 hover:border-blue-400/60 dark:hover:border-blue-700/60 shadow-sm hover:shadow-md transition-all duration-300">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
+      <div className="group flex flex-col gap-2.5 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/40 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 hover:border-blue-400/60 dark:hover:border-blue-700/60 shadow-sm hover:shadow-md transition-all duration-300">
           {/* Media and Text Container */}
-          <div className="flex items-start gap-2.5 sm:gap-4 min-w-0 flex-1">
+          <div className="flex items-start gap-2.5 sm:gap-4 min-w-0 w-full">
             <div className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-md bg-gray-100 dark:bg-gray-800 text-[10px] font-black text-gray-500 mt-1 sm:mt-3.5">
               {index + 1}
             </div>
@@ -528,17 +542,28 @@ function VoiceOverTaskRow({
                 {voOk && (
                   <span
                     className="min-w-0 max-w-[10rem] sm:max-w-[12rem] truncate rounded-md sm:rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/80 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold text-gray-600 dark:text-gray-300"
-                    title={task.voiceOverOriginalName || "Uploaded file"}
+                    title={[
+                      task.voiceOverOriginalName || "Uploaded file",
+                      voiceOverExpiryHint(task.voiceOverExpireAt),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   >
                     🎧 {task.voiceOverOriginalName || "Uploaded file"}
+                    {voiceOverExpiryHint(task.voiceOverExpireAt) ? (
+                      <span className="font-normal text-gray-400 dark:text-gray-500">
+                        {" "}
+                        · {voiceOverExpiryHint(task.voiceOverExpireAt)}
+                      </span>
+                    ) : null}
                   </span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Actions Container */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-100 dark:border-gray-800/60 sm:pt-0 sm:border-0 sm:justify-end shrink-0">
+          {/* Actions Container — always full width below content so labeled buttons never overlap badges */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-2.5 border-t border-gray-100 dark:border-gray-800/60 w-full sm:justify-end">
             
             {/* Custom inline stream play trigger */}
             {voOk && (
@@ -568,11 +593,12 @@ function VoiceOverTaskRow({
               type="button"
               disabled={scriptActionsLocked}
               onClick={() => setScriptModalOpen(true)}
-              className={iconActionView}
+              className={textActionView}
               title={!scriptOk ? "No script on this task" : "View script"}
               aria-label="View script"
             >
-              <Eye size={14} />
+              <Eye size={12} />
+              <span>View</span>
             </button>
 
             {/* Script download button */}
@@ -580,25 +606,27 @@ function VoiceOverTaskRow({
               type="button"
               disabled={scriptActionsLocked}
               onClick={handleDownloadScriptTxt}
-              className={iconActionDownload}
+              className={textActionDownload}
               title="Download script as .txt"
               aria-label="Download script"
             >
               {scriptDownloadBusy ? (
-                <Loader2 size={14} className="animate-spin" />
+                <Loader2 size={12} className="animate-spin" />
               ) : (
-                <Download size={14} />
+                <Download size={12} />
               )}
+              <span>Script</span>
             </button>
 
             {/* Audio Upload element wrapper */}
             <label
-              className={`h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg sm:rounded-xl transition-all duration-200 ${
+              className={`${textActionUpload} ${
                 busyUpload ? uploadBusyClasses : uploadIdleClasses
               }`}
               title={uploadLabelTitle}
             >
-              {busyUpload ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              {busyUpload ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+              <span>{busyUpload ? "Uploading" : "Upload"}</span>
               <input
                 type="file"
                 accept={VOICE_OVER_ACCEPT}
@@ -616,31 +644,32 @@ function VoiceOverTaskRow({
                   type="button"
                   disabled={rowBlocking}
                   onClick={() => onVoiceOverDownload?.(task)}
-                  className={iconActionAudio}
+                  className={textActionAudio}
                   title="Download voice-over audio file"
                   aria-label="Download voice-over"
                 >
                   {busyVoDownload ? (
-                    <Loader2 size={14} className="animate-spin" />
+                    <Loader2 size={12} className="animate-spin" />
                   ) : (
-                    <FileAudio size={14} />
+                    <FileAudio size={12} />
                   )}
+                  <span>Voice-over</span>
                 </button>
                 
                 <button
                   type="button"
                   disabled={rowBlocking}
                   onClick={() => setDeleteModalOpen(true)}
-                  className={`${iconActionBase} border-red-200/70 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/25 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/40 hover:border-red-300 dark:hover:border-red-800 hover:text-red-700 dark:hover:text-red-300`}
+                  className={textActionDelete}
                   title="Remove voice-over"
                   aria-label="Remove voice-over"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={12} />
+                  <span>Remove</span>
                 </button>
               </>
             )}
           </div>
-        </div>
         {busyUpload && (
           <div className="w-full mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800/60">
             <div className="flex items-center justify-between mb-1.5">
@@ -700,9 +729,8 @@ function VoTrainingTaskRow({
   return (
     <>
       {scriptModalOpen && <ScriptViewModal task={task} onClose={() => setScriptModalOpen(false)} />}
-    <div className="group flex flex-col p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/40 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/30 hover:border-indigo-300/60 dark:hover:border-indigo-800/60 shadow-sm hover:shadow-md transition-all duration-300">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
-        <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+    <div className="group flex flex-col gap-2.5 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/70 dark:bg-gray-900/40 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/30 hover:border-indigo-300/60 dark:hover:border-indigo-800/60 shadow-sm hover:shadow-md transition-all duration-300">
+        <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 w-full">
           <div className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-md bg-indigo-100 dark:bg-indigo-950/60 text-[10px] font-black text-indigo-600 dark:text-indigo-400 mt-0.5 sm:mt-1">
             {index + 1}
           </div>
@@ -716,7 +744,7 @@ function VoTrainingTaskRow({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-100 dark:border-gray-800/60 sm:pt-0 sm:border-0 sm:justify-end shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 pt-2.5 border-t border-gray-100 dark:border-gray-800/60 w-full sm:justify-end">
           <button
             type="button"
             disabled={scriptActionsLocked}
@@ -750,7 +778,6 @@ function VoTrainingTaskRow({
             <span>Voice-over</span>
           </button>
         </div>
-      </div>
     </div>
     </>
   );

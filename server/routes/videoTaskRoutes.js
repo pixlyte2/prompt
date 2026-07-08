@@ -28,6 +28,7 @@ router.get("/stats", protect, adminOnly, ctrl.getTaskStats);
 router.get("/", protect, adminOrVoiceOver, ctrl.getTasks);
 router.post("/", protect, adminOnly, ctrl.createTask);
 router.delete("/bulk", protect, adminOnly, ctrl.deleteManyTasks);
+router.post("/cron/purge-voice-overs", ctrl.purgeExpiredVoiceOversCron);
 router.get("/:id/voice-over", protect, adminOrVoiceOver, ctrl.downloadVoiceOver);
 router.post("/:id/voice-over", protect, adminOrVoiceOver, handleVoiceOverUpload, ctrl.uploadVoiceOver);
 router.delete("/:id/voice-over", protect, adminOrVoiceOver, ctrl.deleteVoiceOver);

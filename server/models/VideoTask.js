@@ -47,6 +47,10 @@ const videoTaskSchema = new mongoose.Schema(
     voiceOverStoredName: { type: String, default: "" },
     /** Original client filename for Content-Disposition */
     voiceOverOriginalName: { type: String, default: "" },
+    /** When the current voice-over file was uploaded (TTL anchor) */
+    voiceOverUploadedAt: { type: Date, default: null },
+    /** Auto-delete voice-over at this time (uploadedAt + 10 days); cleared with the file */
+    voiceOverExpireAt: { type: Date, default: null },
     status: {
       type: String,
       enum: ["todo", "in_progress", "completed"],
@@ -74,6 +78,14 @@ videoTaskSchema.index({ scheduledDate: 1 });
 videoTaskSchema.index({ status: 1, scheduledDate: 1 });
 videoTaskSchema.index({ status: 1, completedAt: -1, updatedAt: -1 });
 videoTaskSchema.index({ status: 1, updatedAt: -1 });
+videoTaskSchema.index(
+  { voiceOverExpireAt: 1 },
+  {
+    partialFilterExpression: {
+      voiceOverStoredName: { $exists: true, $type: "string", $gt: "" },
+    },
+  },
+);
 
 /**
  * One-shot migration: rewrite the legacy assignee value `soundarya` to
@@ -122,6 +134,39 @@ videoTaskSchema.statics.initializeCustomVideoIds = async function initializeCust
     return updatedCount;
   } catch (err) {
     console.error("VideoTask customVideoId initialization failed:", err.message);
+    return 0;
+  }
+};
+
+/**
+ * One-shot migration: existing voice-overs without expiry get uploadedAt from updatedAt
+ * and expireAt = now + 10 days (full retention window from migration forward).
+ */
+videoTaskSchema.statics.migrateVoiceOverExpiry = async function migrateVoiceOverExpiry() {
+  const { voiceOverExpireAtFrom } = require("../constants/voiceOverRetention");
+  try {
+    const now = new Date();
+    const tasks = await this.find({
+      voiceOverStoredName: { $exists: true, $nin: ["", null] },
+      $or: [{ voiceOverExpireAt: null }, { voiceOverExpireAt: { $exists: false } }],
+    }).select("_id updatedAt voiceOverUploadedAt");
+
+    let updatedCount = 0;
+    for (const task of tasks) {
+      task.voiceOverUploadedAt = task.voiceOverUploadedAt || task.updatedAt || now;
+      task.voiceOverExpireAt = voiceOverExpireAtFrom(now);
+      await task.save();
+      updatedCount += 1;
+    }
+
+    if (updatedCount > 0) {
+      console.log(
+        `🔁 VideoTask migration: set 10-day voice-over expiry on ${updatedCount} task(s)`,
+      );
+    }
+    return updatedCount;
+  } catch (err) {
+    console.error("VideoTask voice-over expiry migration failed:", err.message);
     return 0;
   }
 };

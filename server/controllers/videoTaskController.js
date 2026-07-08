@@ -1,4 +1,5 @@
 const VideoTask = require("../models/VideoTask");
+const { voiceOverExpireAtFrom } = require("../constants/voiceOverRetention");
 const {
   contentTypeForVoiceOver,
   defaultVoiceOverOriginalName,
@@ -11,6 +12,11 @@ const {
   isVoiceOverGridFsId,
   ObjectId: VoiceOverObjectId,
 } = require("../utils/voiceOverGridfs");
+const {
+  clearVoiceOverFromTask,
+  isVoiceOverExpired,
+  purgeExpiredVoiceOvers,
+} = require("../utils/voiceOverCleanup");
 
 /** Tasks shown on the Voice-over page: scheduled date set and not completed */
 function taskAllowedForVoiceOverSchedule(task) {
@@ -406,16 +412,21 @@ exports.uploadVoiceOver = async (req, res) => {
 
     const prevId = task.voiceOverStoredName;
     let newIdHex = null;
+    const uploadedAt = new Date();
+    const expireAt = voiceOverExpireAtFrom(uploadedAt);
     try {
       const newId = await uploadVoiceOverBuffer(req.file.buffer, {
         originalName: req.file.originalname,
         contentType: req.file.mimetype,
         taskMongoId: task._id,
+        expireAt,
       });
       newIdHex = String(newId);
       task.voiceOverStoredName = newIdHex;
       task.voiceOverOriginalName =
         req.file.originalname || defaultVoiceOverOriginalName(req.file.originalname);
+      task.voiceOverUploadedAt = uploadedAt;
+      task.voiceOverExpireAt = expireAt;
       await task.save();
     } catch (inner) {
       if (newIdHex) await deleteVoiceOverGridFs(newIdHex);
@@ -435,13 +446,19 @@ exports.uploadVoiceOver = async (req, res) => {
 
 exports.downloadVoiceOver = async (req, res) => {
   try {
-    const task = await VideoTask.findById(req.params.id).lean();
+    const task = await VideoTask.findById(req.params.id);
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
     if (rejectVoiceOverOutOfScope(req, res, task, { allowTraining: true })) return;
     if (!task?.voiceOverStoredName?.trim()) {
       return res.status(404).json({ message: "No voice-over file for this task" });
+    }
+    if (isVoiceOverExpired(task)) {
+      await clearVoiceOverFromTask(task);
+      return res.status(410).json({
+        message: "Voice-over file expired (10-day retention). Please upload again.",
+      });
     }
     const idStr = String(task.voiceOverStoredName).trim();
     if (!isVoiceOverGridFsId(idStr)) {
@@ -491,13 +508,26 @@ exports.deleteVoiceOver = async (req, res) => {
     const task = await VideoTask.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
     if (rejectVoiceOverOutOfScope(req, res, task)) return;
-    await deleteVoiceOverGridFs(task.voiceOverStoredName);
-    task.voiceOverStoredName = "";
-    task.voiceOverOriginalName = "";
-    await task.save();
+    await clearVoiceOverFromTask(task);
     res.json(task);
   } catch (err) {
     console.error("deleteVoiceOver error:", err.message);
     res.status(500).json({ message: "Failed to remove voice-over" });
+  }
+};
+
+/** Cron / ops: purge voice-overs past voiceOverExpireAt. Auth via CRON_SECRET Bearer token. */
+exports.purgeExpiredVoiceOversCron = async (req, res) => {
+  try {
+    const secret = process.env.CRON_SECRET;
+    const auth = String(req.headers.authorization || "");
+    if (!secret || auth !== `Bearer ${secret}`) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const purged = await purgeExpiredVoiceOvers();
+    res.json({ purged });
+  } catch (err) {
+    console.error("purgeExpiredVoiceOversCron error:", err.message);
+    res.status(500).json({ message: "Voice-over purge failed" });
   }
 };

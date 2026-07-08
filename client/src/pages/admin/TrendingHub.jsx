@@ -547,6 +547,20 @@ function videoTitleMatchesKeyword(video, keyword) {
   return String(video?.title || "").toLowerCase().includes(q);
 }
 
+/** A video belongs to a category if its title matches any subcategory term
+ *  (or the category name when there are no subcategories). */
+function videoMatchesPlannerCategory(video, category) {
+  const subs =
+    category?.subcategoriesInput != null
+      ? String(category.subcategoriesInput)
+          .split(",")
+          .map((s) => String(s || "").trim())
+          .filter(Boolean)
+      : (category.subcategories || []);
+  if (subs.length === 0) return videoTitleMatchesKeyword(video, category.name);
+  return subs.some((s) => videoTitleMatchesKeyword(video, s));
+}
+
 function parsePublishedAgo(text) {
   if (!text) return Infinity;
   const cleaned = text.replace(/^Streamed\s+/i, "").replace(/^Premiered\s+/i, "");
@@ -575,11 +589,73 @@ function formatViews(n) {
 
 function isShortVideo(video) {
   if (!video) return false;
+  if (video.videoFormat === "short") return true;
+  if (video.videoFormat === "long") return false;
   return (
-    video.videoFormat === "short" ||
     video.duration === "Short" ||
     (video.duration && !video.duration.includes(":"))
   );
+}
+
+function normalizeChannelFormat(format) {
+  return format === "short" ? "short" : "long";
+}
+
+function getChannelsForFormatScope(typeChannels, activeChannel) {
+  const channels = typeChannels || [];
+  if (activeChannel === "all") return channels;
+  const key = normalizeCompetitorHandle(activeChannel);
+  return channels.filter((c) => normalizeCompetitorHandle(c.handle) === key);
+}
+
+/** Resolve the default format filter for a category/channel scope (not "all" when uniform). */
+function resolveDefaultCompFormat(typeChannels, activeChannel) {
+  const scoped = getChannelsForFormatScope(typeChannels, activeChannel);
+  if (scoped.length === 0) return "long";
+  const formats = new Set(scoped.map((ch) => normalizeChannelFormat(ch.videoFormat)));
+  if (formats.size === 1) return [...formats][0];
+  return "all";
+}
+
+function videoMatchesCompFormatFilter(video, compFormat, typeChannels, activeChannel) {
+  if (compFormat === "long") return !isShortVideo(video);
+  if (compFormat === "short") return isShortVideo(video);
+
+  const scoped = getChannelsForFormatScope(typeChannels, activeChannel);
+  const handleKey = normalizeCompetitorHandle(video.channelHandle);
+  const channel = scoped.find((c) => normalizeCompetitorHandle(c.handle) === handleKey);
+  if (!channel) {
+    if (video.videoFormat === "short") return true;
+    if (video.videoFormat === "long") return true;
+    return true;
+  }
+  const channelFormat = normalizeChannelFormat(channel.videoFormat);
+  return channelFormat === "short" ? isShortVideo(video) : !isShortVideo(video);
+}
+
+function buildChannelFormatLookup(competitorTypes) {
+  const map = new Map();
+  for (const type of competitorTypes || []) {
+    for (const ch of type.channels || []) {
+      const key = normalizeCompetitorHandle(ch.handle);
+      if (key) map.set(key, normalizeChannelFormat(ch.videoFormat));
+    }
+  }
+  return map;
+}
+
+function videoMatchesCachedFormatFilter(video, compFormat, channelFormatByHandle) {
+  if (compFormat === "long") return !isShortVideo(video);
+  if (compFormat === "short") return isShortVideo(video);
+
+  const handleKey = normalizeCompetitorHandle(video.channelHandle);
+  const channelFormat = channelFormatByHandle.get(handleKey);
+  if (!channelFormat) {
+    if (video.videoFormat === "short") return true;
+    if (video.videoFormat === "long") return true;
+    return true;
+  }
+  return channelFormat === "short" ? isShortVideo(video) : !isShortVideo(video);
 }
 
 function getThumbnailUrl(videoId, type = 'hd') {
@@ -967,6 +1043,7 @@ function ScheduleVideoModal({ video, channelType, onClose }) {
 
 function CompetitorVideoCard({ video, onSchedule, onPreviewThumbnail }) {
   const channelInitial = video.channelName ? video.channelName.charAt(0).toUpperCase() : "?";
+  const shortForm = isShortVideo(video);
 
   return (
     <div className="group relative flex flex-col rounded-2xl border border-gray-100 dark:border-gray-850 bg-white dark:bg-gray-900/60 backdrop-blur-xl overflow-hidden hover:shadow-[0_20px_45px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_20px_45px_rgba(0,0,0,0.35)] hover:-translate-y-1.5 transition-all duration-500 ease-out">
@@ -997,11 +1074,15 @@ function CompetitorVideoCard({ video, onSchedule, onPreviewThumbnail }) {
         </a>
 
         {/* Floating Badges */}
-        {video.duration && (
+        {shortForm ? (
+          <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-orange-600/90 backdrop-blur-md text-[9px] font-bold tracking-wider text-white shadow-sm border border-orange-400/30 uppercase">
+            Short
+          </span>
+        ) : video.duration ? (
           <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[9px] font-bold tracking-wider text-white shadow-sm border border-white/10 uppercase">
             {video.duration}
           </span>
-        )}
+        ) : null}
         
         {video.isLive && (
           <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-md bg-rose-600/90 backdrop-blur-md text-[9px] font-black text-white inline-flex items-center gap-1 shadow-md border border-rose-400/30 animate-pulse">
@@ -1699,7 +1780,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
   const [showViewDropdown, setShowViewDropdown] = useState(false);
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [compFormat, setCompFormat] = useState("all");
+  const [compFormat, setCompFormat] = useState("long");
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [compKeywords, setCompKeywords] = useState([]);
@@ -1713,8 +1794,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
   const sortDropdownRef = useRef(null);
   const formatDropdownRef = useRef(null);
   const keywordsDropdownRef = useRef(null);
-  const lastLoadedTypeRef = useRef(null);
-  const lastLoadedChannelRef = useRef(null);
+  const prevTypeChannelRef = useRef({ type: null, channel: null });
   /** Shared scrape cache: `${typeId}|all` → { videos, channels } (persisted in sessionStorage, 60 min TTL). */
   const competitorVideoCacheRef = cacheRef;
 
@@ -1883,8 +1963,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
   }, [activeType, compFormat, fetchVideos, videoRefreshKey]);
 
   const handleTypesChanged = useCallback(() => {
-    lastLoadedTypeRef.current = null;
-    lastLoadedChannelRef.current = null;
+    prevTypeChannelRef.current = { type: null, channel: null };
     competitorVideoCacheRef.current.clear();
     onCacheChange?.();
     fetchTypes();
@@ -1892,26 +1971,25 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
     setVideoRefreshKey((k) => k + 1);
   }, [fetchTypes, onCacheChange]);
 
-  // Reset loaded status when Category or Channel is explicitly changed by the user
+  // Reset format to per-channel default when category or source scope changes
   useEffect(() => {
-    lastLoadedTypeRef.current = null;
-  }, [activeType]);
+    const prev = prevTypeChannelRef.current;
+    if (prev.type === activeType && prev.channel === activeChannel) return;
 
-  useEffect(() => {
-    lastLoadedChannelRef.current = null;
-  }, [activeChannel]);
+    prevTypeChannelRef.current = { type: activeType, channel: activeChannel };
 
-  // Auto-default format on first load of category channels or channel selection
-  useEffect(() => {
-    if (activeType && channels.length > 0) {
-      lastLoadedTypeRef.current = activeType;
-      lastLoadedChannelRef.current = activeChannel;
+    if (!activeType || !activeTypeData?.channels?.length) {
+      setCompFormat("long");
+      return;
     }
-  }, [activeType, channels, activeChannel]);
+
+    setCompFormat(resolveDefaultCompFormat(activeTypeData.channels, activeChannel));
+  }, [activeType, activeChannel, activeTypeData]);
 
   // Base list with channel + search + format filters
   const baseFiltered = useMemo(() => {
     let list = [...videos];
+    const typeChannels = activeTypeData?.channels || [];
 
     if (activeChannel !== "all") {
       list = list.filter((v) => v.channelHandle === activeChannel);
@@ -1922,14 +2000,10 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
       list = list.filter((v) => v.title.toLowerCase().includes(q));
     }
 
-    if (compFormat !== "all") {
-      list = list.filter((v) => {
-        return compFormat === "short" ? isShortVideo(v) : !isShortVideo(v);
-      });
-    }
+    list = list.filter((v) => videoMatchesCompFormatFilter(v, compFormat, typeChannels, activeChannel));
 
     return list;
-  }, [videos, activeChannel, compSearch, compFormat]);
+  }, [videos, activeChannel, compSearch, compFormat, activeTypeData]);
 
   const applyKeywordFilter = useCallback((list) => {
     if (!activeKeyword) return list;
@@ -2138,6 +2212,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                         onClick={() => {
                           setActiveType(t._id);
                           setActiveChannel("all");
+                          setCompFormat(resolveDefaultCompFormat(t.channels, "all"));
                           setShowTypeDropdown(false);
                         }}
                         className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-bold transition-all ${
@@ -2181,6 +2256,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                   <button
                     onClick={() => {
                       setActiveChannel("all");
+                      setCompFormat(resolveDefaultCompFormat(activeTypeData?.channels, "all"));
                       setShowChannelDropdown(false);
                     }}
                     className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800/40 dark:text-white"
@@ -2193,6 +2269,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                         key={ch.handle}
                         onClick={() => {
                           setActiveChannel(ch.handle);
+                          setCompFormat(resolveDefaultCompFormat(activeTypeData?.channels, ch.handle));
                           setShowChannelDropdown(false);
                         }}
                         className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800/40 truncate dark:text-white"
@@ -2550,7 +2627,11 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                   // Clear search and filters
                   setCompSearch("");
                   setActiveKeyword(null);
-                  setCompFormat("all");
+                  setCompFormat(
+                    activeTypeData
+                      ? resolveDefaultCompFormat(activeTypeData.channels, "all")
+                      : "long",
+                  );
                   setPeriod("all");
                   setMinViews(0);
                   setActiveChannel("all");
@@ -3270,29 +3351,25 @@ function ScheduleView({ tasks, loading, onRefresh }) {
 }
 
 function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywordsChange, onTypeKeywordsChange, onCacheChange }) {
-  const [types, setTypes] = useState([]);
-  const [typesLoading, setTypesLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [compFormat, setCompFormat] = useState("all");
+  const [compFormat, setCompFormat] = useState("long");
   const [compSort, setCompSort] = useState("views");
-  const [activeKeyword, setActiveKeyword] = useState(null);
-  const cachedTabKeywords = keywordsState?.cached || [];
-  const [newKeywordInput, setNewKeywordInput] = useState("");
-  const [showKeywordsDropdown, setShowKeywordsDropdown] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [competitorTypes, setCompetitorTypes] = useState([]);
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [activeSub, setActiveSub] = useState(null);
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [previewThumbUrl, setPreviewThumbUrl] = useState(null);
   const [scheduleVideo, setScheduleVideo] = useState(null);
-  const keywordsDropdownRef = useRef(null);
+  const [scheduleCategory, setScheduleCategory] = useState("");
+  const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
   const formatDropdownRef = useRef(null);
   const sortDropdownRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (keywordsDropdownRef.current && !keywordsDropdownRef.current.contains(event.target)) {
-        setShowKeywordsDropdown(false);
-      }
       if (formatDropdownRef.current && !formatDropdownRef.current.contains(event.target)) {
         setShowFormatDropdown(false);
       }
@@ -3307,22 +3384,32 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setTypesLoading(true);
       try {
-        const { data } = await api.get("/competitor-types");
-        if (!cancelled) setTypes(data);
+        const { data } = await api.get("/planner/config");
+        if (!cancelled) setCategories(Array.isArray(data?.categories) ? data.categories : []);
       } catch {
-        if (!cancelled) toast.error("Could not load channel types");
-      } finally {
-        if (!cancelled) setTypesLoading(false);
+        if (!cancelled) toast.error("Could not load categories");
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
-  const allKeywords = useMemo(
-    () => unionKeywords(types, keywordsState),
-    [types, keywordsState],
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.get("/competitor-types");
+        if (!cancelled) setCompetitorTypes(Array.isArray(data) ? data : []);
+      } catch {
+        // Format filter falls back to video metadata when types are unavailable.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const channelFormatByHandle = useMemo(
+    () => buildChannelFormatLookup(competitorTypes),
+    [competitorTypes],
   );
 
   const cachedTypeCount = useMemo(() => {
@@ -3348,55 +3435,15 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
       list = list.filter((v) => v.title.toLowerCase().includes(q));
     }
 
-    if (compFormat !== "all") {
-      list = list.filter((v) => (compFormat === "short" ? isShortVideo(v) : !isShortVideo(v)));
-    }
+    list = list.filter((v) => videoMatchesCachedFormatFilter(v, compFormat, channelFormatByHandle));
 
     return list;
-  }, [mergedVideos, search, compFormat]);
+  }, [mergedVideos, search, compFormat, channelFormatByHandle]);
 
-  const applyKeywordFilter = useCallback((list) => {
-    if (activeKeyword) {
-      return list.filter((v) => videoTitleMatchesKeyword(v, activeKeyword));
-    }
-    if (allKeywords.length === 0) return list;
-    return list.filter((v) => allKeywords.some((kw) => videoTitleMatchesKeyword(v, kw)));
-  }, [activeKeyword, allKeywords]);
-
-  const keywordCounts = useMemo(() => {
-    const counts = {};
-    allKeywords.forEach((kw) => {
-      counts[kw] = baseFiltered.filter((v) => videoTitleMatchesKeyword(v, kw)).length;
-    });
-    return counts;
-  }, [baseFiltered, allKeywords]);
-
-  const visibleKeywords = useMemo(
-    () => allKeywords.filter((kw) => (keywordCounts[kw] || 0) > 0),
-    [allKeywords, keywordCounts],
-  );
-
-  const sortedAllKeywords = useMemo(
-    () => sortKeywordsByMatchCount(allKeywords, keywordCounts),
-    [allKeywords, keywordCounts],
-  );
-
-  const sortedVisibleKeywords = useMemo(
-    () => sortKeywordsByMatchCount(visibleKeywords, keywordCounts),
-    [visibleKeywords, keywordCounts],
-  );
-
-  useEffect(() => {
-    if (activeKeyword && !(keywordCounts[activeKeyword] > 0)) {
-      setActiveKeyword(null);
-    }
-  }, [activeKeyword, keywordCounts]);
-
-  const filtered = useMemo(() => {
-    let list = applyKeywordFilter([...baseFiltered]);
-
+  const sortVideos = useCallback((list) => {
+    const arr = [...list];
     if (compSort === "trending") {
-      list.sort((a, b) => {
+      arr.sort((a, b) => {
         const aMs = parsePublishedAgo(a.publishedText);
         const bMs = parsePublishedAgo(b.publishedText);
         const aTime = aMs === Infinity ? 31_536_000_000 * 5 : Math.max(aMs, 1000);
@@ -3404,78 +3451,59 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
         return (b.views / bTime) - (a.views / aTime);
       });
     } else if (compSort === "views") {
-      list.sort((a, b) => (b.views || 0) - (a.views || 0));
+      arr.sort((a, b) => (b.views || 0) - (a.views || 0));
     } else {
-      list.sort((a, b) => parsePublishedAgo(a.publishedText) - parsePublishedAgo(b.publishedText));
+      arr.sort((a, b) => parsePublishedAgo(a.publishedText) - parsePublishedAgo(b.publishedText));
     }
+    return arr;
+  }, [compSort]);
 
-    return list;
-  }, [baseFiltered, compSort, applyKeywordFilter]);
+  const groups = useMemo(() => {
+    return categories.map((cat) => {
+      const categoryMatches = baseFiltered.filter((v) => videoMatchesPlannerCategory(v, cat));
+      let matched = categoryMatches;
+      if (activeSub && activeSub.category === cat.name) {
+        matched = categoryMatches.filter((v) => videoTitleMatchesKeyword(v, activeSub.sub));
+      }
+      const subCounts = {};
+      (cat.subcategories || []).forEach((s) => {
+        subCounts[s] = categoryMatches.filter((v) => videoTitleMatchesKeyword(v, s)).length;
+      });
+      return {
+        category: cat,
+        total: categoryMatches.length,
+        matched: sortVideos(matched),
+        subCounts,
+      };
+    });
+  }, [categories, baseFiltered, activeSub, sortVideos]);
 
-  const persistCachedKeywordsLocal = useCallback((keywords) => {
-    onCachedKeywordsChange(keywords);
-  }, [onCachedKeywordsChange]);
+  const totalMatches = useMemo(
+    () => groups.reduce((sum, g) => sum + g.matched.length, 0),
+    [groups],
+  );
 
-  const addKeyword = useCallback(() => {
-    const parsed = parseKeywordInput(newKeywordInput);
-    if (!parsed.length) return;
-    const toAdd = filterNewKeywords(parsed, allKeywords);
-    if (!toAdd.length) {
-      toast.error("Keyword already exists");
-      return;
+  const visibleGroups = useMemo(
+    () => (activeCategory ? groups.filter((g) => g.category.name === activeCategory) : groups),
+    [groups, activeCategory],
+  );
+
+  useEffect(() => {
+    if (activeCategory && !categories.some((c) => c.name === activeCategory)) {
+      setActiveCategory(null);
     }
-    persistCachedKeywordsLocal([...cachedTabKeywords, ...toAdd]);
-    setNewKeywordInput("");
-  }, [newKeywordInput, allKeywords, cachedTabKeywords, persistCachedKeywordsLocal]);
+  }, [activeCategory, categories]);
 
-  const removeKeyword = useCallback((keyword) => {
-    const key = String(keyword || "").trim().toLowerCase();
-    if (!key) return;
-
-    const nextCached = cachedTabKeywords.filter((k) => k.toLowerCase() !== key);
-    if (nextCached.length !== cachedTabKeywords.length) {
-      persistCachedKeywordsLocal(nextCached);
+  useEffect(() => {
+    if (activeSub && activeCategory && activeSub.category !== activeCategory) {
+      setActiveSub(null);
     }
+  }, [activeSub, activeCategory]);
 
-    for (const type of types) {
-      const typeId = String(type?._id || "").trim();
-      if (!typeId) continue;
-      const typeKeywords = keywordsState?.byType?.[typeId] || [];
-      if (!typeKeywords.some((k) => k.toLowerCase() === key)) continue;
-      onTypeKeywordsChange(
-        typeId,
-        typeKeywords.filter((k) => k.toLowerCase() !== key),
-      );
-    }
-
-    if (activeKeyword && activeKeyword.toLowerCase() === key) {
-      setActiveKeyword(null);
-    }
-  }, [
-    cachedTabKeywords,
-    activeKeyword,
-    persistCachedKeywordsLocal,
-    types,
-    keywordsState?.byType,
-    onTypeKeywordsChange,
-  ]);
-
-  const scheduleTypeName = useMemo(() => {
-    if (!scheduleVideo?._cachedFromTypes?.length) return "";
-    const typeId = scheduleVideo._cachedFromTypes[0];
-    return types.find((t) => t._id === typeId)?.name || "";
-  }, [scheduleVideo, types]);
-
-  if (typesLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-3 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading cached videos…</p>
-        </div>
-      </div>
-    );
-  }
+  const handleSchedule = useCallback((video, categoryName) => {
+    setScheduleCategory(categoryName || "");
+    setScheduleVideo(video);
+  }, []);
 
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden gap-3 px-4 pt-3 pb-4">
@@ -3489,126 +3517,35 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
             <div className="min-w-0">
               <p className="text-[11px] font-bold text-gray-800 dark:text-gray-200 truncate">All cached videos</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                {mergedVideos.length} {mergedVideos.length === 1 ? "video" : "videos"} · {cachedTypeCount} {cachedTypeCount === 1 ? "category" : "categories"} cached
+                {mergedVideos.length} {mergedVideos.length === 1 ? "video" : "videos"} · {cachedTypeCount} {cachedTypeCount === 1 ? "source" : "sources"} cached
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 h-9 px-2.5 bg-white/40 dark:bg-gray-900/40 border border-gray-200/60 dark:border-gray-700 rounded-xl shadow-sm flex-shrink-0">
             <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 whitespace-nowrap">
-              {filtered.length} {filtered.length === 1 ? "match" : "matches"}
+              {totalMatches} {totalMatches === 1 ? "match" : "matches"}
             </span>
           </div>
         </div>
 
-        {/* Row 2: Keywords, format, sort, search */}
-        <div className={`p-2 bg-white/40 dark:bg-gray-900/40 backdrop-blur-2xl border border-white/60 dark:border-gray-800/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.02)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.25)] overflow-visible ${showKeywordsDropdown || showFormatDropdown || showSortDropdown ? "relative z-[110]" : ""}`}>
+        {/* Row 2: Manage categories, format, sort, search */}
+        <div className={`p-2 bg-white/40 dark:bg-gray-900/40 backdrop-blur-2xl border border-white/60 dark:border-gray-800/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.02)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.25)] overflow-visible ${showFormatDropdown || showSortDropdown ? "relative z-[110]" : ""}`}>
           <div className="flex flex-wrap items-center gap-2 pb-0.5 -mb-0.5">
-            {/* Manage keywords */}
-            <div className="relative flex-shrink-0" ref={keywordsDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setShowKeywordsDropdown(!showKeywordsDropdown)}
-                className={`flex items-center justify-between h-9 px-2.5 rounded-xl border text-[11px] font-semibold transition-all duration-200 ${
-                  showKeywordsDropdown || allKeywords.length > 0
-                    ? "bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/30 text-blue-700 dark:text-blue-400 hover:bg-blue-500/15"
-                    : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400 hover:bg-white dark:hover:bg-gray-800/60"
-                }`}
-              >
-                <div className="flex items-center min-w-0">
-                  <Tag size={13} className="mr-1.5 flex-shrink-0" />
-                  <span className="truncate max-w-[100px]">Manage keywords</span>
-                </div>
-                <ChevronDown size={12} className={`ml-1.5 opacity-50 flex-shrink-0 transition-transform ${showKeywordsDropdown ? "rotate-180" : ""}`} />
-              </button>
-
-              {showKeywordsDropdown && (
-                <div className="absolute top-full left-0 mt-2 w-56 rounded-[18px] bg-white dark:bg-gray-950 border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-2 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
-                  <div className="px-3 pb-2">
-                    <p className="text-[9px] font-black uppercase tracking-wider text-gray-400 mb-2">Title keywords</p>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        value={newKeywordInput}
-                        onChange={(e) => setNewKeywordInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            addKeyword();
-                          }
-                        }}
-                        placeholder="e.g. gold | silver | loans"
-                        className="flex-1 min-w-0 h-8 px-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[11px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:border-blue-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={addKeyword}
-                        disabled={!newKeywordInput.trim()}
-                        className="h-8 px-2.5 rounded-lg bg-blue-600 text-white text-[10px] font-bold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    <p className="text-[9px] text-gray-400 mt-2 leading-snug">
-                      Includes keywords from all categories plus any you add here. Hover a row and use × to remove.
-                    </p>
-                  </div>
-                  <div className="h-px bg-gray-100 dark:bg-gray-800 mx-2" />
-                  <div className="max-h-48 overflow-y-auto custom-scrollbar py-1">
-                    {allKeywords.length === 0 ? (
-                      <p className="px-4 py-3 text-[10px] text-gray-400 text-center">No keywords yet — add terms to filter by title</p>
-                    ) : (
-                      sortedAllKeywords.map((kw) => {
-                        const kwCount = keywordCounts[kw];
-                        const isCachedOnly = cachedTabKeywords.some((k) => k.toLowerCase() === kw.toLowerCase());
-                        const isFromCategory = types.some((type) => {
-                          const typeKeywords = keywordsState?.byType?.[String(type?._id || "")] || [];
-                          return typeKeywords.some((k) => k.toLowerCase() === kw.toLowerCase());
-                        });
-                        const removeTitle = isCachedOnly && !isFromCategory
-                          ? "Remove from cached tab keywords"
-                          : isFromCategory && !isCachedOnly
-                            ? "Remove from category keywords"
-                            : "Remove keyword";
-                        return (
-                          <div key={kw} className="flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/40 group">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveKeyword(activeKeyword === kw ? null : kw);
-                                setShowKeywordsDropdown(false);
-                              }}
-                              className={`flex-1 min-w-0 flex items-center gap-1.5 text-left text-[10px] font-bold truncate transition-colors ${
-                                activeKeyword === kw
-                                  ? "text-blue-600 dark:text-blue-400"
-                                  : "text-gray-700 dark:text-white"
-                              }`}
-                            >
-                              <span className="truncate">{kw}</span>
-                              {kwCount !== undefined && kwCount > 0 && (
-                                <span className="flex-shrink-0 text-[9px] font-black bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-500">
-                                  {kwCount}
-                                </span>
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeKeyword(kw);
-                              }}
-                              className="p-1 rounded-md text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
-                              title={removeTitle}
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Manage categories */}
+            <button
+              type="button"
+              onClick={() => setCategoriesModalOpen(true)}
+              className={`flex items-center justify-between h-9 px-2.5 rounded-xl border text-[11px] font-semibold transition-all duration-200 flex-shrink-0 ${
+                categories.length > 0
+                  ? "bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/30 text-blue-700 dark:text-blue-400 hover:bg-blue-500/15"
+                  : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400 hover:bg-white dark:hover:bg-gray-800/60"
+              }`}
+            >
+              <div className="flex items-center min-w-0">
+                <Layers size={13} className="mr-1.5 flex-shrink-0" />
+                <span className="truncate max-w-[120px]">Manage categories</span>
+              </div>
+            </button>
 
             {/* Format */}
             <div className="relative flex-shrink-0" ref={formatDropdownRef}>
@@ -3765,8 +3702,7 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
                 onCacheChange?.();
                 // Clear all filters and search
                 setSearch("");
-                setActiveKeyword(null);
-                setCompFormat("all");
+                setCompFormat("long");
                 setCompSort("views");
                 setSearchExpanded(false);
                 toast.success("All cached videos and filters cleared");
@@ -3780,28 +3716,33 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
           </div>
         </div>
 
-        {/* Row 3: Keyword pills — z-0 so filter-bar dropdowns stack above */}
-        <div className="relative z-0 flex flex-wrap items-center gap-1.5 px-0.5">
-          {sortedVisibleKeywords.map((kw) => (
-            <FilterChip
-              key={kw}
-              active={activeKeyword === kw}
-              onClick={() => setActiveKeyword(activeKeyword === kw ? null : kw)}
-              count={keywordCounts[kw]}
-            >
-              {kw}
-            </FilterChip>
-          ))}
-          {activeKeyword && (
-            <button
-              type="button"
-              onClick={() => setActiveKeyword(null)}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors flex-shrink-0"
-            >
-              <X size={11} /> Clear
-            </button>
-          )}
-        </div>
+        {/* Row 3: Category filter chips */}
+        {categories.length > 0 && (
+          <div className="relative z-0 flex flex-wrap items-center gap-1.5 px-0.5">
+            {groups.map((g) => (
+              <FilterChip
+                key={g.category.name}
+                active={activeCategory === g.category.name}
+                onClick={() => {
+                  setActiveCategory(activeCategory === g.category.name ? null : g.category.name);
+                  setActiveSub(null);
+                }}
+                count={g.total}
+              >
+                {g.category.name}
+              </FilterChip>
+            ))}
+            {activeCategory && (
+              <button
+                type="button"
+                onClick={() => { setActiveCategory(null); setActiveSub(null); }}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors flex-shrink-0"
+              >
+                <X size={11} /> Clear
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto relative px-2 pb-6">
@@ -3819,30 +3760,100 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
               Switch to the Competitor Watch tab and select a category to start caching
             </div>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : categories.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-32 text-center fade-in">
+            <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-6 shadow-md border border-blue-100 dark:border-blue-800/40">
+              <Layers size={32} className="text-blue-500 dark:text-blue-400" />
+            </div>
+            <p className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">No categories yet</p>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-sm mb-5">
+              Add categories like Politics or Cinema with subcategories, and cached videos will be grouped under them.
+            </p>
+            <button
+              type="button"
+              onClick={() => setCategoriesModalOpen(true)}
+              className="buffer-button-primary text-xs py-2 inline-flex items-center gap-1.5"
+            >
+              <Plus size={14} /> Add categories
+            </button>
+          </div>
+        ) : totalMatches === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center fade-in">
             <div className="w-20 h-20 bg-gray-50 dark:bg-gray-800/80 rounded-full flex items-center justify-center mb-6 shadow-md border border-gray-200 dark:border-gray-700 ring-4 ring-gray-50 dark:ring-gray-900/50">
               <Youtube size={32} className="text-gray-400 dark:text-gray-500" />
             </div>
             <p className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">No videos found</p>
             <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-sm">
-              {allKeywords.length > 0
-                ? activeKeyword
-                  ? `No cached videos have "${activeKeyword}" in the title. Try another keyword or clear the filter.`
-                  : "No cached videos match any of your configured keywords. Try adding keywords, adjusting format, or search."
-                : "No cached videos match your current filters. Try adjusting format or search."}
+              No cached videos match your categories with the current format/search. Adjust filters or edit your subcategories.
             </p>
           </div>
         ) : (
-          <div className="space-y-2 pt-4 pb-2">
-            {filtered.map((video) => (
-              <CachedVideoRow
-                key={video.videoId}
-                video={video}
-                onSchedule={setScheduleVideo}
-                onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
-              />
-            ))}
+          <div className="space-y-4 pt-4 pb-2">
+            {visibleGroups.map((g) => {
+              if (g.total === 0) return null;
+              const subs = (g.category.subcategories || []).filter((s) => (g.subCounts[s] || 0) > 0);
+              return (
+                <div key={g.category.name} className="space-y-2">
+                  <div className="flex items-center gap-2 px-1">
+                    <Tag size={14} className="text-blue-500 flex-shrink-0" />
+                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{g.category.name}</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 flex-shrink-0">
+                      {g.category.percentage}%
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 flex-shrink-0">
+                      {g.total} {g.total === 1 ? "video" : "videos"}
+                    </span>
+                  </div>
+
+                  {subs.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 px-1">
+                      {subs.map((s) => (
+                        <FilterChip
+                          key={s}
+                          active={activeSub?.category === g.category.name && activeSub?.sub === s}
+                          onClick={() =>
+                            setActiveSub(
+                              activeSub?.category === g.category.name && activeSub?.sub === s
+                                ? null
+                                : { category: g.category.name, sub: s },
+                            )
+                          }
+                          count={g.subCounts[s]}
+                        >
+                          {s}
+                        </FilterChip>
+                      ))}
+                      {activeSub?.category === g.category.name && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveSub(null)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors flex-shrink-0"
+                        >
+                          <X size={11} /> Clear
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {g.matched.length === 0 ? (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 italic px-1 py-1">
+                      No videos for this subcategory.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {g.matched.map((video) => (
+                        <CachedVideoRow
+                          key={video.videoId}
+                          video={video}
+                          onSchedule={(v) => handleSchedule(v, g.category.name)}
+                          onPreviewThumbnail={(url) => setPreviewThumbUrl(url)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -3851,10 +3862,290 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
       {scheduleVideo && (
         <ScheduleVideoModal
           video={scheduleVideo}
-          channelType={scheduleTypeName}
+          channelType={scheduleCategory}
           onClose={() => setScheduleVideo(null)}
         />
       )}
+      <CategoriesModal
+        open={categoriesModalOpen}
+        categories={categories}
+        cachedVideos={mergedVideos}
+        onClose={() => setCategoriesModalOpen(false)}
+        onSaved={(saved) => setCategories(saved)}
+      />
+    </div>
+  );
+}
+
+function makeEmptyPlannerCategory() {
+  return { name: "", percentage: 0, subcategories: [] };
+}
+
+function getEffectiveCategorySubcategories(category) {
+  if (category?.subcategoriesInput != null) {
+    return String(category.subcategoriesInput)
+      .split(",")
+      .map((s) => String(s || "").trim())
+      .filter(Boolean);
+  }
+  return (Array.isArray(category?.subcategories) ? category.subcategories : [])
+    .map((s) => String(s || "").trim())
+    .filter(Boolean);
+}
+
+function countCachedVideosForCategory(videos, category) {
+  const name = String(category?.name || "").trim();
+  if (!name) return 0;
+  const subs = getEffectiveCategorySubcategories(category);
+  const effective = { ...category, subcategories: subs };
+  return (videos || []).filter((v) => videoMatchesPlannerCategory(v, effective)).length;
+}
+
+function normalizePlannerCategoriesForSave(categories) {
+  const seen = new Set();
+  const out = [];
+  for (const cat of categories || []) {
+    const name = String(cat?.name || "").trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      name,
+      percentage: Math.max(0, Math.min(100, Math.round(Number(cat?.percentage) || 0))),
+      subcategories: getEffectiveCategorySubcategories(cat),
+    });
+  }
+  return out;
+}
+
+const CATEGORY_ROW_GRID =
+  "grid grid-cols-1 sm:grid-cols-[minmax(0,11rem)_4.5rem_minmax(0,1fr)_4.5rem_2rem] gap-2";
+
+function PlannerCategoryEditorRow({ category, index, onChange, onRemove, cachedVideos = [] }) {
+  const subcatFocusedRef = useRef(false);
+  const [localSubcat, setLocalSubcat] = useState(
+    () => category.subcategoriesInput ?? (category.subcategories || []).join(", "),
+  );
+
+  useEffect(() => {
+    if (!subcatFocusedRef.current) {
+      setLocalSubcat(category.subcategoriesInput ?? (category.subcategories || []).join(", "));
+    }
+  }, [category.subcategoriesInput, category.subcategories]);
+
+  const videoCount = useMemo(
+    () => countCachedVideosForCategory(cachedVideos, { ...category, subcategoriesInput: localSubcat }),
+    [cachedVideos, category, localSubcat],
+  );
+
+  const handleSubcatBlur = useCallback(
+    (e) => {
+      subcatFocusedRef.current = false;
+      onChange(index, { subcategoriesInput: e.target.value });
+    },
+    [index, onChange],
+  );
+
+  return (
+    <div className={`${CATEGORY_ROW_GRID} p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 sm:items-start`}>
+      <div className="min-w-0">
+        <span className="sm:hidden text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">Category</span>
+        <input
+          type="text"
+          value={category.name}
+          onChange={(e) => onChange(index, { name: e.target.value })}
+          placeholder="Category (e.g. Politics)"
+          className="buffer-input text-sm w-full mt-0.5 sm:mt-0"
+        />
+      </div>
+      <div className="min-w-0">
+        <span className="sm:hidden text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">%</span>
+        <div className="flex items-center gap-1 mt-0.5 sm:mt-0">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={category.percentage}
+            onChange={(e) => onChange(index, { percentage: e.target.value })}
+            placeholder="%"
+            className="buffer-input text-sm w-full"
+          />
+          <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 sm:hidden">%</span>
+        </div>
+      </div>
+      <div className="min-w-0">
+        <span className="sm:hidden text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">Subcategories</span>
+        <input
+          type="text"
+          value={localSubcat}
+          onChange={(e) => setLocalSubcat(e.target.value)}
+          onFocus={() => { subcatFocusedRef.current = true; }}
+          onBlur={handleSubcatBlur}
+          placeholder="Subcategories, comma separated"
+          className="buffer-input text-sm w-full mt-0.5 sm:mt-0"
+        />
+      </div>
+      <div className="min-w-0 flex items-center sm:justify-end sm:pt-1.5">
+        <span className="sm:hidden text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mr-2">Videos</span>
+        <span
+          className="text-sm font-bold tabular-nums text-gray-700 dark:text-gray-200"
+          title={`${videoCount} cached ${videoCount === 1 ? "video" : "videos"} match this category`}
+        >
+          {videoCount}
+        </span>
+      </div>
+      <div className="flex items-center justify-end sm:justify-center sm:pt-1">
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          title="Remove category"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CategoriesModal({ open, categories, cachedVideos = [], onClose, onSaved }) {
+  const [draft, setDraft] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setDraft(categories?.length ? categories.map((c) => ({ ...c })) : [makeEmptyPlannerCategory()]);
+    }
+  }, [open, categories]);
+
+  const percentTotal = useMemo(
+    () => draft.reduce((sum, c) => sum + (Number(c.percentage) || 0), 0),
+    [draft],
+  );
+
+  const totalCachedVideos = cachedVideos.length;
+
+  const updateCategory = useCallback((index, patch) => {
+    setDraft((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)));
+  }, []);
+
+  const removeCategory = useCallback((index) => {
+    setDraft((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const addCategory = useCallback(() => {
+    setDraft((prev) => [...prev, makeEmptyPlannerCategory()]);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    const normalized = normalizePlannerCategoriesForSave(draft);
+    if (!normalized.length) {
+      toast.error("Add at least one named category");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data } = await api.put("/planner/config", { categories: normalized });
+      const saved = data?.categories?.length ? data.categories : normalized;
+      onSaved(saved);
+      toast.success("Categories saved");
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save categories");
+    } finally {
+      setSaving(false);
+    }
+  }, [draft, onSaved, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+          <Layers size={16} className="text-blue-500" />
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Manage categories</h3>
+          <span
+            className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+            title="Total cached videos available for matching"
+          >
+            {totalCachedVideos} {totalCachedVideos === 1 ? "video" : "videos"}
+          </span>
+          <span
+            className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+              percentTotal === 100
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+            }`}
+            title="Sum of category percentages"
+          >
+            Total {percentTotal}%
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 space-y-2">
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            Subcategories are the terms matched against cached video titles. Add them comma-separated.
+          </p>
+          <div
+            className={`${CATEGORY_ROW_GRID} hidden sm:grid px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500`}
+            aria-hidden
+          >
+            <span>Category</span>
+            <span>%</span>
+            <span>Subcategories</span>
+            <span className="text-right">Videos</span>
+            <span />
+          </div>
+          {draft.map((cat, i) => (
+            <PlannerCategoryEditorRow
+              key={i}
+              category={cat}
+              index={i}
+              onChange={updateCategory}
+              onRemove={removeCategory}
+              cachedVideos={cachedVideos}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={addCategory}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 px-2 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          >
+            <Plus size={14} /> Add category
+          </button>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="buffer-button-secondary text-xs py-2"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="buffer-button-primary text-xs py-2 flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+            Save categories
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
