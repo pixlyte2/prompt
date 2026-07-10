@@ -43,13 +43,15 @@ import AdminLayout from "../../layout/AdminLayout";
 import PageTabBar from "../../components/PageTabBar";
 import VideoAIModal from "../../components/VideoAIModal";
 import api from "../../services/api";
+import { AnalyzeButton } from "../../components/ScheduleCategoryAnalysis";
+import CategoriesModal, { ManageCategoriesButton, collectPlannerSubcategories } from "../../components/PlannerCategoriesModal";
 import { countWords } from "../../utils/aiPromptUtils";
 import {
   hydrateCompetitorKeywords,
   persistTypeKeywords,
-  persistCachedKeywords,
   sortKeywordsByMatchCount,
   unionKeywords,
+  mergeKeywordLists,
 } from "../../utils/competitorKeywords";
 import {
   toDateKey,
@@ -58,6 +60,7 @@ import {
   getTomorrowTabDateKey,
   formatScheduleTabLabel,
 } from "../../utils/videoTaskSchedule";
+import { videoTitleMatchesKeyword } from "../../utils/plannerKeywords";
 
 function normalizeCompetitorHandle(handle) {
   return String(handle || "").trim().replace(/^@/, "").toLowerCase();
@@ -541,14 +544,6 @@ function mergeAllCachedVideos(cacheRef) {
   return Array.from(byVideoId.values());
 }
 
-function videoTitleMatchesKeyword(video, keyword) {
-  const q = String(keyword || "").trim().toLowerCase();
-  if (!q) return true;
-  return String(video?.title || "").toLowerCase().includes(q);
-}
-
-/** A video belongs to a category if its title matches any subcategory term
- *  (or the category name when there are no subcategories). */
 function videoMatchesPlannerCategory(video, category) {
   const subs =
     category?.subcategoriesInput != null
@@ -2198,7 +2193,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                 }`}
               >
                 <span className="truncate max-w-[100px] md:max-w-[130px]">
-                  {types.find(t => t._id === activeType)?.name || "Category"}
+                  {types.find(t => t._id === activeType)?.name || "Taxonomy"}
                 </span>
                 <ChevronDown size={12} className="ml-1 opacity-50 flex-shrink-0" />
               </button>
@@ -2466,7 +2461,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
                             }`}
                           >
                             {kw}
-                            {keywordCounts[kw] !== undefined && (
+                            {(keywordCounts[kw] || 0) > 0 && (
                               <span className="ml-1.5 text-[9px] font-black text-gray-400">{keywordCounts[kw]}</span>
                             )}
                           </button>
@@ -2703,7 +2698,7 @@ function CompetitorWatch({ cacheRef, onCacheChange, keywordsState, onTypeKeyword
              </div>
             <p className="text-2xl font-black tracking-tight text-gray-800 dark:text-gray-200 mb-2">Welcome to Trending Hub</p>
             <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
-              To start tracking competitor performance, please select a <span className="text-blue-600 dark:text-blue-400 font-bold">Category</span> from the dropdown above.
+              To start tracking competitor performance, please select a <span className="text-blue-600 dark:text-blue-400 font-bold">Taxonomy</span> from the dropdown above.
             </p>
           </div>
         ) : loading ? (
@@ -2944,11 +2939,11 @@ function ScheduleAssigneeBadges({ summary, assigneeFilter, onFilterChange, onCle
 
 // Schedule Date Group Component with expand/collapse
 function ScheduleDateGroup({ 
-  dateKey, date, tasks, isToday, isTomorrow, defaultOpen = false 
+  dateKey, date, tasks, isToday, isTomorrow, defaultOpen = false, categories = [], onCategoriesUpdated 
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [assigneeFilter, setAssigneeFilter] = useState(null);
-  
+
   const formatDateLabel = (date, isToday, isTomorrow) => {
     const dayLabel = date.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
     if (isToday) return `Today — ${dayLabel}`;
@@ -3084,6 +3079,13 @@ function ScheduleDateGroup({
         
         {/* Right side - progress indicators */}
         <div className="flex items-center gap-2 px-3 py-2">
+          <AnalyzeButton
+            tasks={tasks}
+            categories={categories}
+            onCategoriesUpdated={onCategoriesUpdated}
+            dateLabel={`${formatDateLabel(date, isToday, isTomorrow)} · ${total} scheduled`}
+            title="Analyze taxonomy distribution vs target taxonomies"
+          />
           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50">
             {completed}/{total}
           </span>
@@ -3194,6 +3196,20 @@ function ScheduleDateGroup({
 function ScheduleView({ tasks, loading, onRefresh }) {
   const navigate = useNavigate();
   const [assigneeFilter, setAssigneeFilter] = useState(null);
+  const [categories, setCategories] = useState([]);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const { data } = await api.get("/planner/config");
+      setCategories(Array.isArray(data?.categories) ? data.categories : []);
+    } catch {
+      // Non-fatal: Analyze will show a "no categories configured" state.
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
 
   // Get next 3 days including today
   const getNextThreeDays = () => {
@@ -3340,6 +3356,8 @@ function ScheduleView({ tasks, loading, onRefresh }) {
                   isToday={isToday}
                   isTomorrow={isTomorrow}
                   defaultOpen={isToday || isTomorrow}
+                  categories={categories}
+                  onCategoriesUpdated={loadCategories}
                 />
               );
             })}
@@ -3350,23 +3368,28 @@ function ScheduleView({ tasks, loading, onRefresh }) {
   );
 }
 
-function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywordsChange, onTypeKeywordsChange, onCacheChange }) {
+function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCacheChange }) {
   const [search, setSearch] = useState("");
   const [compFormat, setCompFormat] = useState("long");
   const [compSort, setCompSort] = useState("views");
+  const [period, setPeriod] = useState("all");
   const [categories, setCategories] = useState([]);
+  const [plannerTotalVideos, setPlannerTotalVideos] = useState(null);
   const [competitorTypes, setCompetitorTypes] = useState([]);
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeSub, setActiveSub] = useState(null);
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [previewThumbUrl, setPreviewThumbUrl] = useState(null);
   const [scheduleVideo, setScheduleVideo] = useState(null);
   const [scheduleCategory, setScheduleCategory] = useState("");
   const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
+  const [activeKeyword, setActiveKeyword] = useState(null);
   const formatDropdownRef = useRef(null);
   const sortDropdownRef = useRef(null);
+  const periodDropdownRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -3375,6 +3398,9 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
       }
       if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
         setShowSortDropdown(false);
+      }
+      if (periodDropdownRef.current && !periodDropdownRef.current.contains(event.target)) {
+        setShowPeriodDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -3386,9 +3412,15 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
     (async () => {
       try {
         const { data } = await api.get("/planner/config");
-        if (!cancelled) setCategories(Array.isArray(data?.categories) ? data.categories : []);
+        if (!cancelled) {
+          setCategories(Array.isArray(data?.categories) ? data.categories : []);
+          const savedTotal = Number(data?.totalVideos);
+          setPlannerTotalVideos(
+            Number.isFinite(savedTotal) && savedTotal > 0 ? savedTotal : null,
+          );
+        }
       } catch {
-        if (!cancelled) toast.error("Could not load categories");
+        if (!cancelled) toast.error("Could not load taxonomies");
       }
     })();
     return () => { cancelled = true; };
@@ -3412,6 +3444,19 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
     [competitorTypes],
   );
 
+  const plannerKeywords = useMemo(
+    () => collectPlannerSubcategories(categories),
+    [categories],
+  );
+
+  useEffect(() => {
+    const merged = mergeKeywordLists(
+      plannerKeywords,
+      unionKeywords(competitorTypes, keywordsState),
+    );
+    setActiveKeyword((prev) => (prev && merged.some((kw) => kw === prev) ? prev : null));
+  }, [plannerKeywords, competitorTypes, keywordsState]);
+
   const cachedTypeCount = useMemo(() => {
     if (!cacheRef?.current) return 0;
     let count = 0;
@@ -3427,7 +3472,8 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
     [cacheRef, cacheVersion],
   );
 
-  const baseFiltered = useMemo(() => {
+  // Search + format + keyword filtered list (no time filter) — used for period counts
+  const preTimeFiltered = useMemo(() => {
     let list = [...mergedVideos];
 
     if (search.trim()) {
@@ -3437,8 +3483,29 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
 
     list = list.filter((v) => videoMatchesCachedFormatFilter(v, compFormat, channelFormatByHandle));
 
+    if (activeKeyword) {
+      list = list.filter((v) => videoTitleMatchesKeyword(v, activeKeyword));
+    }
+
     return list;
-  }, [mergedVideos, search, compFormat, channelFormatByHandle]);
+  }, [mergedVideos, search, compFormat, channelFormatByHandle, activeKeyword]);
+
+  const baseFiltered = useMemo(() => {
+    const periodMs = COMP_PERIODS.find((p) => p.value === period)?.ms || Infinity;
+    if (periodMs === Infinity) return preTimeFiltered;
+    return preTimeFiltered.filter((v) => parsePublishedAgo(v.publishedText) <= periodMs);
+  }, [preTimeFiltered, period]);
+
+  // Counts for each time option — respect search/format/keyword, ignore active period
+  const periodCounts = useMemo(() => {
+    const counts = {};
+    COMP_PERIODS.forEach((p) => {
+      counts[p.value] = p.value === "all"
+        ? preTimeFiltered.length
+        : preTimeFiltered.filter((v) => parsePublishedAgo(v.publishedText) <= p.ms).length;
+    });
+    return counts;
+  }, [preTimeFiltered]);
 
   const sortVideos = useCallback((list) => {
     const arr = [...list];
@@ -3529,23 +3596,54 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
         </div>
 
         {/* Row 2: Manage categories, format, sort, search */}
-        <div className={`p-2 bg-white/40 dark:bg-gray-900/40 backdrop-blur-2xl border border-white/60 dark:border-gray-800/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.02)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.25)] overflow-visible ${showFormatDropdown || showSortDropdown ? "relative z-[110]" : ""}`}>
+        <div className={`p-2 bg-white/40 dark:bg-gray-900/40 backdrop-blur-2xl border border-white/60 dark:border-gray-800/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.02)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.25)] overflow-visible ${showFormatDropdown || showSortDropdown || showPeriodDropdown ? "relative z-[110]" : ""}`}>
           <div className="flex flex-wrap items-center gap-2 pb-0.5 -mb-0.5">
             {/* Manage categories */}
-            <button
-              type="button"
+            <ManageCategoriesButton
+              categories={categories}
               onClick={() => setCategoriesModalOpen(true)}
-              className={`flex items-center justify-between h-9 px-2.5 rounded-xl border text-[11px] font-semibold transition-all duration-200 flex-shrink-0 ${
-                categories.length > 0
-                  ? "bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/30 text-blue-700 dark:text-blue-400 hover:bg-blue-500/15"
-                  : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400 hover:bg-white dark:hover:bg-gray-800/60"
-              }`}
-            >
-              <div className="flex items-center min-w-0">
-                <Layers size={13} className="mr-1.5 flex-shrink-0" />
-                <span className="truncate max-w-[120px]">Manage categories</span>
-              </div>
-            </button>
+            />
+
+            {/* Time */}
+            <div className="relative flex-shrink-0" ref={periodDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
+                className={`flex items-center justify-between h-9 px-2.5 rounded-xl border text-[11px] font-semibold transition-all duration-200 ${
+                  period !== "all"
+                    ? "bg-rose-500/10 dark:bg-rose-500/20 border-rose-500/30 text-rose-700 dark:text-rose-400 hover:bg-rose-500/15"
+                    : "bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-rose-400 hover:bg-white dark:hover:bg-gray-800/60"
+                }`}
+              >
+                <div className="flex items-center min-w-0">
+                  <Clock size={13} className={`mr-1.5 flex-shrink-0 ${period !== "all" ? "text-rose-500" : "text-gray-400"}`} />
+                  <span className="truncate max-w-[80px]">
+                    {period === "all" ? "Time" : COMP_PERIODS.find((p) => p.value === period)?.label}
+                  </span>
+                </div>
+                <ChevronDown size={12} className="ml-1.5 opacity-50 flex-shrink-0" />
+              </button>
+
+              {showPeriodDropdown && (
+                <div className="absolute top-full left-0 mt-2 w-40 rounded-[18px] bg-white/95 dark:bg-gray-950/95 backdrop-blur-2xl border border-gray-200/60 dark:border-gray-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] py-1.5 animate-in fade-in zoom-in-95 duration-200">
+                  {COMP_PERIODS.map((p) => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => { setPeriod(p.value); setShowPeriodDropdown(false); }}
+                      className={`w-full flex items-center justify-between px-4 py-2 text-[10px] font-bold transition-colors ${
+                        period === p.value
+                          ? "bg-gray-50 dark:bg-gray-900/40 text-blue-600 dark:text-blue-400"
+                          : "text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                      }`}
+                    >
+                      {p.label}
+                      {periodCounts[p.value] > 0 && <span className="text-[9px] font-black bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded border border-gray-200/50 dark:border-gray-700/50 text-gray-500">{periodCounts[p.value]}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Format */}
             <div className="relative flex-shrink-0" ref={formatDropdownRef}>
@@ -3704,6 +3802,7 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
                 setSearch("");
                 setCompFormat("long");
                 setCompSort("views");
+                setPeriod("all");
                 setSearchExpanded(false);
                 toast.success("All cached videos and filters cleared");
               }}
@@ -3716,7 +3815,7 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
           </div>
         </div>
 
-        {/* Row 3: Category filter chips */}
+        {/* Row 4: Category filter chips */}
         {categories.length > 0 && (
           <div className="relative z-0 flex flex-wrap items-center gap-1.5 px-0.5">
             {groups.map((g) => (
@@ -3753,11 +3852,11 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
             </div>
             <p className="text-2xl font-black tracking-tight text-gray-800 dark:text-gray-200 mb-2">No cached videos yet</p>
             <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-md leading-relaxed mb-5">
-              Cached videos appear here after you browse categories in Competitor Watch. Data is shared across both tabs and kept for 60 minutes.
+              Cached videos appear here after you browse taxonomies in Competitor Watch. Data is shared across both tabs and kept for 60 minutes.
             </p>
             <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-200/60 dark:border-blue-800/40 text-blue-700 dark:text-blue-300 text-xs font-bold">
               <Layers size={14} />
-              Switch to the Competitor Watch tab and select a category to start caching
+              Switch to the Competitor Watch tab and select a taxonomy to start caching
             </div>
           </div>
         ) : categories.length === 0 ? (
@@ -3765,16 +3864,16 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
             <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-6 shadow-md border border-blue-100 dark:border-blue-800/40">
               <Layers size={32} className="text-blue-500 dark:text-blue-400" />
             </div>
-            <p className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">No categories yet</p>
+            <p className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">No taxonomies yet</p>
             <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-sm mb-5">
-              Add categories like Politics or Cinema with subcategories, and cached videos will be grouped under them.
+              Add taxonomies like Politics or Cinema with subcategories, and cached videos will be grouped under them.
             </p>
             <button
               type="button"
               onClick={() => setCategoriesModalOpen(true)}
               className="buffer-button-primary text-xs py-2 inline-flex items-center gap-1.5"
             >
-              <Plus size={14} /> Add categories
+              <Plus size={14} /> Add taxonomies
             </button>
           </div>
         ) : totalMatches === 0 ? (
@@ -3784,7 +3883,7 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
             </div>
             <p className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">No videos found</p>
             <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-sm">
-              No cached videos match your categories with the current format/search. Adjust filters or edit your subcategories.
+              No cached videos match your taxonomies with the current format/search. Adjust filters or edit your subcategories.
             </p>
           </div>
         ) : (
@@ -3870,287 +3969,31 @@ function CachedVideosView({ cacheRef, cacheVersion, keywordsState, onCachedKeywo
         open={categoriesModalOpen}
         categories={categories}
         cachedVideos={mergedVideos}
+        totalVideos={plannerTotalVideos}
         onClose={() => setCategoriesModalOpen(false)}
-        onSaved={(saved) => setCategories(saved)}
+        onSaved={({ categories: savedCategories, totalVideos: savedTotalVideos }) => {
+          setCategories(savedCategories);
+          setPlannerTotalVideos(savedTotalVideos);
+        }}
       />
     </div>
   );
 }
 
-function makeEmptyPlannerCategory() {
-  return { name: "", percentage: 0, subcategories: [] };
-}
-
-function getEffectiveCategorySubcategories(category) {
-  if (category?.subcategoriesInput != null) {
-    return String(category.subcategoriesInput)
-      .split(",")
-      .map((s) => String(s || "").trim())
-      .filter(Boolean);
-  }
-  return (Array.isArray(category?.subcategories) ? category.subcategories : [])
-    .map((s) => String(s || "").trim())
-    .filter(Boolean);
-}
-
-function countCachedVideosForCategory(videos, category) {
-  const name = String(category?.name || "").trim();
-  if (!name) return 0;
-  const subs = getEffectiveCategorySubcategories(category);
-  const effective = { ...category, subcategories: subs };
-  return (videos || []).filter((v) => videoMatchesPlannerCategory(v, effective)).length;
-}
-
-function normalizePlannerCategoriesForSave(categories) {
-  const seen = new Set();
-  const out = [];
-  for (const cat of categories || []) {
-    const name = String(cat?.name || "").trim();
-    if (!name) continue;
-    const key = name.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({
-      name,
-      percentage: Math.max(0, Math.min(100, Math.round(Number(cat?.percentage) || 0))),
-      subcategories: getEffectiveCategorySubcategories(cat),
-    });
-  }
-  return out;
-}
-
-const CATEGORY_ROW_GRID =
-  "grid grid-cols-1 sm:grid-cols-[minmax(0,11rem)_4.5rem_minmax(0,1fr)_4.5rem_2rem] gap-2";
-
-function PlannerCategoryEditorRow({ category, index, onChange, onRemove, cachedVideos = [] }) {
-  const subcatFocusedRef = useRef(false);
-  const [localSubcat, setLocalSubcat] = useState(
-    () => category.subcategoriesInput ?? (category.subcategories || []).join(", "),
-  );
-
-  useEffect(() => {
-    if (!subcatFocusedRef.current) {
-      setLocalSubcat(category.subcategoriesInput ?? (category.subcategories || []).join(", "));
-    }
-  }, [category.subcategoriesInput, category.subcategories]);
-
-  const videoCount = useMemo(
-    () => countCachedVideosForCategory(cachedVideos, { ...category, subcategoriesInput: localSubcat }),
-    [cachedVideos, category, localSubcat],
-  );
-
-  const handleSubcatBlur = useCallback(
-    (e) => {
-      subcatFocusedRef.current = false;
-      onChange(index, { subcategoriesInput: e.target.value });
-    },
-    [index, onChange],
-  );
-
-  return (
-    <div className={`${CATEGORY_ROW_GRID} p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 sm:items-start`}>
-      <div className="min-w-0">
-        <span className="sm:hidden text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">Category</span>
-        <input
-          type="text"
-          value={category.name}
-          onChange={(e) => onChange(index, { name: e.target.value })}
-          placeholder="Category (e.g. Politics)"
-          className="buffer-input text-sm w-full mt-0.5 sm:mt-0"
-        />
-      </div>
-      <div className="min-w-0">
-        <span className="sm:hidden text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">%</span>
-        <div className="flex items-center gap-1 mt-0.5 sm:mt-0">
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={category.percentage}
-            onChange={(e) => onChange(index, { percentage: e.target.value })}
-            placeholder="%"
-            className="buffer-input text-sm w-full"
-          />
-          <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 sm:hidden">%</span>
-        </div>
-      </div>
-      <div className="min-w-0">
-        <span className="sm:hidden text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">Subcategories</span>
-        <input
-          type="text"
-          value={localSubcat}
-          onChange={(e) => setLocalSubcat(e.target.value)}
-          onFocus={() => { subcatFocusedRef.current = true; }}
-          onBlur={handleSubcatBlur}
-          placeholder="Subcategories, comma separated"
-          className="buffer-input text-sm w-full mt-0.5 sm:mt-0"
-        />
-      </div>
-      <div className="min-w-0 flex items-center sm:justify-end sm:pt-1.5">
-        <span className="sm:hidden text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mr-2">Videos</span>
-        <span
-          className="text-sm font-bold tabular-nums text-gray-700 dark:text-gray-200"
-          title={`${videoCount} cached ${videoCount === 1 ? "video" : "videos"} match this category`}
-        >
-          {videoCount}
-        </span>
-      </div>
-      <div className="flex items-center justify-end sm:justify-center sm:pt-1">
-        <button
-          type="button"
-          onClick={() => onRemove(index)}
-          className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-          title="Remove category"
-        >
-          <Trash2 size={15} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function CategoriesModal({ open, categories, cachedVideos = [], onClose, onSaved }) {
-  const [draft, setDraft] = useState([]);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setDraft(categories?.length ? categories.map((c) => ({ ...c })) : [makeEmptyPlannerCategory()]);
-    }
-  }, [open, categories]);
-
-  const percentTotal = useMemo(
-    () => draft.reduce((sum, c) => sum + (Number(c.percentage) || 0), 0),
-    [draft],
-  );
-
-  const totalCachedVideos = cachedVideos.length;
-
-  const updateCategory = useCallback((index, patch) => {
-    setDraft((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)));
-  }, []);
-
-  const removeCategory = useCallback((index) => {
-    setDraft((prev) => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const addCategory = useCallback(() => {
-    setDraft((prev) => [...prev, makeEmptyPlannerCategory()]);
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    const normalized = normalizePlannerCategoriesForSave(draft);
-    if (!normalized.length) {
-      toast.error("Add at least one named category");
-      return;
-    }
-    setSaving(true);
-    try {
-      const { data } = await api.put("/planner/config", { categories: normalized });
-      const saved = data?.categories?.length ? data.categories : normalized;
-      onSaved(saved);
-      toast.success("Categories saved");
-      onClose();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save categories");
-    } finally {
-      setSaving(false);
-    }
-  }, [draft, onSaved, onClose]);
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-          <Layers size={16} className="text-blue-500" />
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Manage categories</h3>
-          <span
-            className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-            title="Total cached videos available for matching"
-          >
-            {totalCachedVideos} {totalCachedVideos === 1 ? "video" : "videos"}
-          </span>
-          <span
-            className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-              percentTotal === 100
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-            }`}
-            title="Sum of category percentages"
-          >
-            Total {percentTotal}%
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 space-y-2">
-          <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            Subcategories are the terms matched against cached video titles. Add them comma-separated.
-          </p>
-          <div
-            className={`${CATEGORY_ROW_GRID} hidden sm:grid px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500`}
-            aria-hidden
-          >
-            <span>Category</span>
-            <span>%</span>
-            <span>Subcategories</span>
-            <span className="text-right">Videos</span>
-            <span />
-          </div>
-          {draft.map((cat, i) => (
-            <PlannerCategoryEditorRow
-              key={i}
-              category={cat}
-              index={i}
-              onChange={updateCategory}
-              onRemove={removeCategory}
-              cachedVideos={cachedVideos}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={addCategory}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 px-2 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-          >
-            <Plus size={14} /> Add category
-          </button>
-        </div>
-
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-          <button
-            type="button"
-            onClick={onClose}
-            className="buffer-button-secondary text-xs py-2"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="buffer-button-primary text-xs py-2 flex items-center gap-1.5 disabled:opacity-50"
-          >
-            {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-            Save categories
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 const EMPTY_KEYWORDS_STATE = { cached: [], byType: {} };
+
+function coalesceKeywordsState(prev) {
+  if (prev?.state && typeof prev.state === "object" && prev.cached === undefined && prev.byType === undefined) {
+    return {
+      cached: Array.isArray(prev.state.cached) ? prev.state.cached : [],
+      byType: prev.state.byType && typeof prev.state.byType === "object" ? prev.state.byType : {},
+    };
+  }
+  return {
+    cached: Array.isArray(prev?.cached) ? prev.cached : [],
+    byType: prev?.byType && typeof prev.byType === "object" ? prev.byType : {},
+  };
+}
 
 /** Keeps tab content mounted while hidden so local filter/UI state survives tab switches. */
 function TrendingHubTabPanel({ tabId, activeTab, children }) {
@@ -4217,10 +4060,13 @@ export default function TrendingHub() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const state = await hydrateCompetitorKeywords();
+      const { state, synced, error } = await hydrateCompetitorKeywords();
       if (!cancelled) {
         setKeywordsState(state);
         setKeywordsReady(true);
+        if (!synced && error) {
+          toast.error(`Keywords loaded from this device only (${error})`);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -4230,20 +4076,15 @@ export default function TrendingHub() {
     const scope = String(typeId || "").trim();
     if (!scope) return;
     const result = await persistTypeKeywords(scope, keywords);
-    setKeywordsState((prev) => ({
-      ...prev,
-      byType: { ...prev.byType, [scope]: result.keywords },
-    }));
+    setKeywordsState((prev) => {
+      const base = coalesceKeywordsState(prev);
+      return {
+        ...base,
+        byType: { ...base.byType, [scope]: result.keywords },
+      };
+    });
     if (!result.ok) {
-      toast.error(result.error || "Could not save category keywords");
-    }
-  }, []);
-
-  const handleCachedKeywordsChange = useCallback(async (keywords) => {
-    const result = await persistCachedKeywords(keywords);
-    setKeywordsState((prev) => ({ ...prev, cached: result.keywords }));
-    if (!result.ok) {
-      toast.error(result.error || "Could not save keywords");
+      toast.error(result.error || "Could not save taxonomy keywords");
     }
   }, []);
 
@@ -4296,8 +4137,6 @@ export default function TrendingHub() {
                 cacheRef={competitorVideoCacheRef}
                 cacheVersion={cacheVersion}
                 keywordsState={keywordsState}
-                onCachedKeywordsChange={handleCachedKeywordsChange}
-                onTypeKeywordsChange={handleTypeKeywordsChange}
                 onCacheChange={handleCacheChange}
               />
             ) : (

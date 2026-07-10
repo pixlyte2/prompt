@@ -64,7 +64,7 @@ export default function Help() {
       icon: TrendingUp,
       color: "text-pink-500",
       items: [
-        "Competitor Watch: filter by category (type), channel, time window (4h–7d or All), minimum views, Long/Short format, search, and sort (trending / views / latest).",
+        "Competitor Watch: filter by taxonomy (type), channel, time window (4h–7d or All), minimum views, Long/Short format, search, and sort (trending / views / latest).",
         "Competitor settings: per-channel Long/Shorts format, videos per channel (1–500), and reorder types with the up/down arrows.",
         "Schedule from a video card: set date or backlog, platform, format, assignees, notes, and script—with a live word count.",
         "Get Script opens Video AI to generate from captions; target video length and prompt choice are remembered on this device.",

@@ -41,6 +41,8 @@ import {
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import api, { httpClient } from "../../services/api";
+import { AnalyzeButton, usePlannerCategories } from "../../components/ScheduleCategoryAnalysis";
+import CategoriesModal, { ManageCategoriesButton } from "../../components/PlannerCategoriesModal";
 import { downloadVoiceOverFile, uploadVoiceOverFile, formatVoiceOverMaxSize, validateVoiceOverFileSize } from "../../utils/voiceOverDownload";
 import { VOICE_OVER_ACCEPT, isVoiceOverFileAllowed, voiceOverFileTypeHint } from "../../constants/voiceOverFileTypes";
 import { countWords } from "../../utils/aiPromptUtils";
@@ -268,6 +270,39 @@ const ASSIGNED_PILL = {
 const VIEWS_PILL =
   "bg-emerald-50 text-emerald-800 border border-emerald-200/80 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800/50";
 
+const TASK_TITLE_MAX_LEN = 60;
+
+function truncateTaskTitle(title, maxLen = TASK_TITLE_MAX_LEN) {
+  const text = String(title || "");
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, maxLen)}...`;
+}
+
+/** Fixed widths for TaskRow pill groups — keeps columns aligned across rows. */
+const TASK_ROW_PILL_SIZES = {
+  format: "justify-center shrink-0 w-[3.25rem] sm:w-[3.5rem]",
+  assignee: "justify-center shrink-0 w-[6.25rem] sm:w-[7rem] truncate",
+  wordCount: "justify-center shrink-0 w-[2.75rem] sm:w-[3rem]",
+};
+
+/** Fixed width for DateGroup assignee metric pills (count, L, S). */
+const DATE_GROUP_METRIC_PILL_WIDTH = "justify-center shrink-0 w-[1.75rem] tabular-nums";
+
+/** DateGroup header grid — fixed columns so pills/buttons align across all date rows. */
+const DATE_GROUP_HEADER_GRID =
+  "md:grid md:grid-cols-[14rem_auto_12rem_9rem_minmax(0,1fr)_auto] md:items-center md:gap-x-2";
+const DATE_GROUP_DATE_COL = "flex items-center gap-2 min-w-0 md:col-start-1";
+const DATE_GROUP_IN_PROGRESS_COL =
+  "flex items-center shrink-0 md:col-start-2";
+const DATE_GROUP_ACTIONS_COL =
+  "flex items-center gap-2 shrink-0 md:col-start-3";
+const DATE_GROUP_SUMMARY_COL =
+  "hidden md:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700/50 shadow-sm shrink-0 md:col-start-4 md:w-[9rem]";
+const DATE_GROUP_ASSIGNEES_COL =
+  "flex flex-nowrap items-center gap-2 overflow-x-auto min-w-0 md:col-start-5 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+const DATE_GROUP_DELETE_VO_COL =
+  "flex items-center justify-end shrink-0 md:col-start-6";
+
 /** Prefer numeric `views`; otherwise parse `viewsText` (commas, optional K/M/L suffix). */
 function parseViewsCount(task) {
   if (task?.views != null && Number.isFinite(Number(task.views))) {
@@ -364,7 +399,7 @@ function formatDateLabel(key) {
   const yest = new Date(today);
   yest.setDate(yest.getDate() - 1);
   const yestKey = toDateKey(yest);
-  const label = d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+  const label = d.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" });
   if (key === todayKey) return `Today — ${label}`;
   if (key === tmrwKey) return `Tomorrow — ${label}`;
   if (key === yestKey) return `Yesterday — ${label}`;
@@ -782,8 +817,11 @@ const TaskRow = memo(function TaskRow({
 
         {/* Title + channel */}
         <div className="flex-1 min-w-0">
-          <p className={`text-[11px] sm:text-[11px] font-semibold leading-tight truncate ${task.status === "completed" ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}>
-            {task.title}
+          <p
+            className={`text-[11px] sm:text-[11px] font-semibold leading-tight ${task.status === "completed" ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}
+            title={task.title || ""}
+          >
+            {truncateTaskTitle(task.title)}
           </p>
           <div className="flex items-center gap-1 mt-0.5 opacity-80 scale-90 sm:scale-95 origin-left">
             <PlatformIcon platform={platform} size={7} />
@@ -863,7 +901,7 @@ const TaskRow = memo(function TaskRow({
             {task.assignedTo.map((name) => (
               <span
                 key={name}
-                className={`inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide border border-transparent shadow-sm min-h-[22px] sm:min-h-[26px] ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+                className={`inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide border border-transparent shadow-sm min-h-[22px] sm:min-h-[26px] ${TASK_ROW_PILL_SIZES.assignee} ${ASSIGNED_PILL[name.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
               >
                 {getAssigneeDisplayName(name)}
               </span>
@@ -877,7 +915,7 @@ const TaskRow = memo(function TaskRow({
             {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).map(fmt => (
               <span
                 key={fmt}
-                className={`inline-flex items-center text-[9px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm border border-transparent min-h-[22px] sm:min-h-[26px] ${FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+                className={`inline-flex items-center text-[9px] sm:text-[10px] md:text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm border border-transparent min-h-[22px] sm:min-h-[26px] ${TASK_ROW_PILL_SIZES.format} ${FORMAT_PILL[fmt] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
               >
                 {FORMAT_OPTIONS.find((f) => f.value === fmt)?.label || fmt}
               </span>
@@ -908,7 +946,7 @@ const TaskRow = memo(function TaskRow({
           if (!scriptWordCount) return null;
           return (
             <span
-              className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold tabular-nums tracking-tight bg-violet-50/70 text-violet-700 border border-violet-200/70 dark:bg-violet-900/25 dark:text-violet-200 dark:border-violet-700/50 shadow-sm min-h-[22px] sm:min-h-[26px]"
+              className={`inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold tabular-nums tracking-tight bg-violet-50/70 text-violet-700 border border-violet-200/70 dark:bg-violet-900/25 dark:text-violet-200 dark:border-violet-700/50 shadow-sm min-h-[22px] sm:min-h-[26px] ${TASK_ROW_PILL_SIZES.wordCount}`}
               title={`${scriptWordCount.toLocaleString()} words`}
             >
               {scriptWordCount}w
@@ -990,8 +1028,49 @@ const TaskRow = memo(function TaskRow({
   );
 });
 
+/* ─── Preview Modal helpers ─── */
+const PREVIEW_PILL =
+  "inline-flex items-center px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wide border border-transparent shadow-sm min-h-[22px] whitespace-nowrap";
+
+function PreviewClampedText({ text, maxLines = 2 }) {
+  const [expanded, setExpanded] = useState(false);
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return <span className="text-gray-400 text-[11px]">—</span>;
+  const isLong = trimmed.length > 72 || trimmed.split("\n").length > maxLines;
+  return (
+    <button
+      type="button"
+      onClick={() => isLong && setExpanded((v) => !v)}
+      title={trimmed}
+      className={`block w-full text-left text-[11px] leading-snug text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words ${
+        expanded ? "" : "line-clamp-2"
+      } ${isLong ? "cursor-pointer hover:text-gray-900 dark:hover:text-gray-100" : "cursor-default"}`}
+    >
+      {trimmed}
+    </button>
+  );
+}
+
+function PreviewUrlCell({ task }) {
+  const url = getTaskUrl(task);
+  if (!url) return <span className="text-gray-400 text-[11px]">—</span>;
+  const label = url.replace(/^https?:\/\/(www\.)?/, "").slice(0, 28);
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={url}
+      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline max-w-[140px] truncate"
+    >
+      <ExternalLink size={11} className="shrink-0 opacity-70" aria-hidden />
+      <span className="truncate">{label}{url.length > label.length + 12 ? "…" : ""}</span>
+    </a>
+  );
+}
+
 /* ─── Preview Modal ─── */
-function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDownloadVoiceOver, voiceOverDownloadingIds }) {
+function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail }) {
   const [copied, setCopied] = useState(false);
 
   const assignmentSummary = useMemo(() => {
@@ -1099,15 +1178,13 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
         .replace(/\r/g, "\n")
         .replace(/\t/g, " ")
         .replace(/\n/g, " ");
-    const headers = ["Channel Type", "Assigned to", "Content Format", "Title", "Notes", "Script", "Voice-over (file)", "URL"];
+    const headers = ["Channel Type", "Assigned to", "Content Format", "Title", "Notes", "URL"];
     const rows = sortedTasks.map(task => [
       task.channelType || '',
       formatAssignedTo(task.assignedTo),
       formatContentFormat(task.contentFormat),
       task.title || '',
       tsvCell(task.notes),
-      tsvCell(task.script),
-      tsvCell(hasTaskVoiceOver(task) ? (task.voiceOverOriginalName || "yes") : ""),
       getTaskUrl(task) || ''
     ]);
     
@@ -1137,57 +1214,57 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-6xl max-h-[90vh] rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-6xl max-h-[90vh] buffer-card shadow-xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 gap-4">
-          <div className="flex flex-col md:flex-row md:items-center gap-6">
-            <div className="flex items-center gap-4">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                Preview - {formatDateLabel(dateKey)}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 py-3 border-b buffer-border shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <h3 className="text-base font-bold buffer-text truncate">
+                Preview — {formatDateLabel(dateKey)}
               </h3>
-              
+
               {dailySummary.total > 0 && (
-                <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700/50 shadow-sm">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">{dailySummary.total} Daily Target</span>
-                  <div className="w-px h-3.5 bg-gray-200 dark:bg-gray-700" />
-                  <div className="flex items-center gap-2.5">
-                    {dailySummary.long > 0 && <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">{dailySummary.long} Long</span>}
-                    {dailySummary.short > 0 && <span className="text-[11px] font-bold text-orange-600 dark:text-orange-400">{dailySummary.short} Shorts</span>}
+                <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-buffer-50 dark:bg-gray-800/60 buffer-text border buffer-border shadow-sm tabular-nums">
+                  <span className="text-[10px] font-bold uppercase tracking-wide buffer-text-muted">{dailySummary.total} daily</span>
+                  <div className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
+                  <div className="flex items-center gap-2">
+                    {dailySummary.long > 0 && <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">{dailySummary.long}L</span>}
+                    {dailySummary.short > 0 && <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">{dailySummary.short}S</span>}
                   </div>
                 </div>
               )}
             </div>
 
             {/* Assignment Summary Pills */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               {Object.entries(assignmentSummary).map(([name, counts]) => {
                 const isUn = name === "Unassigned";
-                const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "mahalakshmi" ? "bg-purple-400" : "bg-blue-400"));
+                const dotColor = isUn ? "bg-amber-400" : (name.toLowerCase() === "pooja" ? "bg-pink-400" : (name.toLowerCase() === "mahalakshmi" ? "bg-purple-400" : "bg-primary-400"));
                 const textColor = isUn ? "text-amber-600 dark:text-amber-400" : (ASSIGNED_PILL[name.toLowerCase()]?.split(' ').pop() || "text-gray-700 dark:text-gray-300");
                 const totalSum = (counts.long || 0) + (counts.short || 0);
 
                 return (
-                  <div key={name} className="flex items-center gap-1 bg-gray-50 dark:bg-gray-800/40 pl-2 pr-1 py-0.5 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm group/assignment transition-all">
-                    <div className="flex items-center gap-1.5 mr-1">
-                      <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shadow-sm`} />
-                      <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${textColor}`}>
+                  <div key={name} className="flex items-center gap-1 bg-buffer-50 dark:bg-gray-800/40 pl-1.5 pr-1 py-0.5 rounded-lg border buffer-border shadow-sm">
+                    <div className="flex items-center gap-1 mr-0.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                      <span className={`text-[9px] font-bold uppercase tracking-wide whitespace-nowrap ${textColor}`}>
                         {isUn ? name : getAssigneeDisplayName(name)}
                       </span>
                     </div>
-                    
-                    <div className="flex items-center gap-0.5">
+
+                    <div className="flex items-center gap-0.5 tabular-nums">
                       {totalSum > 0 && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-black bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700 shadow-sm mr-1">
+                        <span className={`${PREVIEW_PILL} px-1.5 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-100 dark:border-gray-700 min-h-[20px] text-[9px]`}>
                           {totalSum}
                         </span>
                       )}
                       {counts.long > 0 && (
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.long} shadow-sm border border-transparent`}>
+                        <span className={`${PREVIEW_PILL} px-1.5 ${FORMAT_PILL.long} min-h-[20px] text-[9px]`}>
                           {counts.long}L
                         </span>
                       )}
                       {counts.short > 0 && (
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${FORMAT_PILL.short} shadow-sm border border-transparent`}>
+                        <span className={`${PREVIEW_PILL} px-1.5 ${FORMAT_PILL.short} min-h-[20px] text-[9px]`}>
                           {counts.short}S
                         </span>
                       )}
@@ -1197,165 +1274,150 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
               })}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleCopy}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 copied
-                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/25 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800/50"
+                  : "buffer-button-primary"
               }`}
             >
               {copied ? (
                 <>
-                  <CheckCircle2 size={16} />
+                  <CheckCircle2 size={14} />
                   Copied!
                 </>
               ) : (
                 <>
-                  <Download size={16} />
+                  <Download size={14} />
                   Copy
                 </>
               )}
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors"
+              aria-label="Close preview"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
         </div>
 
         {/* Table */}
-        <div className="overflow-auto max-h-[calc(90vh-120px)]">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-800/50 sticky top-0">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(90vh-76px)] custom-scrollbar flex-1">
+          <table className="w-full min-w-[760px] border-collapse text-left">
+            <thead className="sticky top-0 z-10 bg-buffer-50 dark:bg-gray-800/95 backdrop-blur-sm">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                <th className="px-2.5 py-2 min-w-[76px] text-[10px] font-semibold buffer-text-muted uppercase tracking-wide border-b buffer-border">
                   Video ID
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
-                  Channel Type
+                <th className="px-2.5 py-2 min-w-[108px] text-[10px] font-semibold buffer-text-muted uppercase tracking-wide border-b buffer-border">
+                  Taxonomy
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                <th className="px-2.5 py-2 min-w-[96px] text-[10px] font-semibold buffer-text-muted uppercase tracking-wide border-b buffer-border">
                   Assigned to
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
-                  Content Format
+                <th className="px-2.5 py-2 min-w-[84px] text-[10px] font-semibold buffer-text-muted uppercase tracking-wide border-b buffer-border">
+                  Format
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                <th className="px-2.5 py-2 min-w-[148px] text-[10px] font-semibold buffer-text-muted uppercase tracking-wide border-b buffer-border">
                   Title
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                <th className="px-2.5 py-2 min-w-[100px] max-w-[140px] text-[10px] font-semibold buffer-text-muted uppercase tracking-wide border-b buffer-border">
                   Notes
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
-                  Script
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
-                  Voice-over
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                <th className="px-2.5 py-2 min-w-[120px] text-[10px] font-semibold buffer-text-muted uppercase tracking-wide border-b buffer-border">
                   URL
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                <th className="px-2.5 py-2 min-w-[68px] text-[10px] font-semibold buffer-text-muted uppercase tracking-wide border-b buffer-border">
                   Thumbnail
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {sortedTasks.map((task, index) => {
-                const voiceDownloading = voiceOverDownloadingIds?.has(String(task._id)) ?? false;
-                return (
-                <tr key={task._id} className={`${index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800/30"} hover:bg-blue-100/70 dark:hover:bg-blue-900/40 transition-colors`}>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              {sortedTasks.map((task, index) => (
+                <tr
+                  key={task._id}
+                  className={`h-9 transition-colors ${
+                    index % 2 === 0
+                      ? "bg-white dark:bg-gray-900"
+                      : "bg-buffer-50/60 dark:bg-gray-800/25"
+                  } hover:bg-primary-50/40 dark:hover:bg-primary-950/15`}
+                >
+                  <td className="px-2.5 py-1.5 align-middle">
                     {task.customVideoId ? (
-                      <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700/60 shadow-sm min-h-[26px]">
+                      <span className={`${PREVIEW_PILL} bg-primary-50 text-primary-800 dark:bg-primary-950/30 dark:text-primary-300 border-primary-200/70 dark:border-primary-800/50 tabular-nums`}>
                         ID: {task.customVideoId}
                       </span>
                     ) : (
-                      <span className="text-gray-400 text-xs">—</span>
+                      <span className="text-gray-400 text-[11px]">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                    <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                      {task.channelType}
-                    </span>
+                  <td className="px-2.5 py-1.5 align-middle">
+                    {task.channelType ? (
+                      <span className={`${PREVIEW_PILL} bg-violet-50 text-violet-800 dark:bg-violet-950/25 dark:text-violet-300 border-violet-200/70 dark:border-violet-800/50 max-w-[140px] truncate`} title={task.channelType}>
+                        {task.channelType}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-[11px]">—</span>
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                    {formatAssignedTo(task.assignedTo) && (
+                  <td className="px-2.5 py-1.5 align-middle">
+                    {formatAssignedTo(task.assignedTo) ? (
                       <div className="flex flex-wrap gap-1">
                         {(Array.isArray(task.assignedTo) ? task.assignedTo : [task.assignedTo]).map(assignee => (
-                          <span key={assignee} className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                            assignee === 'pooja' ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300' :
-                            assignee === 'mahalakshmi' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
-                            'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                          }`}>
+                          <span
+                            key={assignee}
+                            className={`${PREVIEW_PILL} ${ASSIGNED_PILL[assignee.toLowerCase()] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+                          >
                             {getAssigneeDisplayName(assignee)}
                           </span>
                         ))}
                       </div>
+                    ) : (
+                      <span className="text-gray-400 text-[11px]">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                    {formatContentFormat(task.contentFormat) && (
+                  <td className="px-2.5 py-1.5 align-middle">
+                    {formatContentFormat(task.contentFormat) ? (
                       <div className="flex flex-wrap gap-1">
                         {(Array.isArray(task.contentFormat) ? task.contentFormat : [task.contentFormat]).map(format => (
-                          <span key={format} className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                            format === 'short' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
-                            format === 'long' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' :
-                            'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                          }`}>
+                          <span
+                            key={format}
+                            className={`${PREVIEW_PILL} ${FORMAT_PILL[format] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"}`}
+                          >
                             {format === 'short' ? 'Shorts' : format === 'long' ? 'Long' : format}
                           </span>
                         ))}
                       </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-xs">
-                    <div className="truncate" title={task.title}>
-                      {task.title}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 max-w-[160px]">
-                    <div className="text-xs line-clamp-3 whitespace-pre-wrap break-words" title={String(task.notes || "").trim() || undefined}>
-                      {String(task.notes || "").trim() ? task.notes : "—"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 max-w-[160px]">
-                    <div className="text-xs line-clamp-3 whitespace-pre-wrap break-words" title={String(task.script || "").trim() || undefined}>
-                      {String(task.script || "").trim() ? task.script : "—"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 max-w-[140px]">
-                    {hasTaskVoiceOver(task) ? (
-                      <button
-                        type="button"
-                        disabled={voiceDownloading}
-                        aria-busy={voiceDownloading}
-                        onClick={() => onDownloadVoiceOver?.(task)}
-                        title="Download uploaded voice-over file"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 disabled:opacity-70 disabled:cursor-wait disabled:pointer-events-none"
-                      >
-                        {voiceDownloading ? (
-                          <Loader2 size={12} className="animate-spin shrink-0" aria-hidden />
-                        ) : (
-                          <Mic size={12} className="shrink-0" aria-hidden />
-                        )}
-                        File
-                      </button>
                     ) : (
-                      <span className="text-gray-400 text-xs">—</span>
+                      <span className="text-gray-400 text-[11px]">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-xs">
+                  <td className="px-2.5 py-1.5 align-middle max-w-[220px]">
+                    {task.title ? (
+                      <span className="block text-[11px] font-medium buffer-text truncate" title={task.title}>
+                        {truncateTaskTitle(task.title)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-[11px]">—</span>
+                    )}
+                  </td>
+                  <td className="px-2.5 py-1.5 align-middle max-w-[140px]">
+                    <PreviewClampedText text={task.notes} />
+                  </td>
+                  <td className="px-2.5 py-1.5 align-middle max-w-[148px]">
+                    <PreviewUrlCell task={task} />
+                  </td>
+                  <td className="px-2.5 py-1.5 align-middle">
                     {task.videoId || extractYoutubeId(task.url) ? (
-                      <div className="inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400/80 shadow-sm border border-amber-100/50 dark:border-amber-800/30">
+                      <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400/80 shadow-sm border border-amber-100/50 dark:border-amber-800/30 min-h-[22px]">
                         <button
                           type="button"
                           onClick={() => onPreviewThumbnail(getThumbnailUrl(task.videoId || extractYoutubeId(task.url), 'hd'))}
-                          className="text-[10px] sm:text-xs font-black uppercase hover:text-amber-700 dark:hover:text-amber-200 transition-colors"
+                          className="text-[9px] font-bold uppercase hover:text-amber-700 dark:hover:text-amber-200 transition-colors"
                           title="High Definition"
                         >
                           HD
@@ -1364,27 +1426,26 @@ function PreviewModal({ open, onClose, tasks, dateKey, onPreviewThumbnail, onDow
                         <button
                           type="button"
                           onClick={() => onPreviewThumbnail(getThumbnailUrl(task.videoId || extractYoutubeId(task.url), 'sd'))}
-                          className="text-[10px] sm:text-xs font-black uppercase hover:text-amber-700 dark:hover:text-amber-200 transition-colors"
+                          className="text-[9px] font-bold uppercase hover:text-amber-700 dark:hover:text-amber-200 transition-colors"
                           title="Standard Definition"
                         >
                           SD
                         </button>
                       </div>
+                    ) : task.thumbnail ? (
+                      <button
+                        type="button"
+                        onClick={() => onPreviewThumbnail(task.thumbnail)}
+                        className={`${PREVIEW_PILL} bg-amber-50 text-amber-700 dark:bg-amber-950/25 dark:text-amber-300 border-amber-200/70 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-950/40`}
+                      >
+                        View
+                      </button>
                     ) : (
-                      task.thumbnail && (
-                        <button
-                          type="button"
-                          onClick={() => onPreviewThumbnail(task.thumbnail)}
-                          className="px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400/80 border border-amber-100/50 dark:border-amber-800/30 text-[10px] sm:text-xs font-black uppercase transition-colors hover:text-amber-700"
-                        >
-                          View
-                        </button>
-                      )
+                      <span className="text-gray-400 text-[11px]">—</span>
                     )}
                   </td>
                 </tr>
-                );
-              })}
+              ))}
             </tbody>
           </table>
         </div>
@@ -1399,6 +1460,8 @@ const DateGroup = memo(function DateGroup({
   playingTaskId, audioPlaying, audioLoading, onPlayToggle,
   onDeleteDateVoiceOvers, deletingDateVoiceOversKey,
   showDeleteDateVoiceOvers = true,
+  categories = [],
+  onCategoriesUpdated,
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [isOver, setIsOver] = useState(false);
@@ -1437,10 +1500,8 @@ const DateGroup = memo(function DateGroup({
   };
 
   const cat = getDateCategory(dateKey);
-  const completed = tasks.filter((t) => t.status === "completed").length;
   const inProgress = tasks.filter((t) => t.status === "in_progress").length;
   const total = tasks.length;
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   const assignmentSummary = useMemo(() => {
     const summary = {};
@@ -1538,78 +1599,72 @@ const DateGroup = memo(function DateGroup({
         )}
         <div
           onClick={() => setOpen(!open)}
-          className={`w-full flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2 px-3 py-1.5 sm:py-1.5 ${headerBg} backdrop-blur-md transition-colors hover:brightness-95 cursor-pointer select-none`}
+          className={`w-full flex flex-col gap-1 ${DATE_GROUP_HEADER_GRID} gap-y-1 px-3 py-1.5 sm:py-1.5 ${headerBg} backdrop-blur-md transition-colors hover:brightness-95 cursor-pointer select-none`}
         >
-          <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto sm:flex-1">
+          <div className={DATE_GROUP_DATE_COL}>
             <span className="flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-300" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
               <ChevronRight size={14} />
             </span>
 
-            <span className={`text-sm font-black whitespace-nowrap ${(!isHistory && cat === "overdue") ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : isHistory ? "text-emerald-700 dark:text-emerald-400" : cat === "backlog" ? "text-gray-500 dark:text-gray-400 italic" : "text-gray-800 dark:text-gray-200"}`}>
+            <span className={`text-sm font-black whitespace-nowrap truncate ${(!isHistory && cat === "overdue") ? "text-red-600 dark:text-red-400" : cat === "today" ? "text-blue-600 dark:text-blue-400" : isHistory ? "text-emerald-700 dark:text-emerald-400" : cat === "backlog" ? "text-gray-500 dark:text-gray-400 italic" : "text-gray-800 dark:text-gray-200"}`}>
               {formatDateLabel(dateKey)}
             </span>
+          </div>
 
+          {inProgress > 0 && (
+            <div
+              className={`${DATE_GROUP_IN_PROGRESS_COL} max-md:hidden`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 shrink-0">
+                <PlayCircle size={10} /> {inProgress}
+              </span>
+            </div>
+          )}
+
+          <div
+            className={DATE_GROUP_ACTIONS_COL}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {inProgress > 0 && (
+              <span className="md:hidden inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 shrink-0">
+                <PlayCircle size={10} /> {inProgress}
+              </span>
+            )}
+            <AnalyzeButton
+              tasks={tasks}
+              categories={categories}
+              onCategoriesUpdated={onCategoriesUpdated}
+              dateLabel={`${formatDateLabel(dateKey)} · ${total} ${total === 1 ? "task" : "tasks"}`}
+              iconSize={10}
+              title="Analyze taxonomy distribution vs target taxonomies"
+              className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors shadow-sm shrink-0"
+            />
+            <button
+              onClick={(e) => { e.stopPropagation(); onPreview(dateKey, tasks); }}
+              className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors shadow-sm shrink-0"
+              title="Preview tasks"
+            >
+              <Eye size={10} /> <span className="hidden sm:inline">Preview</span>
+            </button>
+          </div>
+
+          <div className={DATE_GROUP_SUMMARY_COL}>
             {dailySummary.total > 0 && (
-              <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700/50 shadow-sm shrink-0">
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">{dailySummary.total} Tasks</span>
-                <div className="w-px h-3 bg-gray-200 dark:bg-gray-700 mx-1" />
+              <>
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap">{dailySummary.total} Tasks</span>
+                <div className="w-px h-3 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
                 <div className="flex items-center gap-1.5">
                   {dailySummary.long > 0 && <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{dailySummary.long}L</span>}
                   {dailySummary.short > 0 && <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400">{dailySummary.short}S</span>}
                 </div>
-              </div>
+              </>
             )}
-
-            {cat === "overdue" && <AlertTriangle size={14} className="text-red-500 flex-shrink-0 animate-pulse" />}
-
-            <div className="flex items-center gap-2 ml-auto shrink-0">
-              {inProgress > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
-                  <PlayCircle size={10} /> {inProgress}
-                </span>
-              )}
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50">
-                {completed}/{total}
-              </span>
-              <button
-                onClick={(e) => { e.stopPropagation(); onPreview(dateKey, tasks); }}
-                className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors shadow-sm"
-                title="Preview tasks"
-              >
-                <Eye size={10} /> <span className="hidden sm:inline">Preview</span>
-              </button>
-              {showDeleteDateVoiceOvers && tasksWithVoiceOver.length > 0 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteDateVoiceOvers(dateKey, tasksWithVoiceOver);
-                  }}
-                  disabled={isDeletingDateVoiceOvers}
-                  className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors shadow-sm disabled:opacity-50"
-                  title={`Delete ${tasksWithVoiceOver.length} voice-over${tasksWithVoiceOver.length === 1 ? "" : "s"}`}
-                >
-                  {isDeletingDateVoiceOvers ? (
-                    <Loader2 size={10} className="animate-spin" />
-                  ) : (
-                    <Trash2 size={10} />
-                  )}
-                  <span className="hidden sm:inline">Delete VO</span>
-                  <span className="sm:hidden">{tasksWithVoiceOver.length}</span>
-                </button>
-              )}
-              <div className="hidden sm:flex w-20 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden shadow-inner">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-blue-500 to-indigo-500"}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </div>
           </div>
 
           {Object.keys(assignmentSummary).length > 0 && (
             <div
-              className="flex flex-nowrap items-center gap-2 overflow-x-auto max-w-full min-w-0 w-full sm:w-auto pb-0.5 pl-5 sm:pl-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className={DATE_GROUP_ASSIGNEES_COL}
               onClick={(e) => e.stopPropagation()}
             >
               {assigneeFilter && (
@@ -1650,7 +1705,7 @@ const DateGroup = memo(function DateGroup({
 
                     <div className="flex items-center gap-0.5 shrink-0">
                       {totalSum > 0 && (
-                        <span className={`inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-lg text-[9px] font-black shadow-sm border border-transparent mr-0.5 ${
+                        <span className={`inline-flex items-center py-0.5 rounded-lg text-[9px] font-black shadow-sm border border-transparent mr-0.5 ${DATE_GROUP_METRIC_PILL_WIDTH} ${
                           isActive
                             ? "bg-white/80 dark:bg-gray-900/60 text-blue-600 dark:text-blue-300"
                             : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
@@ -1659,12 +1714,12 @@ const DateGroup = memo(function DateGroup({
                         </span>
                       )}
                       {counts.long > 0 && (
-                        <span className={`inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-lg text-[9px] font-bold shrink-0 ${FORMAT_PILL.long} shadow-sm border border-transparent`} title="Long Format">
+                        <span className={`inline-flex items-center py-0.5 rounded-lg text-[9px] font-bold ${DATE_GROUP_METRIC_PILL_WIDTH} ${FORMAT_PILL.long} shadow-sm border border-transparent`} title="Long Format">
                           {counts.long}L
                         </span>
                       )}
                       {counts.short > 0 && (
-                        <span className={`inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-lg text-[9px] font-bold shrink-0 ${FORMAT_PILL.short} shadow-sm border border-transparent`} title="Shorts">
+                        <span className={`inline-flex items-center py-0.5 rounded-lg text-[9px] font-bold ${DATE_GROUP_METRIC_PILL_WIDTH} ${FORMAT_PILL.short} shadow-sm border border-transparent`} title="Shorts">
                           {counts.short}S
                         </span>
                       )}
@@ -1672,6 +1727,32 @@ const DateGroup = memo(function DateGroup({
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {showDeleteDateVoiceOvers && tasksWithVoiceOver.length > 0 && (
+            <div
+              className={DATE_GROUP_DELETE_VO_COL}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteDateVoiceOvers(dateKey, tasksWithVoiceOver);
+                }}
+                disabled={isDeletingDateVoiceOvers}
+                className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors shadow-sm disabled:opacity-50 shrink-0"
+                title={`Delete ${tasksWithVoiceOver.length} voice-over${tasksWithVoiceOver.length === 1 ? "" : "s"}`}
+              >
+                {isDeletingDateVoiceOvers ? (
+                  <Loader2 size={10} className="animate-spin" />
+                ) : (
+                  <Trash2 size={10} />
+                )}
+                <span className="hidden sm:inline">Delete VO</span>
+                <span className="sm:hidden">{tasksWithVoiceOver.length}</span>
+              </button>
             </div>
           )}
         </div>
@@ -2124,6 +2205,13 @@ function ContentModal({ open, onClose, onSaved, channelTypes, editTask }) {
 
 /* ─── Main Board ─── */
 export default function ProductionHub() {
+  const {
+    categories: plannerCategories,
+    totalVideos: plannerTotalVideos,
+    refresh: refreshPlannerCategories,
+    applySaved: applyPlannerConfig,
+  } = usePlannerCategories();
+  const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
   const [datedTasks, setDatedTasks] = useState([]);
   const [backlogTasks, setBacklogTasks] = useState([]);
   const [completedTasks, setCompletedTasks] = useState([]);
@@ -2809,7 +2897,7 @@ export default function ProductionHub() {
                 }`}
               >
                 <span className="truncate max-w-[100px] sm:max-w-[140px]">
-                  {activeType === "all" ? "All Categories" : activeType}
+                  {activeType === "all" ? "All Taxonomies" : activeType}
                 </span>
                 <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${showTypeDropdown ? "rotate-180" : ""}`} />
               </button>
@@ -2824,7 +2912,7 @@ export default function ProductionHub() {
                         : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                     }`}
                   >
-                    All Categories
+                    All Taxonomies
                     <span className="text-[10px] opacity-60 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full font-black uppercase">{allTasks.length}</span>
                   </button>
                   <div className="h-px bg-gray-100 dark:bg-gray-700 my-1.5" />
@@ -2852,6 +2940,10 @@ export default function ProductionHub() {
             </div>
 
             <div className="flex items-center gap-2 md:ml-auto">
+              <ManageCategoriesButton
+                categories={plannerCategories}
+                onClick={() => setCategoriesModalOpen(true)}
+              />
               <button
                 onClick={() => { setEditTask(null); setShowModal(true); }}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-tight text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 active:scale-95 border border-white/10"
@@ -2926,6 +3018,8 @@ export default function ProductionHub() {
                   onDeleteDateVoiceOvers={handleOpenDeleteDateVoiceOvers}
                   deletingDateVoiceOversKey={deletingDateVoiceOversKey}
                   showDeleteDateVoiceOvers={false}
+                  categories={plannerCategories}
+                  onCategoriesUpdated={refreshPlannerCategories}
                 />
               ))
             )}
@@ -2964,6 +3058,8 @@ export default function ProductionHub() {
                   onPlayToggle={handleTogglePlay}
                   onDeleteDateVoiceOvers={handleOpenDeleteDateVoiceOvers}
                   deletingDateVoiceOversKey={deletingDateVoiceOversKey}
+                  categories={plannerCategories}
+                  onCategoriesUpdated={refreshPlannerCategories}
                 />
               ))
             )}
@@ -3036,6 +3132,8 @@ export default function ProductionHub() {
                   onPlayToggle={handleTogglePlay}
                   onDeleteDateVoiceOvers={handleOpenDeleteDateVoiceOvers}
                   deletingDateVoiceOversKey={deletingDateVoiceOversKey}
+                  categories={plannerCategories}
+                  onCategoriesUpdated={refreshPlannerCategories}
                 />
               ))
             )}
@@ -3060,8 +3158,6 @@ export default function ProductionHub() {
         tasks={previewModal.tasks}
         dateKey={previewModal.dateKey}
         onPreviewThumbnail={handlePreviewThumbnail}
-        onDownloadVoiceOver={handleDownloadVoiceOver}
-        voiceOverDownloadingIds={voiceOverDownloadingIds}
       />
       {previewThumbUrl && <ThumbnailModal url={previewThumbUrl} onClose={() => setPreviewThumbUrl(null)} />}
       {detailModalTask && (
@@ -3085,6 +3181,16 @@ export default function ProductionHub() {
           loading={voBulkDeleting}
         />
       )}
+      <CategoriesModal
+        open={categoriesModalOpen}
+        categories={plannerCategories}
+        cachedVideos={[]}
+        totalVideos={plannerTotalVideos}
+        onClose={() => setCategoriesModalOpen(false)}
+        onSaved={(payload) => {
+          applyPlannerConfig(payload);
+        }}
+      />
 
       <audio ref={audioRef} src={audioUrl || ""} className="hidden" />
 

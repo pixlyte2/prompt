@@ -322,7 +322,7 @@ export default function VideoAIModal({
 
   const handleSchedule = async () => {
     if (!canSchedule) {
-      if (!channelType) toast.error("Select a channel category in Trending Hub first");
+      if (!channelType) toast.error("Select a channel taxonomy in Trending Hub first");
       else toast.error("Title is required");
       return;
     }
@@ -595,7 +595,7 @@ export default function VideoAIModal({
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40">
                   <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-amber-800 dark:text-amber-300 leading-snug">
-                    Select a channel category in Trending Hub before scheduling.
+                    Select a channel taxonomy in Trending Hub before scheduling.
                   </p>
                 </div>
               )}

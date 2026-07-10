@@ -154,6 +154,23 @@ export async function fetchCompetitorKeywords() {
   };
 }
 
+/** Merge multiple keyword lists; first-seen casing wins. */
+export function mergeKeywordLists(...lists) {
+  const seen = new Set();
+  const result = [];
+  for (const list of lists) {
+    for (const keyword of list || []) {
+      const trimmed = String(keyword || "").trim();
+      if (!trimmed) continue;
+      const key = trimmed.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(trimmed);
+    }
+  }
+  return result;
+}
+
 export async function hydrateCompetitorKeywords() {
   try {
     let state = await fetchCompetitorKeywords();
@@ -173,12 +190,16 @@ export async function hydrateCompetitorKeywords() {
     }
 
     syncToLocalStorage(state);
-    return state;
-  } catch {
+    return { state, synced: true };
+  } catch (err) {
     const local = collectLocalStorageKeywords();
     local.byType = normalizeByType(local.byType);
     local.cached = normalizeKeywordList(local.cached);
-    return local;
+    return {
+      state: local,
+      synced: false,
+      error: apiErrorMessage(err),
+    };
   }
 }
 
@@ -186,7 +207,7 @@ export async function persistTypeKeywords(typeId, keywords) {
   const scope = toScopeKey(typeId);
   const normalized = normalizeKeywordList(keywords);
   if (!scope) {
-    return { ok: false, keywords: normalized, error: "Missing category id" };
+    return { ok: false, keywords: normalized, error: "Missing taxonomy id" };
   }
 
   try {

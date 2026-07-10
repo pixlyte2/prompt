@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import PageTabBar from "../../components/PageTabBar";
+import { AnalyzeButton, usePlannerCategories } from "../../components/ScheduleCategoryAnalysis";
 import api, { httpClient } from "../../services/api";
 import { getRole } from "../../utils/api";
 import { downloadVoiceOverFile, uploadVoiceOverFile, validateVoiceOverFileSize } from "../../utils/voiceOverDownload";
@@ -800,23 +801,31 @@ function DateSection({
   onPlayToggle,
   uploadProgress,
   setUploadProgress,
+  categories = [],
+  onCategoriesUpdated,
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="rounded-xl sm:rounded-2xl border border-gray-200/80 dark:border-gray-800/80 bg-white/40 dark:bg-gray-900/20 overflow-hidden shadow-sm hover:shadow transition-shadow duration-300">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-3 text-left bg-gray-50/90 dark:bg-gray-900/60 hover:bg-gray-100 dark:hover:bg-gray-955 transition-colors"
-      >
-        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+      <div className="w-full flex items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-3 bg-gray-50/90 dark:bg-gray-900/60 hover:bg-gray-100 dark:hover:bg-gray-955 transition-colors">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 text-left"
+        >
           <span className="text-gray-400">{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>
           <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate">{formatDateLabel(dateKey)}</span>
           <span className="inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gray-200/80 dark:bg-gray-850 text-[9px] sm:text-[10px] font-bold text-gray-600 dark:text-gray-400">
             {tasks.length}
           </span>
-        </div>
-      </button>
+        </button>
+        <AnalyzeButton
+          tasks={tasks}
+          categories={categories}
+          onCategoriesUpdated={onCategoriesUpdated}
+          dateLabel={`${formatDateLabel(dateKey)} · ${tasks.length} ${tasks.length === 1 ? "task" : "tasks"}`}
+        />
+      </div>
       {open && (
         <div className="p-2 sm:p-4 space-y-2 sm:space-y-3 border-t border-gray-100 dark:border-gray-800/80 bg-gray-50/30 dark:bg-gray-950/10">
           {tasks.map((t, idx) => (
@@ -859,6 +868,7 @@ export default function VoiceOver() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingTaskId, setDeletingTaskId] = useState(null);
   const [voiceOverDownloadingIds, setVoiceOverDownloadingIds] = useState(() => new Set());
+  const { categories: plannerCategories, refresh: refreshPlannerCategories } = usePlannerCategories();
 
   // Search & Filter State
   const [pageTab, setPageTab] = useState(defaultTab);
@@ -1339,6 +1349,8 @@ export default function VoiceOver() {
                 onPlayToggle={handleTogglePlay}
                 uploadProgress={uploadProgress}
                 setUploadProgress={setUploadProgress}
+                categories={plannerCategories}
+                onCategoriesUpdated={refreshPlannerCategories}
               />
             ))}
           </div>

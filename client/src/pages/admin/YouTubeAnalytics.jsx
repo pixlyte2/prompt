@@ -2538,7 +2538,7 @@ function YouTubeAnalytics() {
                   onChange={(e) => setNewChanCategory(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
                 >
-                  <option value="">Category</option>
+                  <option value="">Taxonomy</option>
                   {types.map((t) => (
                     <option key={t._id} value={t._id}>
                       {t.name}

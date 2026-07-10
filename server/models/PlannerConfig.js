@@ -22,6 +22,8 @@ const plannerConfigSchema = new mongoose.Schema(
     categories: { type: [plannerCategorySchema], default: [] },
     /** How many videos the whole plan should schedule; percentages allocate against this. */
     totalVideos: { type: Number, default: 10, min: 1, max: 500 },
+    /** Optional custom Gemini prompt template for AI Auto-Categorize (uses {{CATEGORIES}} / {{TITLES}} placeholders). */
+    aiCategorizePrompt: { type: String, default: null, maxlength: 8000 },
   },
   { timestamps: true },
 );
