@@ -21,6 +21,8 @@ const competitorKeywordRoutes = require("./routes/competitorKeywordRoutes");
 const videoTaskRoutes = require("./routes/videoTaskRoutes");
 const youtubeRoutes = require("./routes/youtube");
 const plannerRoutes = require("./routes/plannerRoutes");
+const mediaCategoryRoutes = require("./routes/mediaCategoryRoutes");
+const mediaEntryRoutes    = require("./routes/mediaEntryRoutes");
 
 const VideoTask = require("./models/VideoTask");
 const {
@@ -81,6 +83,8 @@ app.use("/api/competitor-keywords", competitorKeywordRoutes);
 app.use("/api/video-tasks", videoTaskRoutes);
 app.use("/api/youtube", youtubeRoutes);
 app.use("/api/planner", plannerRoutes);
+app.use("/api/media-categories", mediaCategoryRoutes);
+app.use("/api/media-entries",    mediaEntryRoutes);
 
 /**
  * 🧪 Health Check

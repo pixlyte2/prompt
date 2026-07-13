@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import React from "react";
 import { Toaster } from "react-hot-toast";
 import PrivateRoute from "./components/PrivateRoute";
 import { DarkModeProvider } from "./contexts/DarkModeContext";
@@ -21,6 +22,8 @@ import TrendingHub from "./pages/admin/TrendingHub";
 import ProductionHub from "./pages/admin/ProductionHub";
 import VoiceOver from "./pages/admin/VoiceOver";
 import YouTubeAnalytics from "./pages/admin/YouTubeAnalytics";
+
+const MediaLibrary = React.lazy(() => import("./pages/admin/MediaLibrary"));
 
 export default function App() {
   return (
@@ -172,6 +175,15 @@ export default function App() {
           element={
             <PrivateRoute allowedRoles={["admin"]}>
               <YouTubeAnalytics />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/link-vault"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <MediaLibrary />
             </PrivateRoute>
           }
         />
