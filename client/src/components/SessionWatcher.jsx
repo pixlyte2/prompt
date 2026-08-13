@@ -36,7 +36,8 @@ export default function SessionWatcher() {
       const isPublicPath =
         pathname === "/login" ||
         pathname === "/superadmin-login" ||
-        pathname === "/";
+        pathname === "/" ||
+        pathname === "/landing";
 
       if (!token) {
         if (!isPublicPath) {
