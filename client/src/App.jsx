@@ -5,6 +5,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import { DarkModeProvider } from "./contexts/DarkModeContext";
 import SessionWatcher from "./components/SessionWatcher";
 
+import Landing from "./pages/Landing";
 import Login from "./auth/Login";
 import SuperAdminLogin from "./auth/SuperAdminLogin";
 
@@ -59,6 +60,7 @@ export default function App() {
       />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/superadmin-login" element={<SuperAdminLogin />} />
 
