@@ -23,6 +23,7 @@ import TrendingHub from "./pages/admin/TrendingHub";
 import ProductionHub from "./pages/admin/ProductionHub";
 import VoiceOver from "./pages/admin/VoiceOver";
 import YouTubeAnalytics from "./pages/admin/YouTubeAnalytics";
+import NotFound from "./pages/NotFound";
 
 const MediaLibrary = React.lazy(() => import("./pages/admin/MediaLibrary"));
 
@@ -189,6 +190,7 @@ export default function App() {
             </PrivateRoute>
           }
         />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </DarkModeProvider>
   );
