@@ -62,9 +62,11 @@ export default function SessionWatcher() {
       const remainingSeconds = Math.round((expTimeMs - Date.now()) / 1000);
 
       if (remainingSeconds <= 0) {
-        logout();
-        toast.error("Your session has expired. Please log in again.");
-        window.location.href = "/login";
+        if (!isPublicPath) {
+          logout();
+          toast.error("Your session has expired. Please log in again.");
+          window.location.href = "/login";
+        }
         setIsOpen(false);
       } else if (remainingSeconds <= 300) {
         // Show countdown modal when session is <= 5 mins
