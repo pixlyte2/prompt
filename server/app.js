@@ -23,6 +23,7 @@ const youtubeRoutes = require("./routes/youtube");
 const plannerRoutes = require("./routes/plannerRoutes");
 const mediaCategoryRoutes = require("./routes/mediaCategoryRoutes");
 const mediaEntryRoutes    = require("./routes/mediaEntryRoutes");
+const channelPlanRoutes = require("./routes/channelPlanRoutes");
 
 const VideoTask = require("./models/VideoTask");
 const {
@@ -85,6 +86,7 @@ app.use("/api/youtube", youtubeRoutes);
 app.use("/api/planner", plannerRoutes);
 app.use("/api/media-categories", mediaCategoryRoutes);
 app.use("/api/media-entries",    mediaEntryRoutes);
+app.use("/api/channel-plans", channelPlanRoutes);
 
 /**
  * 🧪 Health Check

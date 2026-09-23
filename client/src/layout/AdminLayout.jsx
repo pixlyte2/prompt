@@ -3,7 +3,7 @@ import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import AssistantWidget from "../components/AssistantWidget";
 import WeekOverviewPanel from "../components/WeekOverviewPanel";
-import { BarChart3, Users, FileText, MessageSquare, HelpCircle, TrendingUp, LayoutDashboard, Youtube, Mic, LineChart, Film } from "lucide-react";
+import { BarChart3, Users, FileText, MessageSquare, HelpCircle, TrendingUp, LayoutDashboard, Youtube, Mic, LineChart, Film, CalendarDays } from "lucide-react";
 import { getRole } from "../utils/api";
 
 const adminMenu = [
@@ -13,6 +13,7 @@ const adminMenu = [
   { label: "AI Chat", path: "/admin/ai-chat", icon: MessageSquare },
   { label: "Trending Hub", path: "/admin/trending-hub", icon: TrendingUp },
   { label: "Production Hub", path: "/admin/production-hub", icon: LayoutDashboard },
+  { label: "Channel Planner", path: "/admin/channel-planner", icon: CalendarDays },
   { label: "Voice-over", path: "/admin/voice-over", icon: Mic },
   { label: "LinkVault", path: "/admin/link-vault", icon: Film },
   { label: "YouTube Analytics", path: "/admin/youtube-analytics", icon: LineChart },

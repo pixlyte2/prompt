@@ -1,0 +1,409 @@
+const mongoose = require("mongoose");
+const ChannelPlan = require("../models/ChannelPlan");
+const Channel = require("../models/channel");
+const User = require("../models/user");
+
+const BUCKETS = new Set(["schedule", "backlog", "completed"]);
+const COUNT_FIELDS = [
+  "longPlanned",
+  "longCompleted",
+  "shortPlanned",
+  "shortCompleted",
+];
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parseChannelIds(query) {
+  const raw = query.channelId
+    ? [query.channelId]
+    : String(query.channelIds || "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+  const unique = [...new Set(raw)];
+  if (unique.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
+    const error = new Error("Invalid channel filter");
+    error.status = 400;
+    throw error;
+  }
+  return unique;
+}
+
+function bucketFilter(bucket) {
+  if (!BUCKETS.has(bucket)) {
+    const error = new Error("Invalid bucket. Use schedule, backlog, or completed.");
+    error.status = 400;
+    throw error;
+  }
+
+  if (bucket === "schedule") {
+    return {
+      status: { $ne: "completed" },
+      scheduledDate: { $ne: null, $exists: true },
+    };
+  }
+  if (bucket === "backlog") {
+    return {
+      status: { $ne: "completed" },
+      $or: [
+        { scheduledDate: null },
+        { scheduledDate: { $exists: false } },
+      ],
+    };
+  }
+  return { status: "completed" };
+}
+
+function buildFilter(req, bucket) {
+  const filter = bucketFilter(bucket);
+  const channelIds = parseChannelIds(req.query);
+  if (channelIds.length === 1) filter.channelId = channelIds[0];
+  if (channelIds.length > 1) filter.channelId = { $in: channelIds };
+
+  const search = String(req.query.search || "").trim();
+  if (search) {
+    const pattern = new RegExp(escapeRegex(search), "i");
+    filter.$and = [{ $or: [{ title: pattern }, { notes: pattern }] }];
+  }
+  return filter;
+}
+
+async function companyChannelIds(req) {
+  const channels = await Channel.find({ companyId: req.user.companyId })
+    .select("_id")
+    .lean();
+  return channels.map((channel) => channel._id);
+}
+
+async function scopeFilterToCompany(req, filter) {
+  const allowedIds = await companyChannelIds(req);
+  const allowed = new Set(allowedIds.map(String));
+  const requested = parseChannelIds(req.query);
+  if (requested.some((id) => !allowed.has(id))) {
+    const error = new Error("Channel not found");
+    error.status = 404;
+    throw error;
+  }
+  filter.channelId =
+    requested.length === 1 ? requested[0] : { $in: requested.length ? requested : allowedIds };
+  return filter;
+}
+
+function thumbnailDataUrl(file) {
+  if (!file) return undefined;
+  return `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+}
+
+function parseCount(value, field) {
+  if (value === undefined) return undefined;
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 0) {
+    const error = new Error(`${field} must be a non-negative integer`);
+    error.status = 400;
+    throw error;
+  }
+  return number;
+}
+
+function parseDate(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    const error = new Error("scheduledDate must be a valid date");
+    error.status = 400;
+    throw error;
+  }
+  return date;
+}
+
+async function validateReferences(channelId, assignedTo, req) {
+  if (!channelId || !mongoose.Types.ObjectId.isValid(channelId)) {
+    const error = new Error("A valid channelId is required");
+    error.status = 400;
+    throw error;
+  }
+
+  const channel = await Channel.findOne({
+    _id: channelId,
+    companyId: req.user.companyId,
+  }).lean();
+  if (!channel) {
+    const error = new Error("Channel not found");
+    error.status = 404;
+    throw error;
+  }
+
+  if (assignedTo) {
+    if (!mongoose.Types.ObjectId.isValid(assignedTo)) {
+      const error = new Error("Invalid assignee");
+      error.status = 400;
+      throw error;
+    }
+    const user = await User.findOne({
+      _id: assignedTo,
+      companyId: req.user.companyId,
+      role: "content_manager",
+      active: { $ne: false },
+    }).lean();
+    if (!user) {
+      const error = new Error("Content manager not found");
+      error.status = 404;
+      throw error;
+    }
+  }
+}
+
+function sendError(res, label, error) {
+  console.error(`${label}:`, error.message);
+  return res
+    .status(error.status || (error.name === "ValidationError" ? 400 : 500))
+    .json({ message: error.message || "Request failed" });
+}
+
+exports.getStats = async (req, res) => {
+  try {
+    const channelIds = parseChannelIds(req.query);
+    const allowedIds = await companyChannelIds(req);
+    const allowed = new Set(allowedIds.map(String));
+    if (channelIds.some((id) => !allowed.has(id))) {
+      return res.status(404).json({ message: "Channel not found" });
+    }
+    const match = {
+      channelId: {
+        $in: channelIds.length
+          ? channelIds.map((id) => new mongoose.Types.ObjectId(id))
+          : allowedIds,
+      },
+    };
+
+    const [stats] = await ChannelPlan.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          schedule: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$status", "completed"] },
+                    { $eq: [{ $type: "$scheduledDate" }, "date"] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          backlog: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$status", "completed"] },
+                    { $ne: [{ $type: "$scheduledDate" }, "date"] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          completed: {
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
+          },
+        },
+      },
+    ]);
+
+    return res.json(
+      stats
+        ? {
+            schedule: stats.schedule,
+            backlog: stats.backlog,
+            completed: stats.completed,
+          }
+        : { schedule: 0, backlog: 0, completed: 0 },
+    );
+  } catch (error) {
+    return sendError(res, "getChannelPlanStats", error);
+  }
+};
+
+exports.getPlans = async (req, res) => {
+  try {
+    const bucket = String(req.query.bucket || "schedule").trim();
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(
+      50,
+      Math.max(1, Number.parseInt(req.query.limit, 10) || 10),
+    );
+    const filter = await scopeFilterToCompany(req, buildFilter(req, bucket));
+    const sort =
+      bucket === "completed"
+        ? { completedAt: -1, updatedAt: -1 }
+        : bucket === "backlog"
+          ? { updatedAt: -1 }
+          : { scheduledDate: 1, createdAt: 1 };
+
+    const plans = await ChannelPlan.find(filter)
+      .populate("channelId", "name")
+      .populate("assignedTo", "name email")
+      .sort(sort)
+      .lean();
+
+    const grouped = new Map();
+    for (const plan of plans) {
+      const dateValue =
+        bucket === "completed" ? plan.completedAt || plan.updatedAt : plan.scheduledDate;
+      const key =
+        bucket === "backlog"
+          ? "backlog"
+          : new Date(dateValue).toISOString().slice(0, 10);
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(plan);
+    }
+
+    const allGroups = [...grouped.entries()].map(([date, tasks]) => ({
+      date,
+      tasks,
+      totals: tasks.reduce(
+        (totals, task) => ({
+          longPlanned: totals.longPlanned + task.longPlanned,
+          longCompleted: totals.longCompleted + task.longCompleted,
+          shortPlanned: totals.shortPlanned + task.shortPlanned,
+          shortCompleted: totals.shortCompleted + task.shortCompleted,
+        }),
+        {
+          longPlanned: 0,
+          longCompleted: 0,
+          shortPlanned: 0,
+          shortCompleted: 0,
+        },
+      ),
+    }));
+    const totalGroups = allGroups.length;
+    const totalPages = Math.max(1, Math.ceil(totalGroups / limit));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * limit;
+
+    return res.json({
+      groups: allGroups.slice(start, start + limit),
+      pagination: {
+        page: safePage,
+        limit,
+        totalGroups,
+        totalPages,
+        totalPlans: plans.length,
+      },
+    });
+  } catch (error) {
+    return sendError(res, "getChannelPlans", error);
+  }
+};
+
+exports.createPlan = async (req, res) => {
+  try {
+    const title = String(req.body.title || "").trim();
+    if (!title) return res.status(400).json({ message: "Title is required" });
+
+    const channelId = req.body.channelId;
+    const assignedTo = req.body.assignedTo || null;
+    await validateReferences(channelId, assignedTo, req);
+
+    const values = {
+      title,
+      channelId,
+      thumbnail: thumbnailDataUrl(req.file) || "",
+      scheduledDate: parseDate(req.body.scheduledDate),
+      notes: String(req.body.notes || ""),
+      assignedTo,
+      status: req.body.status || "todo",
+      createdBy: req.user._id || req.user.id,
+    };
+    for (const field of COUNT_FIELDS) {
+      values[field] = parseCount(req.body[field] ?? 0, field);
+    }
+    if (values.status === "completed") values.completedAt = new Date();
+
+    const plan = await ChannelPlan.create(values);
+    await plan.populate([
+      { path: "channelId", select: "name" },
+      { path: "assignedTo", select: "name email" },
+    ]);
+    return res.status(201).json(plan);
+  } catch (error) {
+    return sendError(res, "createChannelPlan", error);
+  }
+};
+
+exports.updatePlan = async (req, res) => {
+  try {
+    const plan = await ChannelPlan.findById(req.params.id);
+    if (!plan) return res.status(404).json({ message: "Channel plan not found" });
+    const allowedIds = await companyChannelIds(req);
+    if (!allowedIds.some((id) => String(id) === String(plan.channelId))) {
+      return res.status(404).json({ message: "Channel plan not found" });
+    }
+
+    const channelId = req.body.channelId ?? String(plan.channelId);
+    const assignedTo =
+      req.body.assignedTo === undefined
+        ? plan.assignedTo
+          ? String(plan.assignedTo)
+          : null
+        : req.body.assignedTo || null;
+    await validateReferences(channelId, assignedTo, req);
+
+    if (req.body.title !== undefined) {
+      const title = String(req.body.title).trim();
+      if (!title) return res.status(400).json({ message: "Title is required" });
+      plan.title = title;
+    }
+    plan.channelId = channelId;
+    plan.assignedTo = assignedTo;
+    if (req.body.scheduledDate !== undefined) {
+      plan.scheduledDate = parseDate(req.body.scheduledDate);
+    }
+    if (req.body.notes !== undefined) plan.notes = String(req.body.notes);
+    if (req.file) plan.thumbnail = thumbnailDataUrl(req.file);
+    if (req.body.removeThumbnail === "true") plan.thumbnail = "";
+    for (const field of COUNT_FIELDS) {
+      const value = parseCount(req.body[field], field);
+      if (value !== undefined) plan[field] = value;
+    }
+    if (req.body.status !== undefined) {
+      const wasCompleted = plan.status === "completed";
+      plan.status = req.body.status;
+      if (plan.status === "completed" && !wasCompleted) plan.completedAt = new Date();
+      if (plan.status !== "completed") plan.completedAt = null;
+    }
+
+    await plan.save();
+    await plan.populate([
+      { path: "channelId", select: "name" },
+      { path: "assignedTo", select: "name email" },
+    ]);
+    return res.json(plan);
+  } catch (error) {
+    return sendError(res, "updateChannelPlan", error);
+  }
+};
+
+exports.deletePlan = async (req, res) => {
+  try {
+    const allowedIds = await companyChannelIds(req);
+    const plan = await ChannelPlan.findOneAndDelete({
+      _id: req.params.id,
+      channelId: { $in: allowedIds },
+    });
+    if (!plan) return res.status(404).json({ message: "Channel plan not found" });
+    return res.json({ message: "Channel plan deleted" });
+  } catch (error) {
+    return sendError(res, "deleteChannelPlan", error);
+  }
+};

@@ -39,6 +39,22 @@ const getUsers = async (req, res) => {
   res.json(users);
 };
 
+const getContentManagers = async (req, res) => {
+  try {
+    const users = await User.find({
+      companyId: req.user.companyId,
+      role: "content_manager",
+      // Legacy users predate the `active` field; absent means active.
+      active: { $ne: false },
+    })
+      .select("name email")
+      .sort({ name: 1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 const deleteUser = async (req, res) => {
   await User.findOneAndDelete({
     _id: req.params.id,
@@ -105,6 +121,7 @@ const updateUser = async (req, res) => {
 module.exports = {
   createUser,
   getUsers,
+  getContentManagers,
   deleteUser,
   updateUser,
 };

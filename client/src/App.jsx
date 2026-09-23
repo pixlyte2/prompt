@@ -24,6 +24,7 @@ import ProductionHub from "./pages/admin/ProductionHub";
 import VoiceOver from "./pages/admin/VoiceOver";
 import YouTubeAnalytics from "./pages/admin/YouTubeAnalytics";
 import NotFound from "./pages/NotFound";
+import ChannelPlanner from "./pages/admin/ChannelPlanner";
 
 const MediaLibrary = React.lazy(() => import("./pages/admin/MediaLibrary"));
 
@@ -154,6 +155,17 @@ export default function App() {
             </PrivateRoute>
           }
         />
+		
+		
+        <Route
+          path="/admin/channel-planner"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <ChannelPlanner />
+            </PrivateRoute>
+          }
+        />
+
 
         <Route
           path="/admin/voice-over"
