@@ -15,14 +15,25 @@ const THUMBNAIL_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const RECENT_CHANNELS_KEY = "channelPlanner_recentChannels";
 
 const COUNT_ROWS = [
-  { label: "Long videos", planned: "longPlanned", completed: "longCompleted" },
-  { label: "Short videos", planned: "shortPlanned", completed: "shortCompleted" },
+  { label: "Long videos", planned: "longPlanned", format: "long" },
+  { label: "Short videos", planned: "shortPlanned", format: "short" },
+];
+
+const FORMAT_PILL = {
+  long: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+  short: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+};
+
+const ASSIGNEE_COLORS = [
+  "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
+  "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+  "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
 ];
 
 const inputClass =
-  "w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40";
-const labelClass =
-  "block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1";
+  "w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all duration-200";
+const labelClass = "block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1";
 
 function readRecentChannels() {
   try {
@@ -68,10 +79,9 @@ export default function ChannelPlanModal({
   const [scheduledDate, setScheduledDate] = useState(null);
   const [counts, setCounts] = useState({
     longPlanned: 0,
-    longCompleted: 0,
     shortPlanned: 0,
-    shortCompleted: 0,
   });
+  const [firstCut, setFirstCut] = useState(false);
   const [notes, setNotes] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState(null);
@@ -91,10 +101,9 @@ export default function ChannelPlanModal({
       setScheduledDate(toDateKey(editPlan.scheduledDate));
       setCounts({
         longPlanned: editPlan.longPlanned ?? 0,
-        longCompleted: editPlan.longCompleted ?? 0,
         shortPlanned: editPlan.shortPlanned ?? 0,
-        shortCompleted: editPlan.shortCompleted ?? 0,
       });
+      setFirstCut(Boolean(editPlan.firstCut));
       setNotes(editPlan.notes || "");
       setAssignedTo(String(editPlan.assignedTo?._id || editPlan.assignedTo || ""));
     } else {
@@ -103,10 +112,9 @@ export default function ChannelPlanModal({
       setScheduledDate(tomorrowKey());
       setCounts({
         longPlanned: 0,
-        longCompleted: 0,
         shortPlanned: 0,
-        shortCompleted: 0,
       });
+      setFirstCut(false);
       setNotes("");
       setAssignedTo("");
     }
@@ -177,11 +185,11 @@ export default function ChannelPlanModal({
       payload.append("title", title.trim());
       payload.append("channelId", channelId);
       payload.append("scheduledDate", scheduledDate || "");
+      payload.append("firstCut", String(firstCut));
       payload.append("notes", notes);
       payload.append("assignedTo", assignedTo);
-      for (const { planned, completed } of COUNT_ROWS) {
+      for (const { planned } of COUNT_ROWS) {
         payload.append(planned, String(Number(counts[planned]) || 0));
-        payload.append(completed, String(Number(counts[completed]) || 0));
       }
       if (thumbnailFile) payload.append("thumbnail", thumbnailFile);
       if (thumbnailRemoved) payload.append("removeThumbnail", "true");
@@ -211,17 +219,27 @@ export default function ChannelPlanModal({
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-            {isEdit ? "Edit Plan" : "Add Plan"}
-          </h3>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
+        <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+              {isEdit ? "Edit Plan" : "Add Plan"}
+            </h3>
+            {isEdit && editPlan?.planId && (
+              <span
+                className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-2 py-0.5 text-[10px] font-black tabular-nums text-blue-800 dark:border-blue-700/60 dark:bg-blue-900/40 dark:text-blue-300"
+                title={`Plan ID ${editPlan.planId}`}
+              >
+                #{editPlan.planId}
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
             Plan long and short-form output for a channel
           </p>
         </div>
 
-        <div className="px-5 py-4 space-y-3 max-h-[65vh] overflow-y-auto">
+        <div className="max-h-[65vh] space-y-3 overflow-y-auto px-5 py-4 custom-scrollbar">
           <div>
             <label className={labelClass}>Channel</label>
             <select
@@ -254,15 +272,15 @@ export default function ChannelPlanModal({
           <div>
             <label className={labelClass}>Thumbnail (optional)</label>
             {previewUrl && (
-              <div className="flex items-center gap-2 mb-2">
+              <div className="mb-2 flex items-center gap-2">
                 <img
                   src={previewUrl}
                   alt=""
-                  className="w-16 h-10 rounded object-cover bg-gray-100 dark:bg-gray-700"
+                  className="h-10 w-16 rounded object-cover bg-gray-100 dark:bg-gray-700"
                 />
                 <button
                   type="button"
-                  className="text-[11px] font-semibold text-red-600 dark:text-red-400 hover:underline"
+                  className="text-[11px] font-semibold text-red-600 hover:underline dark:text-red-400"
                   onClick={() => {
                     setThumbnailFile(null);
                     setThumbnailRemoved(true);
@@ -278,9 +296,9 @@ export default function ChannelPlanModal({
               type="file"
               accept={THUMBNAIL_TYPES.join(",")}
               onChange={handleThumbnailChange}
-              className="w-full text-[11px] text-gray-700 dark:text-gray-200 file:mr-2 file:py-1.5 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-gray-200 file:text-gray-800 dark:file:bg-gray-700 dark:file:text-gray-100 hover:file:bg-gray-300 dark:hover:file:bg-gray-600"
+              className="w-full text-[11px] text-gray-700 file:mr-2 file:rounded-lg file:border-0 file:bg-gray-200 file:px-2 file:py-1.5 file:text-[10px] file:font-semibold file:text-gray-800 hover:file:bg-gray-300 dark:text-gray-200 dark:file:bg-gray-700 dark:file:text-gray-100 dark:hover:file:bg-gray-600"
             />
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+            <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
               Max 25 KB. Formats: JPG, PNG, WebP.
             </p>
           </div>
@@ -297,7 +315,7 @@ export default function ChannelPlanModal({
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
+            <div className="mb-1 flex items-center justify-between">
               <label className={`${labelClass} mb-0`}>Scheduled Date</label>
               <div className="flex items-center gap-2">
                 <span
@@ -310,10 +328,10 @@ export default function ChannelPlanModal({
                 <button
                   type="button"
                   onClick={() => setScheduledDate(scheduledDate ? null : tomorrowKey())}
+                  title="Move this plan to the backlog"
+                  aria-pressed={!scheduledDate}
                   className={`relative inline-flex h-[18px] w-[32px] flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    !scheduledDate
-                      ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]"
-                      : "bg-gray-200 dark:bg-gray-700"
+                    !scheduledDate ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" : "bg-gray-200 dark:bg-gray-700"
                   }`}
                 >
                   <span
@@ -329,78 +347,96 @@ export default function ChannelPlanModal({
               type="date"
               value={scheduledDate || ""}
               onChange={(e) => setScheduledDate(e.target.value || null)}
-              className={`w-full px-3 py-2 rounded-lg border transition-all text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+              className={`w-full rounded-lg border px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                 !scheduledDate
-                  ? "bg-gray-50/50 dark:bg-gray-800/50 text-gray-400 border-gray-100 dark:border-gray-800 opacity-60"
-                  : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-200 dark:border-gray-700"
+                  ? "border-gray-100 bg-gray-50/50 text-gray-400 opacity-60 dark:border-gray-800 dark:bg-gray-800/50"
+                  : "border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               }`}
             />
           </div>
 
           <div>
             <label className={labelClass}>Video Counts</label>
-            <div className="space-y-2">
-              {COUNT_ROWS.map(({ label, planned, completed }) => (
-                <div
-                  key={label}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2"
-                >
-                  <p className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 mb-1.5">
+            <div className="grid grid-cols-2 gap-2">
+              {COUNT_ROWS.map(({ label, planned, format }) => (
+                <label key={label} className="block">
+                  <span className={`mb-1 inline-flex rounded-lg px-2 py-0.5 text-[10px] font-bold ${FORMAT_PILL[format]}`}>
                     {label}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="text-[10px] text-gray-500 dark:text-gray-400">
-                      Planned
-                      <input
-                        type="number"
-                        min="0"
-                        value={counts[planned]}
-                        onChange={(e) => setCount(planned, e.target.value)}
-                        className={`${inputClass} mt-1`}
-                      />
-                    </label>
-                    <label className="text-[10px] text-gray-500 dark:text-gray-400">
-                      Completed
-                      <input
-                        type="number"
-                        min="0"
-                        value={counts[completed]}
-                        onChange={(e) => setCount(completed, e.target.value)}
-                        className={`${inputClass} mt-1`}
-                      />
-                    </label>
-                  </div>
-                </div>
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={counts[planned]}
+                    onChange={(e) => setCount(planned, e.target.value)}
+                    className={inputClass}
+                    placeholder="0"
+                  />
+                </label>
               ))}
             </div>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-              Planned and completed are tracked separately
+            <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+              Planned output for this date
             </p>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2.5 dark:border-gray-700">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">First Cut</p>
+              <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+                Mark when the first cut is ready for review
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-[9px] font-black uppercase tracking-tighter transition-colors ${
+                  firstCut ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400"
+                }`}
+              >
+                {firstCut ? "Ready" : "Pending"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setFirstCut((value) => !value)}
+                title="Toggle first cut ready"
+                aria-pressed={firstCut}
+                className={`relative inline-flex h-[18px] w-[32px] flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  firstCut ? "bg-emerald-500" : "bg-gray-200 dark:bg-gray-700"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none inline-block h-[14px] w-[14px] transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                    firstCut ? "translate-x-[14px]" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
           <div>
             <label className={labelClass}>Assigned to</label>
             {contentManagers.length === 0 ? (
-              <div className="flex items-start gap-2 p-2.5 rounded-lg border border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                <UserPlus size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">
+              <div className="flex items-start gap-2 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-2.5 dark:border-gray-700 dark:bg-gray-800/50">
+                <UserPlus size={14} className="mt-0.5 flex-shrink-0 text-gray-400" />
+                <p className="text-[11px] leading-tight text-gray-500 dark:text-gray-400">
                   No content managers yet. Create one in Users to assign this plan.
                 </p>
               </div>
             ) : (
               <>
                 <div className="flex flex-wrap gap-1.5">
-                  {contentManagers.map((user) => {
+                  {contentManagers.map((user, index) => {
                     const isSelected = assignedTo === String(user._id);
+                    const pillClass = ASSIGNEE_COLORS[index % ASSIGNEE_COLORS.length];
                     return (
                       <button
                         key={user._id}
                         type="button"
                         onClick={() => setAssignedTo(isSelected ? "" : String(user._id))}
-                        className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                        className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-all ${
                           isSelected
-                            ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-current shadow-sm"
-                            : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                            ? `${pillClass} border-current shadow-sm`
+                            : "border-gray-200 text-gray-500 hover:border-gray-300 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600"
                         }`}
                       >
                         {user.name}
@@ -408,7 +444,7 @@ export default function ChannelPlanModal({
                     );
                   })}
                 </div>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
                   Select one, or none to leave unassigned
                 </p>
               </>
@@ -427,20 +463,18 @@ export default function ChannelPlanModal({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 px-5 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <div className="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 px-5 py-3 dark:border-gray-700 dark:bg-gray-800/50">
           {error && (
-            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30">
-              <AlertTriangle size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
-              <p className="text-[11px] font-medium text-red-700 dark:text-red-400 leading-tight">
-                {error}
-              </p>
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5 dark:border-red-900/30 dark:bg-red-900/20">
+              <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-red-500" />
+              <p className="text-[11px] font-medium leading-tight text-red-700 dark:text-red-400">{error}</p>
             </div>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-nowrap items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300"
             >
               Cancel
             </button>
@@ -448,7 +482,7 @@ export default function ChannelPlanModal({
               type="button"
               onClick={handleSave}
               disabled={saving || !canSave}
-              className="ml-auto px-4 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+              className="ml-auto inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100 sm:px-4"
             >
               {saving ? (
                 <Loader2 size={12} className="animate-spin" />

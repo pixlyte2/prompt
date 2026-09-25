@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
-  Check,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
+  Circle,
+  ClipboardList,
+  FileText,
+  Filter,
   Image,
   Layers3,
+  ListChecks,
   Loader2,
   Pencil,
   Plus,
@@ -19,50 +21,73 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
+import PageTabBar from "../../components/PageTabBar";
 import api from "../../services/api";
 import ChannelPlanModal from "../../components/ChannelPlanModal";
 import ConfirmModal from "../../components/ConfirmModal";
 
-const DATE_GROUP_PAGE_SIZE = 10;
-const SELECTED_CHANNELS_KEY = "channelPlanner_selectedChannels";
-const RECENT_CHANNELS_KEY = "channelPlanner_recentChannels";
+const DATE_GROUP_PAGE_SIZE = 5;
 
-function readStoredArray(key) {
-  try {
-    const value = JSON.parse(localStorage.getItem(key) || "[]");
-    return Array.isArray(value) ? value.map(String) : [];
-  } catch {
-    return [];
-  }
-}
+const REPORT_PERIODS = [
+  { value: "current-week", label: "This week" },
+  { value: "last-3-weeks", label: "Last 3 weeks" },
+  { value: "current-month", label: "This month" },
+  { value: "custom", label: "Custom" },
+];
 
-function formatDate(dateKey) {
-  if (dateKey === "backlog") return "Backlog";
-  return new Intl.DateTimeFormat("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(`${dateKey}T00:00:00`));
-}
+const PAGE_TABS = [
+  { id: "plans", label: "Plans", shortLabel: "Plans", icon: CalendarDays },
+  { id: "log-work", label: "Log Work", shortLabel: "Log", icon: ClipboardList },
+  { id: "report", label: "Report", shortLabel: "Report", icon: FileText },
+];
 
-function FilterSegment({ options, value, onChange }) {
+const FORMAT_PILL = {
+  long: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+  short: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+  firstCut: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+};
+
+const ROW_PILL_SIZES = {
+  planId: "shrink-0 w-[2.75rem] justify-center",
+  count: "shrink-0 w-[3.25rem] justify-center",
+  firstCut: "shrink-0 min-w-[4.75rem] justify-center",
+};
+
+const NOTES_PILL =
+  "inline-flex shrink-0 items-center gap-1 rounded-full border border-sky-200/90 bg-sky-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-800 shadow-sm transition-colors hover:border-sky-300 hover:bg-sky-100 dark:border-sky-700/60 dark:bg-sky-900/35 dark:text-sky-100 dark:hover:border-sky-500 dark:hover:bg-sky-900/55 min-h-[22px] sm:min-h-[26px] sm:px-2.5 sm:py-1 sm:text-[11px]";
+
+/* ─── Production Hub-style shared UI ─── */
+
+function FilterSegment({ options, value, onChange, variant = "default" }) {
+  const activeVariants = {
+    default: "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm",
+    success: "bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm",
+  };
+
   return (
-    <div className="inline-flex rounded-xl border border-gray-200/60 bg-gray-100/80 p-1 backdrop-blur dark:border-gray-700/60 dark:bg-gray-800/80">
+    <div className="inline-flex rounded-xl border border-gray-200/50 bg-gray-100/80 p-1 backdrop-blur-md dark:border-gray-700/50 dark:bg-gray-800/80">
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+          className={`relative flex items-center justify-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-all duration-300 sm:px-3.5 sm:py-1.5 sm:text-xs ${
             value === option.value
-              ? "bg-white text-blue-600 shadow-sm dark:bg-gray-700 dark:text-blue-400"
-              : "text-gray-600 hover:bg-gray-200/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200"
+              ? activeVariants[variant]
+              : "text-gray-600 hover:bg-gray-200/50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200"
           }`}
         >
           {option.label}
-          {option.count > 0 && (
-            <span className="rounded-md bg-gray-200/80 px-1.5 py-0.5 text-[9px] font-bold text-gray-600 dark:bg-gray-600 dark:text-gray-200">
+          {option.count !== undefined && option.count > 0 && (
+            <span
+              className={`ml-0.5 rounded-md px-1 py-0.5 text-[9px] font-bold tabular-nums ${
+                value === option.value
+                  ? variant === "success"
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                    : "bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                  : "bg-gray-200 text-gray-500 dark:bg-gray-600 dark:text-gray-400"
+              }`}
+            >
               {option.count}
             </span>
           )}
@@ -72,219 +97,1117 @@ function FilterSegment({ options, value, onChange }) {
   );
 }
 
-function ChannelPicker({ channels, selectedIds, onChange }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const close = (event) => {
-      if (ref.current && !ref.current.contains(event.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, []);
-
-  const recent = useMemo(() => readStoredArray(RECENT_CHANNELS_KEY), []);
-  const sorted = useMemo(() => {
-    const ranks = new Map(recent.map((id, index) => [id, index]));
-    return [...channels].sort((a, b) => {
-      const ar = ranks.get(String(a._id)) ?? Infinity;
-      const br = ranks.get(String(b._id)) ?? Infinity;
-      return ar === br ? a.name.localeCompare(b.name) : ar - br;
-    });
-  }, [channels, recent]);
-
-  const toggle = (id) => {
-    const stringId = String(id);
-    onChange(
-      selectedIds.includes(stringId)
-        ? selectedIds.filter((value) => value !== stringId)
-        : [...selectedIds, stringId],
-    );
-  };
-
+function FilterChip({ active, onClick, children, count }) {
   return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="inline-flex min-w-44 items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm hover:border-blue-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-      >
-        <span>{selectedIds.length ? `${selectedIds.length} channels selected` : "All channels"}</span>
-        <ChevronDown size={14} className={open ? "rotate-180 transition" : "transition"} />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-40 mt-2 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
-          <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2 dark:border-gray-700">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Channels</span>
-            {selectedIds.length > 0 && (
-              <button
-                type="button"
-                onClick={() => onChange([])}
-                className="text-[11px] font-semibold text-blue-600 hover:underline dark:text-blue-400"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          <div className="max-h-72 overflow-y-auto p-1.5">
-            {sorted.map((channel, index) => {
-              const checked = selectedIds.includes(String(channel._id));
-              const showDivider = index > 0 && recent.includes(String(sorted[index - 1]._id)) && !recent.includes(String(channel._id));
-              return (
-                <div key={channel._id}>
-                  {showDivider && <div className="my-1 border-t border-gray-100 dark:border-gray-700" />}
-                  <button
-                    type="button"
-                    onClick={() => toggle(channel._id)}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700"
-                  >
-                    <span className={`flex h-4 w-4 items-center justify-center rounded border ${checked ? "border-blue-600 bg-blue-600 text-white" : "border-gray-300 dark:border-gray-600"}`}>
-                      {checked && <Check size={11} />}
-                    </span>
-                    <span className="truncate">{channel.name}</span>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-semibold tracking-wide transition-all duration-300 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs ${
+        active
+          ? "scale-[1.02] border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25"
+          : "border-gray-200/80 bg-white/60 text-gray-700 backdrop-blur-md hover:-translate-y-0.5 hover:border-blue-400/50 hover:bg-white hover:shadow-md dark:border-gray-700/80 dark:bg-gray-800/50 dark:text-gray-200 dark:hover:border-blue-500/50 dark:hover:bg-gray-800"
+      }`}
+    >
+      {children}
+      {count !== undefined && count > 0 && (
+        <span
+          className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums transition-colors ${
+            active ? "bg-white/25 text-white" : "bg-gray-200/70 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+          }`}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function SearchInput({ value, onChange, placeholder, onClear }) {
+  return (
+    <div className="group relative min-w-[200px] max-w-md flex-1">
+      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+        <Search size={14} className="text-gray-400 transition-colors duration-300 group-focus-within:text-blue-500" />
+      </div>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-gray-200/60 bg-white/60 py-1 pl-7 pr-7 text-[10px] text-gray-900 shadow-sm backdrop-blur-md transition-all duration-300 placeholder:text-gray-400 focus:border-blue-400/50 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700/60 dark:bg-gray-800/60 dark:text-white sm:rounded-xl sm:text-xs"
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 transition-colors duration-200 hover:text-gray-600 dark:hover:text-gray-300"
+        >
+          <X size={14} />
+        </button>
       )}
     </div>
   );
 }
 
-function CountPill({ label, value, done }) {
+function FilterLabel({ icon: Icon, children }) {
   return (
-    <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${done ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" : "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"}`}>
-      {label} {value || 0}
+    <div className="flex flex-shrink-0 items-center gap-1.5 px-1 text-[11px] font-bold tracking-tight text-gray-700 dark:text-gray-300 sm:px-1.5 sm:text-xs">
+      {Icon && <Icon size={12} className="h-3 w-3 text-blue-500 drop-shadow-sm dark:text-blue-400 sm:h-3.5 sm:w-3.5" />}
+      <span className="whitespace-nowrap bg-gradient-to-r from-gray-700 to-gray-500 bg-clip-text text-transparent dark:from-gray-100 dark:to-gray-400">
+        {children}
+      </span>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, count, color }) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5 rounded border-none bg-transparent transition-opacity hover:opacity-80">
+      <div className={`flex h-4.5 w-4.5 flex-shrink-0 items-center justify-center rounded ring-1 ring-inset ring-white/10 ${color}`}>
+        <Icon size={11} />
+      </div>
+      <div className="flex min-w-0 items-baseline gap-1">
+        <span className="text-[13px] font-black tabular-nums leading-none text-gray-900 dark:text-white sm:text-[15px]">
+          {count}
+        </span>
+        <span className="truncate text-[8px] font-bold uppercase tracking-tighter text-gray-500 dark:text-gray-400 sm:text-[9px]">
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ChannelPlannerTabPanel({ tabId, activeTab, children }) {
+  const isActive = activeTab === tabId;
+  return (
+    <div
+      role="tabpanel"
+      hidden={!isActive}
+      aria-hidden={!isActive}
+      className={isActive ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "hidden"}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ─── Date helpers ─── */
+
+function toTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getDateCategory(dateKey) {
+  if (!dateKey || dateKey === "backlog") return "backlog";
+  const today = toTodayKey();
+  if (dateKey < today) return "overdue";
+  if (dateKey === today) return "today";
+  return "upcoming";
+}
+
+function formatDateLabel(dateKey) {
+  if (dateKey === "backlog") return "Backlog";
+  const d = new Date(`${dateKey}T00:00:00`);
+  const today = toTodayKey();
+  const tmrw = new Date();
+  tmrw.setDate(tmrw.getDate() + 1);
+  const tmrwKey = `${tmrw.getFullYear()}-${String(tmrw.getMonth() + 1).padStart(2, "0")}-${String(tmrw.getDate()).padStart(2, "0")}`;
+  const label = d.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" });
+  if (dateKey === today) return `Today — ${label}`;
+  if (dateKey === tmrwKey) return `Tomorrow — ${label}`;
+  return label;
+}
+
+function formatLogDate(value) {
+  if (!value) return "—";
+  const key = new Date(value).toISOString().slice(0, 10);
+  return formatDateLabel(key);
+}
+
+function dateToKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function resolveReportRange(period, customFrom, customTo) {
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+
+  if (period === "custom") {
+    return { from: customFrom || "", to: customTo || "" };
+  }
+
+  if (period === "current-week") {
+    const start = new Date(today);
+    const day = start.getDay();
+    start.setDate(start.getDate() + (day === 0 ? -6 : 1 - day));
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    return { from: dateToKey(start), to: dateToKey(end) };
+  }
+
+  if (period === "last-3-weeks") {
+    const from = new Date(today);
+    from.setDate(from.getDate() - 20);
+    return { from: dateToKey(from), to: dateToKey(today) };
+  }
+
+  if (period === "current-month") {
+    const from = new Date(today.getFullYear(), today.getMonth(), 1);
+    const to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return { from: dateToKey(from), to: dateToKey(to) };
+  }
+
+  return resolveReportRange("current-week", "", "");
+}
+
+/* ─── Plan row metrics ─── */
+
+const COUNT_TONES = {
+  idle: {
+    dot: "bg-gray-300 dark:bg-gray-600",
+    pill: "border-gray-200 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-400",
+  },
+  active: {
+    dot: "bg-blue-500",
+    pill: "border-blue-200/70 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/25 dark:text-blue-400",
+  },
+  complete: {
+    dot: "bg-emerald-500",
+    pill: "border-emerald-200/70 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/25 dark:text-emerald-400",
+  },
+};
+
+function PlanIdPill({ planId }) {
+  if (!planId) return null;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border border-blue-200/70 bg-blue-50 px-1.5 py-px text-[9px] font-bold tabular-nums text-blue-700 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-300 ${ROW_PILL_SIZES.planId}`}
+      title={`Plan ID ${planId}`}
+    >
+      #{planId}
     </span>
   );
 }
 
-function ChannelPlanRow({ plan, onEdit, onDelete, onToggleStatus, onThumbnail }) {
+function NotesPill({ notes, onOpen }) {
+  if (!notes) return null;
   return (
-    <div className="grid grid-cols-[48px_minmax(180px,1.7fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(120px,1fr)_96px] items-center gap-3 border-t border-gray-100 px-4 py-3 text-xs first:border-t-0 dark:border-gray-700/70">
-      <button
-        type="button"
-        disabled={!plan.thumbnail}
-        onClick={() => plan.thumbnail && onThumbnail(plan.thumbnail)}
-        className="flex h-8 w-11 items-center justify-center overflow-hidden rounded-md bg-gray-100 text-gray-400 disabled:cursor-default dark:bg-gray-700"
-        title={plan.thumbnail ? "View thumbnail" : "No thumbnail"}
-      >
-        {plan.thumbnail ? (
-          <img src={plan.thumbnail} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <Image size={14} />
-        )}
-      </button>
-      <div className="min-w-0">
-        <p className="truncate font-semibold text-gray-900 dark:text-gray-100" title={plan.title}>
-          {plan.title.length > 60 ? `${plan.title.slice(0, 60)}…` : plan.title}
-        </p>
-        <p className="mt-0.5 truncate text-[10px] text-gray-500 dark:text-gray-400">
-          {plan.channelId?.name || "Unknown channel"}
-          {plan.assignedTo?.name ? ` · ${plan.assignedTo.name}` : ""}
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        <CountPill label="L plan" value={plan.longPlanned} />
-        <CountPill label="L done" value={plan.longCompleted} done />
-      </div>
-      <div className="flex flex-wrap gap-1">
-        <CountPill label="S plan" value={plan.shortPlanned} />
-        <CountPill label="S done" value={plan.shortCompleted} done />
-      </div>
-      <span
-        className="truncate rounded-full bg-gray-100 px-2.5 py-1 text-[10px] text-gray-600 dark:bg-gray-700 dark:text-gray-300"
-        title={plan.notes || "No notes"}
-      >
-        {plan.notes || "No notes"}
-      </span>
-      <div className="flex items-center justify-end gap-1">
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen?.();
+      }}
+      className={NOTES_PILL}
+      title="Notes — tap to read"
+      aria-label="Open notes"
+    >
+      <FileText size={12} className="flex-shrink-0 opacity-90 sm:h-3.5 sm:w-3.5" aria-hidden />
+      <span>Notes</span>
+    </button>
+  );
+}
+
+function CountPill({ label, planned }) {
+  const total = Math.max(0, Number(planned) || 0);
+  const formatClass = label === "L" ? FORMAT_PILL.long : FORMAT_PILL.short;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold shadow-sm sm:px-2.5 sm:py-1 sm:text-[10px] min-h-[22px] sm:min-h-[26px] ${ROW_PILL_SIZES.count} ${
+        total > 0 ? `${formatClass} border-current` : COUNT_TONES.idle.pill
+      }`}
+      title={`${label === "L" ? "Long" : "Short"} planned: ${total}`}
+    >
+      <span className="opacity-70">{label}</span>
+      <span className="tabular-nums">{total}</span>
+    </span>
+  );
+}
+
+function FirstCutBadge({ ready }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold shadow-sm sm:px-2.5 sm:py-1 sm:text-[10px] min-h-[22px] sm:min-h-[26px] ${ROW_PILL_SIZES.firstCut} ${
+        ready ? COUNT_TONES.complete.pill : COUNT_TONES.idle.pill
+      }`}
+      title={ready ? "First cut (FC) is ready for review" : "First cut (FC) is still pending"}
+    >
+      {ready ? <CheckCircle2 size={11} className="flex-shrink-0" /> : <Circle size={11} className="flex-shrink-0" />}
+      <span className="font-black uppercase tracking-wide opacity-80">FC</span>
+      <span className="hidden sm:inline">{ready ? "Ready" : "Pending"}</span>
+      <span className="sm:hidden">{ready ? "Rdy" : "Pnd"}</span>
+    </span>
+  );
+}
+
+function ChannelPlanRow({ plan, onEdit, onDelete, onToggleStatus, onThumbnail, onOpenNotes }) {
+  const isCompleted = plan.status === "completed";
+  const notes = String(plan.notes || "").trim();
+  const channelLabel = [plan.channelId?.name || "Unknown", plan.assignedTo?.name].filter(Boolean).join(" · ");
+
+  return (
+    <div className="group flex flex-col gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2 transition-all duration-300 hover:border-blue-400/60 hover:bg-blue-100/70 hover:shadow-sm dark:border-gray-700/50 dark:bg-gray-800/80 dark:hover:border-blue-700/60 dark:hover:bg-blue-900/40 sm:flex-row sm:items-center sm:gap-2 sm:py-1">
+      <div className="flex min-w-0 items-center gap-2 sm:contents">
         <button
           type="button"
           onClick={() => onToggleStatus(plan)}
-          className={`rounded-lg p-1.5 transition ${plan.status === "completed" ? "text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30" : "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"}`}
-          title={plan.status === "completed" ? "Reopen" : "Mark completed"}
+          className={`flex-shrink-0 rounded-full transition-colors ${
+            isCompleted
+              ? "text-emerald-500 hover:text-amber-500"
+              : "text-gray-300 hover:text-emerald-500 dark:text-gray-600 dark:hover:text-emerald-400"
+          }`}
+          title={isCompleted ? "Reopen plan" : "Mark completed"}
         >
-          <CheckCircle2 size={15} />
+          {isCompleted ? <CheckCircle2 size={20} /> : <Circle size={20} />}
         </button>
+
+        <div className="order-last ml-auto flex flex-shrink-0 items-center gap-0.5 opacity-60 transition-opacity group-hover:opacity-100 sm:order-none sm:ml-0 sm:opacity-40">
+          <button
+            type="button"
+            onClick={() => onEdit(plan)}
+            className="rounded-lg p-1 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/40 dark:hover:text-blue-400"
+            title="Edit plan"
+          >
+            <Pencil className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(plan)}
+            className="rounded-lg p-1 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+            title="Delete plan"
+          >
+            <Trash2 className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+          </button>
+        </div>
+
+        <PlanIdPill planId={plan.planId} />
+
         <button
           type="button"
-          onClick={() => onEdit(plan)}
-          className="rounded-lg p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/30"
-          title="Edit"
+          disabled={!plan.thumbnail}
+          onClick={() => plan.thumbnail && onThumbnail(plan.thumbnail)}
+          className="flex h-6 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border border-gray-200 bg-gray-100 shadow-sm disabled:cursor-default dark:border-gray-700 dark:bg-gray-700/50 sm:h-7 sm:w-12"
+          title={plan.thumbnail ? "View thumbnail" : "No thumbnail"}
         >
-          <Pencil size={14} />
+          {plan.thumbnail ? (
+            <img src={plan.thumbnail} alt="" className="h-full w-full object-cover" loading="lazy" />
+          ) : (
+            <Image size={14} className="text-gray-400" />
+          )}
         </button>
-        <button
-          type="button"
-          onClick={() => onDelete(plan)}
-          className="rounded-lg p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
-          title="Delete"
-        >
-          <Trash2 size={14} />
-        </button>
+
+        <div className="min-w-0 flex-1">
+          <p
+            className={`truncate text-[11px] font-semibold leading-tight sm:text-xs ${
+              isCompleted ? "text-gray-400 line-through dark:text-gray-500" : "text-gray-900 dark:text-white"
+            }`}
+            title={`${plan.title}${channelLabel ? ` · ${channelLabel}` : ""}`}
+          >
+            {plan.title}
+            <span className="font-normal text-gray-400 dark:text-gray-500"> · {channelLabel}</span>
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 pl-8 sm:contents sm:pl-0">
+        <NotesPill notes={notes} onOpen={() => onOpenNotes(plan)} />
+        <CountPill label="L" planned={plan.longPlanned} />
+        <CountPill label="S" planned={plan.shortPlanned} />
+        <FirstCutBadge ready={Boolean(plan.firstCut)} />
       </div>
     </div>
   );
 }
 
 function DateGroup(props) {
-  const { group } = props;
+  const { group, viewMode } = props;
   const [open, setOpen] = useState(true);
   const totals = group.totals;
+  const rawCat = viewMode === "completed" ? "completed" : getDateCategory(group.date);
+  const cat =
+    viewMode === "schedule" && rawCat === "overdue" ? "upcoming" : rawCat;
+
+  const borderColor =
+    cat === "today"
+      ? "border-l-blue-500"
+      : cat === "backlog"
+        ? "border-l-[3px] border-dashed border-l-gray-400"
+        : cat === "completed"
+          ? "border-l-emerald-500/50"
+          : "border-l-gray-300 dark:border-l-gray-600";
+
+  const headerBg =
+    cat === "today"
+      ? "bg-blue-50/40 dark:bg-blue-950/10"
+      : cat === "backlog"
+        ? "bg-gray-100/40 dark:bg-gray-800/10"
+        : cat === "completed"
+          ? "bg-emerald-50/30 dark:bg-emerald-950/5"
+          : "bg-gray-50/60 dark:bg-gray-800/30";
+
+  const dateTextClass =
+    cat === "today"
+      ? "text-blue-600 dark:text-blue-400"
+      : cat === "backlog"
+        ? "italic text-gray-500 dark:text-gray-400"
+        : cat === "completed"
+          ? "text-emerald-700 dark:text-emerald-400"
+          : "text-gray-800 dark:text-gray-200";
 
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <section
+      className={`overflow-hidden rounded-2xl border border-gray-100 border-l-[4px] bg-white/40 shadow-md shadow-gray-200/20 backdrop-blur-sm transition-all duration-300 dark:border-gray-700 dark:bg-gray-900/40 dark:shadow-black/20 ${borderColor}`}
+    >
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-4 bg-gray-50/80 px-4 py-3 text-left hover:bg-gray-100/80 dark:bg-gray-800 dark:hover:bg-gray-700/70"
+        className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left backdrop-blur-md transition-colors hover:brightness-95 ${headerBg}`}
       >
         <div className="flex min-w-0 items-center gap-2">
-          {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          <span className="text-sm font-bold text-gray-800 dark:text-gray-100">{formatDate(group.date)}</span>
-          <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+          <ChevronRight
+            size={14}
+            className="flex-shrink-0 text-gray-500 transition-transform duration-300 dark:text-gray-400"
+            style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
+          />
+          <span className={`truncate text-sm font-black ${dateTextClass}`}>{formatDateLabel(group.date)}</span>
+          <span className="flex-shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-black tabular-nums text-gray-600 dark:bg-gray-700 dark:text-gray-300">
             {group.tasks.length}
           </span>
         </div>
-        <div className="hidden flex-wrap justify-end gap-1 sm:flex">
-          <CountPill label="L plan" value={totals.longPlanned} />
-          <CountPill label="L done" value={totals.longCompleted} done />
-          <CountPill label="S plan" value={totals.shortPlanned} />
-          <CountPill label="S done" value={totals.shortCompleted} done />
+        <div className="hidden flex-shrink-0 items-center gap-2 sm:flex">
+          <span className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200/50 bg-white/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-gray-500 shadow-sm dark:border-gray-700/50 dark:bg-gray-800/60 dark:text-gray-400">
+            {totals.longPlanned > 0 && (
+              <span className={`rounded-lg px-1.5 py-0.5 font-bold tabular-nums ${FORMAT_PILL.long}`}>
+                {totals.longPlanned}L
+              </span>
+            )}
+            {totals.shortPlanned > 0 && (
+              <span className={`rounded-lg px-1.5 py-0.5 font-bold tabular-nums ${FORMAT_PILL.short}`}>
+                {totals.shortPlanned}S
+              </span>
+            )}
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+              {totals.firstCut || 0} ready
+            </span>
+          </span>
         </div>
       </button>
       {open && (
-        <div className="overflow-x-auto">
-          <div className="min-w-[850px]">
-            <div className="grid grid-cols-[48px_minmax(180px,1.7fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(120px,1fr)_96px] gap-3 px-4 py-2 text-[9px] font-bold uppercase tracking-wider text-gray-400">
-              <span>Image</span><span>Plan</span><span>Long videos</span><span>Short videos</span><span>Notes</span><span className="text-right">Actions</span>
-            </div>
-            {group.tasks.map((plan) => <ChannelPlanRow key={plan._id} plan={plan} {...props} />)}
-          </div>
+        <div className="space-y-2 bg-gray-50/50 p-3 dark:bg-gray-800/20">
+          {group.tasks.map((plan) => (
+            <ChannelPlanRow key={plan._id} plan={plan} {...props} />
+          ))}
         </div>
       )}
     </section>
   );
 }
 
-function ThumbnailModal({ url, onClose }) {
+function LogWorkPanel({ filterParams, search, onLogged }) {
+  const [planOptions, setPlanOptions] = useState([]);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [longPending, setLongPending] = useState("");
+  const [shortPending, setShortPending] = useState("");
+  const [loadingOptions, setLoadingOptions] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const selectedPlan = useMemo(
+    () => planOptions.find((plan) => String(plan._id) === selectedPlanId),
+    [planOptions, selectedPlanId],
+  );
+
+  const loadOptions = useCallback(async () => {
+    setLoadingOptions(true);
+    try {
+      const params = new URLSearchParams(filterParams);
+      if (search.trim()) params.set("search", search.trim());
+      const response = await api.get(`/channel-plan-work-logs/options?${params.toString()}`);
+      setPlanOptions(response.data || []);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to load plans");
+    } finally {
+      setLoadingOptions(false);
+    }
+  }, [filterParams, search]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadOptions(), 250);
+    return () => window.clearTimeout(timer);
+  }, [loadOptions]);
+
+  useEffect(() => {
+    if (!selectedPlan) {
+      setLongPending("");
+      setShortPending("");
+      return;
+    }
+    setLongPending(String(selectedPlan.longPending ?? 0));
+    setShortPending(String(selectedPlan.shortPending ?? 0));
+  }, [selectedPlan]);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedPlanId) {
+      toast.error("Select a plan first");
+      return;
+    }
+
+    const longValue = longPending === "" ? undefined : Number(longPending);
+    const shortValue = shortPending === "" ? undefined : Number(shortPending);
+    if (
+      (longValue !== undefined && (!Number.isInteger(longValue) || longValue < 0)) ||
+      (shortValue !== undefined && (!Number.isInteger(shortValue) || shortValue < 0))
+    ) {
+      toast.error("Counts must be non-negative whole numbers");
+      return;
+    }
+    if (longValue === undefined && shortValue === undefined) {
+      toast.error("Enter at least one count");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const body = { planId: selectedPlanId };
+      if (longValue !== undefined) body.longPendingLogged = longValue;
+      if (shortValue !== undefined) body.shortPendingLogged = shortValue;
+      await api.post("/channel-plan-work-logs", body);
+      toast.success("Work logged for today");
+      await onLogged?.();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to log work");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 p-5" onClick={onClose}>
-      <button type="button" onClick={onClose} className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={20} /></button>
-      <img src={url} alt="Plan thumbnail" className="max-h-[85vh] max-w-[90vw] rounded-xl object-contain shadow-2xl" onClick={(event) => event.stopPropagation()} />
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto custom-scrollbar">
+      <form
+        onSubmit={handleSubmit}
+        className="flex-shrink-0 overflow-hidden rounded-2xl border border-gray-100 bg-white/40 p-4 shadow-md backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/40"
+      >
+        <div className="mb-3 flex items-center gap-2">
+          <ClipboardList size={16} className="text-blue-500" />
+          <h2 className="text-sm font-black text-gray-900 dark:text-white">Log today&apos;s work</h2>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_7rem_7rem_auto] lg:items-end">
+          <label className="block min-w-0">
+            <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Plan</span>
+            <select
+              value={selectedPlanId}
+              onChange={(event) => setSelectedPlanId(event.target.value)}
+              disabled={loadingOptions}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            >
+              <option value="">{loadingOptions ? "Loading plans…" : "Select a plan"}</option>
+              {planOptions.map((plan) => (
+                <option key={plan._id} value={plan._id}>
+                  {plan.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Long</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={longPending}
+              onChange={(event) => setLongPending(event.target.value)}
+              disabled={!selectedPlanId}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              placeholder="0"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Short</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={shortPending}
+              onChange={(event) => setShortPending(event.target.value)}
+              disabled={!selectedPlanId}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              placeholder="0"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={submitting || !selectedPlanId}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-black uppercase tracking-tight text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-700 hover:to-indigo-700 active:scale-95 disabled:opacity-50"
+          >
+            {submitting ? <Loader2 size={14} className="animate-spin" /> : null}
+            Submit
+          </button>
+        </div>
+        {selectedPlan && (
+          <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+            Current plan — L {selectedPlan.longPending} of {selectedPlan.longPlanned} · S{" "}
+            {selectedPlan.shortPending} of {selectedPlan.shortPlanned}
+          </p>
+        )}
+      </form>
+
+    </div>
+  );
+}
+
+function SummaryActualBadge({ value, pillClass = "" }) {
+  return (
+    <span
+      className={`inline-flex min-w-[1.75rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[11px] font-black tabular-nums text-gray-900 dark:text-white ${
+        pillClass || "bg-gray-100/90 dark:bg-gray-800/80"
+      }`}
+      title="Actual — open pending from plans scheduled in this period"
+    >
+      {value}
+    </span>
+  );
+}
+
+function SummaryLoggedBadge({ value, pillClass = "" }) {
+  return (
+    <span
+      className={`inline-flex min-w-[1.75rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${
+        pillClass || "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+      }`}
+      title="Logged — latest work log per plan in this period"
+    >
+      {value}
+    </span>
+  );
+}
+
+function SummaryFirstCutCell({ pending, complete }) {
+  return (
+    <div
+      className="inline-flex items-center justify-center gap-1.5 tabular-nums"
+      title={`Pending ${pending}, Complete ${complete}`}
+    >
+      <span
+        className={`inline-flex min-w-[1.75rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[11px] font-black tabular-nums ${COUNT_TONES.idle.pill}`}
+      >
+        {pending}
+      </span>
+      <span className="text-[10px] font-bold text-gray-300 dark:text-gray-600" aria-hidden>
+        /
+      </span>
+      <span
+        className={`inline-flex min-w-[1.75rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[11px] font-black tabular-nums ${COUNT_TONES.complete.pill}`}
+      >
+        {complete}
+      </span>
+    </div>
+  );
+}
+
+function SummaryCompareCell({ actual, logged, pillClass = "", loggedDisabled = false }) {
+  const delta = loggedDisabled ? null : (logged ?? 0) - (actual ?? 0);
+  const compareTitle =
+    loggedDisabled
+      ? "Actual pending only"
+      : delta === 0
+        ? `Actual ${actual} — logged matches`
+        : delta > 0
+          ? `Actual ${actual}, logged ${logged} (+${delta} vs actual)`
+          : `Actual ${actual}, logged ${logged} (${delta} vs actual)`;
+
+  return (
+    <div
+      className="inline-flex items-center justify-center gap-1.5 tabular-nums"
+      title={compareTitle}
+    >
+      <SummaryActualBadge value={actual} pillClass={pillClass} />
+      <span className="text-[10px] font-bold text-gray-300 dark:text-gray-600" aria-hidden>
+        /
+      </span>
+      {loggedDisabled ? (
+        <span
+          className="inline-flex min-w-[1.75rem] items-center justify-center rounded-md bg-gray-50 px-1.5 py-0.5 text-[11px] font-semibold text-gray-400 dark:bg-gray-800/40 dark:text-gray-500"
+          title="Not tracked in work logs"
+        >
+          —
+        </span>
+      ) : (
+        <SummaryLoggedBadge value={logged} pillClass={pillClass} />
+      )}
+    </div>
+  );
+}
+
+function ReportSummaryTable({ summary, activeChannelTab, loading }) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-100 bg-white/40 px-3 py-4 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
+        <Loader2 size={14} className="animate-spin text-blue-500" />
+        Loading summary…
+      </div>
+    );
+  }
+
+  if (!summary) return null;
+
+  const rows =
+    activeChannelTab === "all"
+      ? summary.channels
+      : summary.channels.filter((row) => String(row.channelId) === activeChannelTab);
+
+  const totals = activeChannelTab === "all" ? summary.totals : rows[0];
+
+  if (!totals || (rows.length === 0 && activeChannelTab !== "all")) {
+    return (
+      <div className="rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-3 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
+        No summary for this channel in the selected period.
+      </div>
+    );
+  }
+
+  const hasFirstCut =
+    (totals.firstCut?.pending ?? 0) > 0 || (totals.firstCut?.complete ?? 0) > 0;
+  if (
+    rows.length === 0 &&
+    totals.planCount === 0 &&
+    totals.logged.long === 0 &&
+    totals.logged.short === 0 &&
+    !hasFirstCut
+  ) {
+    return (
+      <div className="rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-3 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
+        No open plans or work logs in this period.
+      </div>
+    );
+  }
+
+  const displayRows = activeChannelTab === "all" ? [{ ...totals, channelName: "All channels", channelId: "all", isTotal: true }, ...rows] : rows;
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-gray-100 bg-white/40 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
+        <div>
+          <h3 className="text-xs font-black text-gray-900 dark:text-white">Channel summary</h3>
+          <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+            Long/Short use plans scheduled in the period. First cut counts all open plans (incl. backlog).
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-[9px] font-semibold text-gray-500 dark:text-gray-400">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200/80 bg-white/80 px-2.5 py-1 dark:border-gray-700 dark:bg-gray-800/80">
+            <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+              Act
+            </span>
+            <span className="normal-case">Open plan pending</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200/80 bg-white/80 px-2.5 py-1 dark:border-gray-700 dark:bg-gray-800/80">
+            <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+              Log
+            </span>
+            <span className="normal-case">Latest work log</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200/80 bg-white/80 px-2.5 py-1 dark:border-gray-700 dark:bg-gray-800/80">
+            <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+              Pend
+            </span>
+            <span className="text-gray-300 dark:text-gray-600">/</span>
+            <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              Done
+            </span>
+            <span className="normal-case">First cut (all open)</span>
+          </span>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-[10px]">
+          <thead>
+            <tr className="border-b border-gray-100 bg-gray-50/80 text-[9px] font-black uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400">
+              <th className="px-3 py-2 text-left">Channel</th>
+              <th className="border-l border-gray-100 px-2 py-2 text-center dark:border-gray-800">
+                <span className={`inline-block rounded-md px-2 py-0.5 ${FORMAT_PILL.firstCut}`}>First cut</span>
+                <span className="mt-1 block text-[8px] font-semibold normal-case tracking-normal text-gray-400 dark:text-gray-500">
+                  Pending / Complete
+                </span>
+              </th>
+              <th className="border-l border-gray-100 px-2 py-2 text-center dark:border-gray-800">
+                <span className={`inline-block rounded-md px-2 py-0.5 ${FORMAT_PILL.long}`}>Long</span>
+                <span className="mt-1 block text-[8px] font-semibold normal-case tracking-normal text-gray-400 dark:text-gray-500">
+                  Actual / Logged
+                </span>
+              </th>
+              <th className="border-l border-gray-100 px-2 py-2 text-center dark:border-gray-800">
+                <span className={`inline-block rounded-md px-2 py-0.5 ${FORMAT_PILL.short}`}>Short</span>
+                <span className="mt-1 block text-[8px] font-semibold normal-case tracking-normal text-gray-400 dark:text-gray-500">
+                  Actual / Logged
+                </span>
+              </th>
+              <th className="hidden border-l border-gray-100 px-3 py-2 text-right sm:table-cell dark:border-gray-800">
+                Plans
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
+            {displayRows.map((row) => (
+              <tr
+                key={row.channelId}
+                className={
+                  row.isTotal
+                    ? "bg-blue-50/50 font-semibold dark:bg-blue-950/20"
+                    : "hover:bg-gray-50/80 dark:hover:bg-gray-800/30"
+                }
+              >
+                <td
+                  className="max-w-[9rem] truncate px-3 py-2.5 font-semibold text-gray-900 dark:text-white"
+                  title={row.channelName}
+                >
+                  {row.channelName}
+                </td>
+                <td className="border-l border-gray-50 px-2 py-2.5 text-center dark:border-gray-800/60">
+                  <SummaryFirstCutCell
+                    pending={row.firstCut?.pending ?? 0}
+                    complete={row.firstCut?.complete ?? 0}
+                  />
+                </td>
+                <td className="border-l border-gray-50 px-2 py-2.5 text-center dark:border-gray-800/60">
+                  <SummaryCompareCell
+                    actual={row.actual.long}
+                    logged={row.logged.long}
+                    pillClass={FORMAT_PILL.long}
+                  />
+                </td>
+                <td className="border-l border-gray-50 px-2 py-2.5 text-center dark:border-gray-800/60">
+                  <SummaryCompareCell
+                    actual={row.actual.short}
+                    logged={row.logged.short}
+                    pillClass={FORMAT_PILL.short}
+                  />
+                </td>
+                <td className="hidden border-l border-gray-50 px-3 py-2.5 text-right tabular-nums text-gray-500 sm:table-cell dark:border-gray-800/60 dark:text-gray-400">
+                  {row.planCount}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey }) {
+  const [allLogs, setAllLogs] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState("current-week");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  const range = useMemo(
+    () => resolveReportRange(period, customFrom, customTo),
+    [period, customFrom, customTo],
+  );
+
+  const periodLabel = REPORT_PERIODS.find((option) => option.value === period)?.label || "Report";
+
+  const loadReport = useCallback(async () => {
+    if (!range.from || !range.to) return;
+    if (range.from > range.to) {
+      toast.error("Start date must be on or before end date");
+      return;
+    }
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ from: range.from, to: range.to });
+      const [logsResponse, summaryResponse] = await Promise.all([
+        api.get(`/channel-plan-work-logs?${params.toString()}`),
+        api.get(`/channel-plan-work-logs/summary?${params.toString()}`),
+      ]);
+      setAllLogs(logsResponse.data.logs || []);
+      setSummary(summaryResponse.data);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to load report");
+    } finally {
+      setLoading(false);
+    }
+  }, [range.from, range.to]);
+
+  useEffect(() => {
+    if (period === "custom" && !customFrom && !customTo) {
+      const defaults = resolveReportRange("current-week", "", "");
+      setCustomFrom(defaults.from);
+      setCustomTo(defaults.to);
+    }
+  }, [period, customFrom, customTo]);
+
+  useEffect(() => {
+    void loadReport();
+  }, [loadReport, refreshKey]);
+
+  const logs = useMemo(() => {
+    if (activeChannelTab === "all") return allLogs;
+    return allLogs.filter(
+      (log) => String(log.channelId?._id || log.channelId || "") === activeChannelTab,
+    );
+  }, [allLogs, activeChannelTab]);
+
+  const reportChannels = useMemo(() => {
+    const logCounts = new Map();
+    allLogs.forEach((log) => {
+      const id = String(log.channelId?._id || log.channelId || "");
+      if (!id) return;
+      logCounts.set(id, (logCounts.get(id) || 0) + 1);
+    });
+
+    if (summary?.channels?.length) {
+      return summary.channels.map((row) => ({
+        _id: row.channelId,
+        name: row.channelName,
+        count: logCounts.get(String(row.channelId)) || 0,
+      }));
+    }
+
+    return [...logCounts.entries()]
+      .map(([id, count]) => {
+        const log = allLogs.find((entry) => String(entry.channelId?._id || entry.channelId) === id);
+        return {
+          _id: id,
+          name: log?.channelName || log?.channelId?.name || "Unknown",
+          count,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allLogs, summary]);
+
+  const groupedByDate = useMemo(() => {
+    const map = new Map();
+    logs.forEach((log) => {
+      const key = new Date(log.logDate).toISOString().slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(log);
+    });
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [logs]);
+
+  const totalLong = logs.reduce((sum, log) => sum + (log.longPendingLogged || 0), 0);
+  const totalShort = logs.reduce((sum, log) => sum + (log.shortPendingLogged || 0), 0);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+      <div className="flex flex-shrink-0 flex-col gap-2 px-1">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <FilterLabel icon={CalendarDays}>Period:</FilterLabel>
+            <FilterSegment
+              options={REPORT_PERIODS}
+              value={period}
+              onChange={setPeriod}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            {!loading && logs.length > 0 && (
+              <span className="hidden items-center gap-1.5 text-[10px] font-semibold text-gray-500 sm:flex dark:text-gray-400">
+                <span className={`rounded-full px-2 py-0.5 tabular-nums ${FORMAT_PILL.long}`}>L {totalLong}</span>
+                <span className={`rounded-full px-2 py-0.5 tabular-nums ${FORMAT_PILL.short}`}>S {totalShort}</span>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => void loadReport()}
+              className="rounded-xl border border-gray-200/60 bg-white/80 p-1.5 text-gray-500 shadow-sm transition-all hover:border-blue-300 hover:text-blue-600 active:scale-95 dark:border-gray-700/60 dark:bg-gray-800/80 dark:text-gray-300 dark:hover:text-blue-400"
+              title="Refresh report"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            </button>
+          </div>
+        </div>
+
+        {period === "custom" && (
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="block">
+              <span className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-gray-400">From</span>
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(event) => setCustomFrom(event.target.value)}
+                className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-gray-400">To</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(event) => setCustomTo(event.target.value)}
+                className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </label>
+          </div>
+        )}
+
+        <p className="text-[10px] text-gray-500 dark:text-gray-400">
+          {periodLabel} · {formatLogDate(range.from)} – {formatLogDate(range.to)} · {logs.length} entries
+        </p>
+      </div>
+
+      <ReportSummaryTable summary={summary} activeChannelTab={activeChannelTab} loading={loading} />
+
+      {reportChannels.length > 0 && (
+        <div className="flex max-w-full flex-shrink-0 items-center gap-2 overflow-x-auto scrollbar-hide px-1">
+          <FilterLabel icon={Filter}>Channel:</FilterLabel>
+          <FilterChip active={activeChannelTab === "all"} onClick={() => onChannelTabChange("all")}>
+            All
+          </FilterChip>
+          {reportChannels.map((channel) => (
+            <FilterChip
+              key={channel._id}
+              active={activeChannelTab === String(channel._id)}
+              onClick={() => onChannelTabChange(String(channel._id))}
+              count={channel.count}
+            >
+              {channel.name}
+            </FilterChip>
+          ))}
+        </div>
+      )}
+
+      <section className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-gray-100 bg-white/40 shadow-md backdrop-blur-sm custom-scrollbar dark:border-gray-700 dark:bg-gray-900/40">
+        {loading ? (
+          <div className="flex min-h-48 flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+            <Loader2 size={24} className="animate-spin text-blue-500" />
+            <span className="text-xs">Loading report…</span>
+          </div>
+        ) : groupedByDate.length === 0 ? (
+          <div className="flex min-h-48 flex-col items-center justify-center px-4 text-center">
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No logs in this period</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Use Log Work to record pending long/short counts.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {groupedByDate.map(([dateKey, dayLogs]) => (
+              <div key={dateKey}>
+                <div className="sticky top-0 z-10 border-b border-gray-100 bg-gray-50/95 px-3 py-1.5 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/95">
+                  <span className="text-[11px] font-black text-gray-800 dark:text-gray-200">
+                    {formatDateLabel(dateKey)}
+                  </span>
+                  <span className="ml-2 text-[10px] tabular-nums text-gray-500 dark:text-gray-400">
+                    {dayLogs.length} {dayLogs.length === 1 ? "entry" : "entries"}
+                  </span>
+                </div>
+                <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
+                  {dayLogs.map((log) => {
+                    const planIdNumber = log.planIdNumber ?? log.planId?.planId;
+                    const title = log.title || log.planId?.title || "—";
+                    const channel = log.channelName || log.channelId?.name || "—";
+                    return (
+                      <div
+                        key={log._id}
+                        className="flex items-center gap-1 px-2 py-0.5 text-[10px] hover:bg-gray-50/90 dark:hover:bg-gray-800/40"
+                      >
+                        <PlanIdPill planId={planIdNumber} />
+                        <span className="min-w-0 flex-1 truncate font-semibold text-gray-900 dark:text-white" title={title}>
+                          {title}
+                        </span>
+                        <span className="hidden max-w-[6rem] truncate text-gray-500 sm:inline dark:text-gray-400" title={channel}>
+                          {channel}
+                        </span>
+                        <span className={`inline-flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-px text-[9px] font-bold tabular-nums ${FORMAT_PILL.long} border-current`}>
+                          L {log.longPendingLogged}
+                        </span>
+                        <span className={`inline-flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-px text-[9px] font-bold tabular-nums ${FORMAT_PILL.short} border-current`}>
+                          S {log.shortPendingLogged}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function PlanNotesModal({ plan, onClose }) {
+  if (!plan) return null;
+  const notes = String(plan.notes || "").trim();
+
+  return (
+    <div className="fixed inset-0 z-[96] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div
+        role="dialog"
+        aria-labelledby="plan-notes-modal-title"
+        className="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+          <div className="min-w-0">
+            <h3 id="plan-notes-modal-title" className="text-sm font-bold leading-snug text-gray-900 dark:text-white">
+              Notes
+            </h3>
+            <p className="mt-0.5 line-clamp-1 text-[11px] text-gray-500 dark:text-gray-400">{plan.title}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 custom-scrollbar">
+          <pre className="whitespace-pre-wrap break-words font-sans text-[13px] leading-relaxed text-gray-800 dark:text-gray-100">
+            {notes}
+          </pre>
+        </div>
+        <div className="flex justify-end border-t border-gray-100 bg-gray-50/80 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-800/50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-200/80 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ThumbnailModal({ url, onClose }) {
+  if (!url) return null;
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
+      <div className="relative max-w-5xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
+        <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent p-4">
+          <span className="text-xs font-bold uppercase tracking-widest text-white drop-shadow-md">Thumbnail Preview</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="pointer-events-auto rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-all hover:bg-white/20"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <img src={url} alt="Plan thumbnail" className="max-h-[85vh] w-full bg-gray-100 object-contain dark:bg-gray-800" onClick={(e) => e.stopPropagation()} />
+      </div>
     </div>
   );
 }
 
 export default function ChannelPlanner() {
+  const [pageTab, setPageTab] = useState("plans");
   const [channels, setChannels] = useState([]);
   const [contentManagers, setContentManagers] = useState([]);
-  const [selectedChannelIds, setSelectedChannelIds] = useState(() => readStoredArray(SELECTED_CHANNELS_KEY));
+  const [gridChannels, setGridChannels] = useState([]);
   const [activeChannelTab, setActiveChannelTab] = useState("all");
+  const [reportRefreshKey, setReportRefreshKey] = useState(0);
   const [viewMode, setViewMode] = useState("schedule");
   const [dateGroupPage, setDateGroupPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -297,12 +1220,12 @@ export default function ChannelPlanner() {
   const [deletePlan, setDeletePlan] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [notesPlan, setNotesPlan] = useState(null);
 
   const filterParams = useMemo(() => {
     if (activeChannelTab !== "all") return { channelId: activeChannelTab };
-    if (selectedChannelIds.length > 0) return { channelIds: selectedChannelIds.join(",") };
     return {};
-  }, [activeChannelTab, selectedChannelIds]);
+  }, [activeChannelTab]);
 
   const loadReferenceData = useCallback(async () => {
     try {
@@ -312,18 +1235,13 @@ export default function ChannelPlanner() {
       ]);
       setChannels(channelsResponse.data);
       setContentManagers(usersResponse.data);
-      const valid = new Set(channelsResponse.data.map((channel) => String(channel._id)));
-      setSelectedChannelIds((current) => {
-        const next = current.filter((id) => valid.has(id));
-        localStorage.setItem(SELECTED_CHANNELS_KEY, JSON.stringify(next));
-        return next;
-      });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load channels");
     }
   }, []);
 
   const loadPlans = useCallback(async () => {
+    if (pageTab !== "plans") return;
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -333,19 +1251,24 @@ export default function ChannelPlanner() {
         ...filterParams,
       });
       if (search.trim()) params.set("search", search.trim());
+
+      const statsParams = new URLSearchParams({ bucket: viewMode });
+      if (search.trim()) statsParams.set("search", search.trim());
+
       const [plansResponse, statsResponse] = await Promise.all([
         api.get(`/channel-plans?${params.toString()}`),
-        api.get(`/channel-plans/stats?${new URLSearchParams(filterParams).toString()}`),
+        api.get(`/channel-plans/stats?${statsParams.toString()}`),
       ]);
       setGroups(plansResponse.data.groups || []);
       setPagination(plansResponse.data.pagination || { page: 1, totalPages: 1, totalGroups: 0, totalPlans: 0 });
       setStats(statsResponse.data);
+      setGridChannels(statsResponse.data.channels || []);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load channel plans");
     } finally {
       setLoading(false);
     }
-  }, [viewMode, dateGroupPage, filterParams, search]);
+  }, [pageTab, viewMode, dateGroupPage, filterParams, search]);
 
   useEffect(() => {
     void loadReferenceData();
@@ -356,21 +1279,17 @@ export default function ChannelPlanner() {
     return () => window.clearTimeout(timer);
   }, [loadPlans]);
 
-  const selectedChannels = useMemo(() => {
-    const byId = new Map(channels.map((channel) => [String(channel._id), channel]));
-    return selectedChannelIds.map((id) => byId.get(id)).filter(Boolean);
-  }, [channels, selectedChannelIds]);
-
-  const changeSelectedChannels = (ids) => {
-    setSelectedChannelIds(ids);
-    localStorage.setItem(SELECTED_CHANNELS_KEY, JSON.stringify(ids));
-    if (activeChannelTab !== "all" && !ids.includes(activeChannelTab)) setActiveChannelTab("all");
-    setDateGroupPage(1);
-  };
+  useEffect(() => {
+    if (activeChannelTab === "all" || pageTab !== "plans") return;
+    if (!gridChannels.some((channel) => String(channel._id) === activeChannelTab)) {
+      setActiveChannelTab("all");
+    }
+  }, [gridChannels, activeChannelTab, pageTab]);
 
   const changeView = (value) => {
     setViewMode(value);
     setDateGroupPage(1);
+    setActiveChannelTab("all");
   };
 
   const changeChannelTab = (value) => {
@@ -378,9 +1297,19 @@ export default function ChannelPlanner() {
     setDateGroupPage(1);
   };
 
+  const changePageTab = (tab) => {
+    setPageTab(tab);
+    setActiveChannelTab("all");
+    setDateGroupPage(1);
+  };
+
   const handleSaved = async () => {
     await loadReferenceData();
     await loadPlans();
+  };
+
+  const handleWorkLogged = () => {
+    setReportRefreshKey((key) => key + 1);
   };
 
   const handleToggleStatus = async (plan) => {
@@ -415,100 +1344,198 @@ export default function ChannelPlanner() {
     { value: "completed", label: "Completed", count: stats.completed },
     { value: "backlog", label: "Backlog", count: stats.backlog },
   ];
-  const channelOptions = [
-    { value: "all", label: "All", count: 0 },
-    ...selectedChannels.map((channel) => ({ value: String(channel._id), label: channel.name, count: 0 })),
-  ];
+
+  const hasPlans = stats.schedule + stats.completed + stats.backlog > 0;
+  const showStatsRibbon = pageTab === "plans" && !loading && hasPlans;
 
   return (
-    <AdminLayout title="Channel Planner" icon={CalendarDays} contentFit>
-      <div className="flex h-full min-h-0 flex-col gap-3">
-        <div className="rounded-2xl border border-gray-200/70 bg-white/80 p-3 shadow-sm backdrop-blur dark:border-gray-700/70 dark:bg-gray-900/60">
-          <div className="flex flex-wrap items-center gap-3">
-            <FilterSegment options={bucketOptions} value={viewMode} onChange={changeView} />
-            <div className="relative min-w-48 flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setDateGroupPage(1);
-                }}
-                placeholder="Search title or notes"
-                className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-xs text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-              />
-              {search && <button type="button" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400"><X size={13} /></button>}
-            </div>
-            <button
-              type="button"
-              onClick={() => void loadPlans()}
-              className="rounded-xl border border-gray-200 bg-white p-2 text-gray-500 hover:text-blue-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-              title="Refresh"
-            >
-              <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditPlan(null);
-                setModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-blue-500/20 hover:from-blue-700 hover:to-indigo-700"
-            >
-              <Plus size={15} /> Add Plan
-            </button>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-3 dark:border-gray-700">
-            <ChannelPicker channels={channels} selectedIds={selectedChannelIds} onChange={changeSelectedChannels} />
-            <div className="max-w-full overflow-x-auto">
-              <FilterSegment options={channelOptions} value={activeChannelTab} onChange={changeChannelTab} />
-            </div>
-          </div>
-        </div>
+    <AdminLayout title="Channel Planner" titleInfo="Plan & track channel output" icon={CalendarDays} contentFit noPadding>
+      <div className="flex h-full min-h-0 w-full flex-col gap-1.5 overflow-y-auto px-3 pb-4 pt-2 custom-scrollbar sm:gap-2 sm:overflow-hidden sm:px-4">
+        <PageTabBar tabs={PAGE_TABS} activeTab={pageTab} onChange={changePageTab} ariaLabel="Channel Planner views" />
 
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar">
-          {loading ? (
-            <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3 text-gray-500">
-              <Loader2 size={28} className="animate-spin text-blue-500" />
-              <span className="text-sm">Loading plans…</span>
-            </div>
-          ) : groups.length === 0 ? (
-            <div className="flex h-full min-h-64 flex-col items-center justify-center text-center">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-800">
-                <Layers3 size={25} className="text-gray-400" />
+        <ChannelPlannerTabPanel tabId="plans" activeTab={pageTab}>
+          {showStatsRibbon && (
+            <div className="flex flex-shrink-0 items-center justify-between gap-4 rounded-lg border border-gray-100/50 bg-gray-50/50 px-3 py-1.5 dark:border-gray-700/50 dark:bg-gray-800/30">
+              <div className="ml-1 flex items-center gap-3 sm:gap-4 md:gap-6">
+                <StatCard icon={CalendarDays} label="Schedule" count={stats.schedule} color="text-blue-500" />
+                <StatCard icon={ListChecks} label="Backlog" count={stats.backlog} color="text-gray-500" />
+                <StatCard icon={CheckCircle2} label="Done" count={stats.completed} color="text-emerald-500" />
               </div>
-              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No plans found</p>
-              <p className="mt-1 text-xs text-gray-500">Add a plan or adjust the active filters.</p>
-            </div>
-          ) : (
-            <div className="space-y-2 pb-3">
-              {groups.map((group) => (
-                <DateGroup
-                  key={group.date}
-                  group={group}
-                  onEdit={(plan) => {
-                    setEditPlan(plan);
-                    setModalOpen(true);
+              <div className="ml-auto hidden max-w-sm flex-grow items-center gap-2 sm:flex">
+                <SearchInput
+                  value={search}
+                  onChange={(value) => {
+                    setSearch(value);
+                    setDateGroupPage(1);
                   }}
-                  onDelete={setDeletePlan}
-                  onToggleStatus={handleToggleStatus}
-                  onThumbnail={setThumbnailUrl}
+                  placeholder="Search title, notes, or #id"
+                  onClear={() => setSearch("")}
                 />
-              ))}
+                <button
+                  type="button"
+                  onClick={() => void loadPlans()}
+                  disabled={loading}
+                  className="rounded-lg border border-gray-200/50 bg-white/50 p-1.5 text-gray-500 shadow-sm transition-all hover:bg-white hover:text-blue-600 active:scale-95 dark:border-gray-600/50 dark:bg-gray-700/50 dark:hover:bg-gray-700 dark:hover:text-blue-400"
+                  title="Refresh"
+                >
+                  <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+                </button>
+              </div>
             </div>
           )}
-        </div>
 
-        {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            <span>{pagination.totalGroups} date groups · {pagination.totalPlans} plans</span>
-            <div className="flex items-center gap-2">
-              <button type="button" disabled={pagination.page <= 1} onClick={() => setDateGroupPage((page) => page - 1)} className="rounded-lg border border-gray-200 p-1.5 disabled:opacity-30 dark:border-gray-600"><ChevronLeft size={14} /></button>
-              <span>Page {pagination.page} of {pagination.totalPages}</span>
-              <button type="button" disabled={pagination.page >= pagination.totalPages} onClick={() => setDateGroupPage((page) => page + 1)} className="rounded-lg border border-gray-200 p-1.5 disabled:opacity-30 dark:border-gray-600"><ChevronRight size={14} /></button>
+          <div className="sm:hidden">
+            <SearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                setDateGroupPage(1);
+              }}
+              placeholder="Search plans..."
+              onClear={() => setSearch("")}
+            />
+          </div>
+
+          <div className="z-30 flex-shrink-0 p-1 sm:p-1.5">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <FilterLabel icon={Filter}>View:</FilterLabel>
+                  <FilterSegment options={bucketOptions} value={viewMode} onChange={changeView} variant="success" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditPlan(null);
+                    setModalOpen(true);
+                  }}
+                  className="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-white/10 bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-[10px] font-black uppercase tracking-tight text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-700 hover:to-indigo-700 active:scale-95 sm:gap-1.5 sm:px-4 sm:py-2 sm:text-[11px]"
+                >
+                  <Plus size={14} className="drop-shadow-sm sm:h-4 sm:w-4" />
+                  <span>Add Plan</span>
+                </button>
+              </div>
+
+              {gridChannels.length > 0 && (
+                <div className="flex max-w-full items-center gap-2 overflow-x-auto scrollbar-hide">
+                  <FilterLabel icon={Layers3}>Channel:</FilterLabel>
+                  <FilterChip active={activeChannelTab === "all"} onClick={() => changeChannelTab("all")}>
+                    All
+                  </FilterChip>
+                  {gridChannels.map((channel) => (
+                    <FilterChip
+                      key={channel._id}
+                      active={activeChannelTab === String(channel._id)}
+                      onClick={() => changeChannelTab(String(channel._id))}
+                      count={channel.count}
+                    >
+                      {channel.name}
+                    </FilterChip>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        )}
+
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+            {loading ? (
+              <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3">
+                <div className="h-10 w-10 animate-spin rounded-full border-3 border-blue-200 border-t-blue-600 dark:border-blue-800 dark:border-t-blue-400" />
+                <span className="text-sm text-gray-500 dark:text-gray-400">Loading plans…</span>
+              </div>
+            ) : groups.length === 0 ? (
+              <div className="flex h-full min-h-64 flex-col items-center justify-center text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-800">
+                  <Layers3 size={28} className="text-gray-400 dark:text-gray-500" />
+                </div>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No plans found</p>
+                <p className="mt-1 max-w-xs text-xs text-gray-500 dark:text-gray-400">
+                  Add a plan or adjust the active filters.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditPlan(null);
+                    setModalOpen(true);
+                  }}
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+                >
+                  <Plus size={14} /> Add Your First Plan
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2 pb-3 sm:pb-20">
+                {groups.map((group) => (
+                  <DateGroup
+                    key={group.date}
+                    group={group}
+                    viewMode={viewMode}
+                    onEdit={(plan) => {
+                      setEditPlan(plan);
+                      setModalOpen(true);
+                    }}
+                    onDelete={setDeletePlan}
+                    onToggleStatus={handleToggleStatus}
+                    onThumbnail={setThumbnailUrl}
+                    onOpenNotes={setNotesPlan}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {!loading && pagination.totalGroups > 0 && (
+            <div className="flex flex-shrink-0 items-center justify-between rounded-xl border border-gray-100 bg-white/40 px-4 py-2 text-xs text-gray-500 shadow-sm backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
+              <span className="tabular-nums">
+                {pagination.totalGroups} dates · {pagination.totalPlansOnPage ?? pagination.totalPlans} plans on this page ·{" "}
+                {DATE_GROUP_PAGE_SIZE} dates per page
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={pagination.page <= 1}
+                  onClick={() => setDateGroupPage((page) => page - 1)}
+                  className="rounded-lg border border-gray-200 p-1.5 transition hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 dark:border-gray-600"
+                  title="Previous page"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="tabular-nums">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={pagination.page >= pagination.totalPages}
+                  onClick={() => setDateGroupPage((page) => page + 1)}
+                  className="rounded-lg border border-gray-200 p-1.5 transition hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 dark:border-gray-600"
+                  title="Next page"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+        </ChannelPlannerTabPanel>
+
+        <ChannelPlannerTabPanel tabId="log-work" activeTab={pageTab}>
+          <div className="mb-2 sm:hidden">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search plans..."
+              onClear={() => setSearch("")}
+            />
+          </div>
+          <LogWorkPanel filterParams={filterParams} search={search} onLogged={handleWorkLogged} />
+        </ChannelPlannerTabPanel>
+
+        <ChannelPlannerTabPanel tabId="report" activeTab={pageTab}>
+          <WorkLogReportPanel
+            activeChannelTab={activeChannelTab}
+            onChannelTabChange={changeChannelTab}
+            refreshKey={reportRefreshKey}
+          />
+        </ChannelPlannerTabPanel>
       </div>
 
       <ChannelPlanModal
@@ -525,7 +1552,11 @@ export default function ChannelPlanner() {
       <ConfirmModal
         isOpen={Boolean(deletePlan)}
         title="Delete channel plan?"
-        message={<>This permanently deletes <strong>{deletePlan?.title}</strong>.</>}
+        message={
+          <>
+            This permanently deletes <strong>{deletePlan?.title}</strong>.
+          </>
+        }
         confirmText="Delete"
         onConfirm={handleDelete}
         onCancel={() => setDeletePlan(null)}
@@ -533,6 +1564,7 @@ export default function ChannelPlanner() {
         danger
       />
       {thumbnailUrl && <ThumbnailModal url={thumbnailUrl} onClose={() => setThumbnailUrl("")} />}
+      {notesPlan && <PlanNotesModal plan={notesPlan} onClose={() => setNotesPlan(null)} />}
     </AdminLayout>
   );
 }

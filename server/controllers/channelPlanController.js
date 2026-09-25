@@ -66,7 +66,10 @@ function buildFilter(req, bucket) {
   const search = String(req.query.search || "").trim();
   if (search) {
     const pattern = new RegExp(escapeRegex(search), "i");
-    filter.$and = [{ $or: [{ title: pattern }, { notes: pattern }] }];
+    const matchers = [{ title: pattern }, { notes: pattern }];
+    const planId = Number.parseInt(search.replace(/^#/, ""), 10);
+    if (Number.isInteger(planId)) matchers.push({ planId });
+    filter.$and = [{ $or: matchers }];
   }
   return filter;
 }
@@ -106,6 +109,18 @@ function parseCount(value, field) {
     throw error;
   }
   return number;
+}
+
+/** Accepts real booleans (JSON) and "true"/"false" strings (multipart form data). */
+function parseBoolean(value, field) {
+  if (value === undefined) return undefined;
+  if (typeof value === "boolean") return value;
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false" || normalized === "") return false;
+  const error = new Error(`${field} must be true or false`);
+  error.status = 400;
+  throw error;
 }
 
 function parseDate(value) {
@@ -220,15 +235,52 @@ exports.getStats = async (req, res) => {
       },
     ]);
 
-    return res.json(
-      stats
-        ? {
-            schedule: stats.schedule,
-            backlog: stats.backlog,
-            completed: stats.completed,
-          }
-        : { schedule: 0, backlog: 0, completed: 0 },
-    );
+    const payload = stats
+      ? {
+          schedule: stats.schedule,
+          backlog: stats.backlog,
+          completed: stats.completed,
+        }
+      : { schedule: 0, backlog: 0, completed: 0 };
+
+    const bucket = String(req.query.bucket || "").trim();
+    if (BUCKETS.has(bucket)) {
+      const bucketFilterQuery = buildFilter(req, bucket);
+      delete bucketFilterQuery.channelId;
+      bucketFilterQuery.channelId = {
+        $in: channelIds.length
+          ? channelIds.map((id) => new mongoose.Types.ObjectId(id))
+          : allowedIds,
+      };
+      const channelRows = await ChannelPlan.aggregate([
+        { $match: bucketFilterQuery },
+        { $group: { _id: "$channelId", count: { $sum: 1 } } },
+        {
+          $lookup: {
+            from: "channels",
+            localField: "_id",
+            foreignField: "_id",
+            as: "channel",
+          },
+        },
+        { $unwind: "$channel" },
+        {
+          $project: {
+            _id: 1,
+            name: "$channel.name",
+            count: 1,
+          },
+        },
+        { $sort: { name: 1 } },
+      ]);
+      payload.channels = channelRows.map((row) => ({
+        _id: row._id,
+        name: row.name,
+        count: row.count,
+      }));
+    }
+
+    return res.json(payload);
   } catch (error) {
     return sendError(res, "getChannelPlanStats", error);
   }
@@ -277,28 +329,40 @@ exports.getPlans = async (req, res) => {
           longCompleted: totals.longCompleted + task.longCompleted,
           shortPlanned: totals.shortPlanned + task.shortPlanned,
           shortCompleted: totals.shortCompleted + task.shortCompleted,
+          firstCut: totals.firstCut + (task.firstCut ? 1 : 0),
         }),
         {
           longPlanned: 0,
           longCompleted: 0,
           shortPlanned: 0,
           shortCompleted: 0,
+          firstCut: 0,
         },
       ),
     }));
+
+    allGroups.sort((a, b) => {
+      if (a.date === "backlog") return 1;
+      if (b.date === "backlog") return -1;
+      if (bucket === "completed") return b.date.localeCompare(a.date);
+      return a.date.localeCompare(b.date);
+    });
+
     const totalGroups = allGroups.length;
     const totalPages = Math.max(1, Math.ceil(totalGroups / limit));
     const safePage = Math.min(page, totalPages);
     const start = (safePage - 1) * limit;
+    const pageGroups = allGroups.slice(start, start + limit);
 
     return res.json({
-      groups: allGroups.slice(start, start + limit),
+      groups: pageGroups,
       pagination: {
         page: safePage,
         limit,
         totalGroups,
         totalPages,
         totalPlans: plans.length,
+        totalPlansOnPage: pageGroups.reduce((sum, group) => sum + group.tasks.length, 0),
       },
     });
   } catch (error) {
@@ -322,6 +386,7 @@ exports.createPlan = async (req, res) => {
       scheduledDate: parseDate(req.body.scheduledDate),
       notes: String(req.body.notes || ""),
       assignedTo,
+      firstCut: parseBoolean(req.body.firstCut, "firstCut") ?? false,
       status: req.body.status || "todo",
       createdBy: req.user._id || req.user.id,
     };
@@ -370,6 +435,8 @@ exports.updatePlan = async (req, res) => {
       plan.scheduledDate = parseDate(req.body.scheduledDate);
     }
     if (req.body.notes !== undefined) plan.notes = String(req.body.notes);
+    const firstCut = parseBoolean(req.body.firstCut, "firstCut");
+    if (firstCut !== undefined) plan.firstCut = firstCut;
     if (req.file) plan.thumbnail = thumbnailDataUrl(req.file);
     if (req.body.removeThumbnail === "true") plan.thumbnail = "";
     for (const field of COUNT_FIELDS) {

@@ -24,8 +24,10 @@ const plannerRoutes = require("./routes/plannerRoutes");
 const mediaCategoryRoutes = require("./routes/mediaCategoryRoutes");
 const mediaEntryRoutes    = require("./routes/mediaEntryRoutes");
 const channelPlanRoutes = require("./routes/channelPlanRoutes");
+const channelPlanWorkLogRoutes = require("./routes/channelPlanWorkLogRoutes");
 
 const VideoTask = require("./models/VideoTask");
+const ChannelPlan = require("./models/ChannelPlan");
 const {
   purgeExpiredVoiceOvers,
   scheduleVoiceOverCleanup,
@@ -87,6 +89,7 @@ app.use("/api/planner", plannerRoutes);
 app.use("/api/media-categories", mediaCategoryRoutes);
 app.use("/api/media-entries",    mediaEntryRoutes);
 app.use("/api/channel-plans", channelPlanRoutes);
+app.use("/api/channel-plan-work-logs", channelPlanWorkLogRoutes);
 
 /**
  * 🧪 Health Check
@@ -105,6 +108,7 @@ const startServer = async () => {
   await VideoTask.migrateLegacyAssignees();
   await VideoTask.initializeCustomVideoIds();
   await VideoTask.migrateVoiceOverExpiry();
+  await ChannelPlan.initializePlanIds();
   await purgeExpiredVoiceOvers();
   scheduleVoiceOverCleanup();
 
