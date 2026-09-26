@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BarChart3,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Circle,
@@ -19,10 +21,20 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
 import PageTabBar from "../../components/PageTabBar";
 import api from "../../services/api";
+import { clearCacheByPrefix } from "../../utils/cache";
 import ChannelPlanModal from "../../components/ChannelPlanModal";
 import ConfirmModal from "../../components/ConfirmModal";
 
@@ -32,8 +44,11 @@ const REPORT_PERIODS = [
   { value: "current-week", label: "This week" },
   { value: "last-3-weeks", label: "Last 3 weeks" },
   { value: "current-month", label: "This month" },
+  { value: "last-12-months", label: "Last 12 months" },
   { value: "custom", label: "Custom" },
 ];
+
+const FOOTAGE_CHART_COLOR = "#2C4BFF";
 
 const PAGE_TABS = [
   { id: "plans", label: "Plans", shortLabel: "Plans", icon: CalendarDays },
@@ -256,6 +271,11 @@ function resolveReportRange(period, customFrom, customTo) {
     const from = new Date(today.getFullYear(), today.getMonth(), 1);
     const to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     return { from: dateToKey(from), to: dateToKey(to) };
+  }
+
+  if (period === "last-12-months") {
+    const from = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+    return { from: dateToKey(from), to: dateToKey(today) };
   }
 
   return resolveReportRange("current-week", "", "");
@@ -505,6 +525,178 @@ function DateGroup(props) {
   );
 }
 
+function formatPlanScheduleDate(scheduledDate) {
+  if (!scheduledDate) return "";
+  const key = new Date(scheduledDate).toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(`${key}T00:00:00`));
+}
+
+function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef(null);
+
+  const selected = useMemo(
+    () => plans.find((plan) => String(plan._id) === value),
+    [plans, value],
+  );
+
+  const filteredPlans = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return plans;
+    return plans.filter((plan) => {
+      const haystack = [
+        plan.title,
+        plan.channelName,
+        plan.planId != null ? String(plan.planId) : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(needle);
+    });
+  }, [plans, query]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handlePointerDown = (event) => {
+      if (!containerRef.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative min-w-0">
+      <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Plan</span>
+      <button
+        type="button"
+        disabled={disabled || loading}
+        onClick={() => setOpen((current) => !current)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+          open
+            ? "border-blue-400/60 bg-white shadow-md ring-2 ring-blue-500/20 dark:border-blue-500/50 dark:bg-gray-800"
+            : "border-gray-200/80 bg-white/90 hover:border-blue-300/60 hover:bg-white dark:border-gray-700 dark:bg-gray-800/90 dark:hover:border-blue-500/40"
+        }`}
+      >
+        <div className="min-w-0 flex-1">
+          {loading ? (
+            <span className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+              <Loader2 size={14} className="animate-spin text-blue-500" />
+              Loading scheduled plans…
+            </span>
+          ) : selected ? (
+            <>
+              <p className="truncate font-semibold text-gray-900 dark:text-white">{selected.title}</p>
+              <p className="mt-0.5 truncate text-[10px] text-gray-500 dark:text-gray-400">
+                {selected.channelName} · {formatPlanScheduleDate(selected.scheduledDate)}
+                {selected.planId ? ` · #${selected.planId}` : ""}
+              </p>
+            </>
+          ) : (
+            <span className="text-gray-500 dark:text-gray-400">Select a scheduled plan</span>
+          )}
+        </div>
+        <ChevronDown
+          size={16}
+          className={`flex-shrink-0 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && !loading && (
+        <div className="absolute z-[80] mt-1.5 w-full overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
+          <div className="border-b border-gray-100 p-2 dark:border-gray-800">
+            <div className="relative">
+              <Search
+                size={14}
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search by title, channel, or plan ID…"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-8 pr-3 text-[11px] text-gray-900 placeholder:text-gray-400 focus:border-blue-400/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                autoFocus
+              />
+            </div>
+          </div>
+          <ul
+            role="listbox"
+            className="max-h-72 overflow-y-auto p-1.5 custom-scrollbar"
+          >
+            {filteredPlans.length === 0 ? (
+              <li className="px-3 py-6 text-center text-[11px] text-gray-500 dark:text-gray-400">
+                {plans.length === 0
+                  ? "No scheduled open plans. Backlog and completed plans are hidden here."
+                  : "No plans match your search."}
+              </li>
+            ) : (
+              filteredPlans.map((plan) => {
+                const isSelected = String(plan._id) === value;
+                return (
+                  <li key={plan._id}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      onClick={() => {
+                        onChange(String(plan._id));
+                        setOpen(false);
+                      }}
+                      className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors ${
+                        isSelected
+                          ? "bg-blue-50 ring-1 ring-blue-200/80 dark:bg-blue-950/30 dark:ring-blue-800/60"
+                          : "hover:bg-gray-50 dark:hover:bg-gray-800/70"
+                      }`}
+                    >
+                      {plan.planId ? (
+                        <span className="mt-0.5 inline-flex flex-shrink-0 items-center rounded-full border border-blue-200/70 bg-blue-50 px-1.5 py-px text-[9px] font-bold tabular-nums text-blue-700 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-300">
+                          #{plan.planId}
+                        </span>
+                      ) : null}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[11px] font-semibold text-gray-900 dark:text-white">
+                          {plan.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-[10px] text-gray-500 dark:text-gray-400">
+                          {plan.channelName} · {formatPlanScheduleDate(plan.scheduledDate)}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                          <span
+                            className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold tabular-nums ${FORMAT_PILL.long}`}
+                          >
+                            L {plan.longPending}/{plan.longPlanned}
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold tabular-nums ${FORMAT_PILL.short}`}
+                          >
+                            S {plan.shortPending}/{plan.shortPlanned}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LogWorkPanel({ filterParams, search, onLogged }) {
   const [planOptions, setPlanOptions] = useState([]);
   const [selectedPlanId, setSelectedPlanId] = useState("");
@@ -594,22 +786,13 @@ function LogWorkPanel({ filterParams, search, onLogged }) {
           <h2 className="text-sm font-black text-gray-900 dark:text-white">Log today&apos;s work</h2>
         </div>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_7rem_7rem_auto] lg:items-end">
-          <label className="block min-w-0">
-            <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Plan</span>
-            <select
-              value={selectedPlanId}
-              onChange={(event) => setSelectedPlanId(event.target.value)}
-              disabled={loadingOptions}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            >
-              <option value="">{loadingOptions ? "Loading plans…" : "Select a plan"}</option>
-              {planOptions.map((plan) => (
-                <option key={plan._id} value={plan._id}>
-                  {plan.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <LogWorkPlanPicker
+            plans={planOptions}
+            value={selectedPlanId}
+            onChange={setSelectedPlanId}
+            loading={loadingOptions}
+            disabled={loadingOptions}
+          />
           <label className="block">
             <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Long</span>
             <input
@@ -743,7 +926,7 @@ function SummaryCompareCell({ actual, logged, pillClass = "", loggedDisabled = f
 function ReportSummaryTable({ summary, activeChannelTab, loading }) {
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-100 bg-white/40 px-3 py-4 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
+      <div className="flex min-h-[320px] items-center justify-center gap-2 rounded-xl border border-gray-100 bg-white/40 px-3 py-4 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
         <Loader2 size={14} className="animate-spin text-blue-500" />
         Loading summary…
       </div>
@@ -761,7 +944,7 @@ function ReportSummaryTable({ summary, activeChannelTab, loading }) {
 
   if (!totals || (rows.length === 0 && activeChannelTab !== "all")) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-3 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
+      <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-3 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
         No summary for this channel in the selected period.
       </div>
     );
@@ -777,7 +960,7 @@ function ReportSummaryTable({ summary, activeChannelTab, loading }) {
     !hasFirstCut
   ) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-3 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
+      <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-3 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
         No open plans or work logs in this period.
       </div>
     );
@@ -786,15 +969,15 @@ function ReportSummaryTable({ summary, activeChannelTab, loading }) {
   const displayRows = activeChannelTab === "all" ? [{ ...totals, channelName: "All channels", channelId: "all", isTotal: true }, ...rows] : rows;
 
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-100 bg-white/40 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
-      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
+    <section className="flex h-full min-h-[320px] flex-col overflow-hidden rounded-xl border border-gray-100 bg-white/40 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+      <div className="flex flex-shrink-0 flex-wrap items-start justify-between gap-2 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
         <div>
           <h3 className="text-xs font-black text-gray-900 dark:text-white">Channel summary</h3>
           <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
             Long/Short use plans scheduled in the period. First cut counts all open plans (incl. backlog).
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-[9px] font-semibold text-gray-500 dark:text-gray-400">
+        <div className="hidden flex-wrap items-center gap-2 text-[9px] font-semibold text-gray-500 xl:flex dark:text-gray-400">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200/80 bg-white/80 px-2.5 py-1 dark:border-gray-700 dark:bg-gray-800/80">
             <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">
               Act
@@ -819,8 +1002,8 @@ function ReportSummaryTable({ summary, activeChannelTab, loading }) {
           </span>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] text-[10px]">
+      <div className="min-h-0 flex-1 overflow-auto custom-scrollbar">
+        <table className="w-full min-w-0 text-[10px]">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/80 text-[9px] font-black uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400">
               <th className="px-3 py-2 text-left">Channel</th>
@@ -895,11 +1078,131 @@ function ReportSummaryTable({ summary, activeChannelTab, loading }) {
   );
 }
 
+function ChannelHoursChart({ channel, compact = false }) {
+  const totalHours = channel.months.reduce((sum, month) => sum + (month.hours || 0), 0);
+  const hasData = totalHours > 0;
+  const chartHeight = compact ? 200 : 220;
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-gray-100 bg-white/40 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+      <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
+        <div className="flex min-w-0 items-center gap-2">
+          <BarChart3 size={14} className="flex-shrink-0 text-blue-500" />
+          <h4 className="truncate text-xs font-black text-gray-900 dark:text-white" title={channel.channelName}>
+            {channel.channelName}
+          </h4>
+        </div>
+        <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-500 dark:text-gray-400">
+          {totalHours.toFixed(1)}h total
+        </span>
+      </div>
+      <div className="px-2 py-3">
+        {hasData ? (
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart data={channel.months} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.12)" />
+              <XAxis dataKey="label" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
+              <YAxis
+                tick={{ fontSize: 9 }}
+                width={32}
+                tickLine={false}
+                allowDecimals
+                label={{ value: "Hours", angle: -90, position: "insideLeft", style: { fontSize: 9 } }}
+              />
+              <Tooltip
+                contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                formatter={(value) => {
+                  const hours = Number(value);
+                  const minutes = Math.round(hours * 60);
+                  return [`${hours.toFixed(1)}h (${minutes} min)`, "Footage"];
+                }}
+                labelFormatter={(label) => label}
+              />
+              <Bar
+                dataKey="hours"
+                name="Footage"
+                fill={FOOTAGE_CHART_COLOR}
+                radius={[4, 4, 0, 0]}
+                maxBarSize={28}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div
+            className="flex flex-col items-center justify-center px-4 text-center"
+            style={{ height: chartHeight }}
+          >
+            <p className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">No planned hours</p>
+            <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+              Add Footage Minutes when creating plans to see monthly hours here.
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function HoursByMonthCharts({ data, activeChannelTab, loading }) {
+  const body = (() => {
+    if (loading) {
+      return (
+        <div className="flex min-h-[280px] items-center justify-center gap-2 px-3 py-6 text-xs text-gray-500 dark:text-gray-400">
+          <Loader2 size={14} className="animate-spin text-blue-500" />
+          Loading hours chart…
+        </div>
+      );
+    }
+
+    if (!data?.channels?.length) {
+      return (
+        <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-4 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
+          No scheduled plans in this period — charts appear when plans have dates and footage minutes.
+        </div>
+      );
+    }
+
+    const channels =
+      activeChannelTab === "all"
+        ? data.channels
+        : data.channels.filter((channel) => String(channel.channelId) === activeChannelTab);
+
+    if (channels.length === 0) {
+      return (
+        <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-4 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
+          No hours data for this channel in the selected period.
+        </div>
+      );
+    }
+
+    return (
+      <div className="max-h-[420px] space-y-3 overflow-y-auto p-3 custom-scrollbar">
+        {channels.map((channel) => (
+          <ChannelHoursChart key={channel.channelId} channel={channel} compact />
+        ))}
+      </div>
+    );
+  })();
+
+  return (
+    <section className="flex h-full min-h-[320px] flex-col overflow-hidden rounded-xl border border-gray-100 bg-white/40 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+      <div className="flex-shrink-0 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
+        <h3 className="text-xs font-black text-gray-900 dark:text-white">Footage hours by month</h3>
+        <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+          Footage minutes from all plans (open or completed), grouped by month. One chart per channel.
+        </p>
+      </div>
+      <div className="min-h-0 flex-1">{body}</div>
+    </section>
+  );
+}
+
 function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey }) {
   const [allLogs, setAllLogs] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [hoursByMonth, setHoursByMonth] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState("current-week");
+  const [period, setPeriod] = useState("current-month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
 
@@ -918,13 +1221,17 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey }
     }
     setLoading(true);
     try {
+      clearCacheByPrefix("/channel-plan-work-logs");
+      clearCacheByPrefix("/channel-plans");
       const params = new URLSearchParams({ from: range.from, to: range.to });
-      const [logsResponse, summaryResponse] = await Promise.all([
+      const [logsResponse, summaryResponse, hoursResponse] = await Promise.all([
         api.get(`/channel-plan-work-logs?${params.toString()}`),
         api.get(`/channel-plan-work-logs/summary?${params.toString()}`),
+        api.get(`/channel-plans/hours-by-month?${params.toString()}`),
       ]);
       setAllLogs(logsResponse.data.logs || []);
       setSummary(summaryResponse.data);
+      setHoursByMonth(hoursResponse.data);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load report");
     } finally {
@@ -1050,8 +1357,6 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey }
         </p>
       </div>
 
-      <ReportSummaryTable summary={summary} activeChannelTab={activeChannelTab} loading={loading} />
-
       {reportChannels.length > 0 && (
         <div className="flex max-w-full flex-shrink-0 items-center gap-2 overflow-x-auto scrollbar-hide px-1">
           <FilterLabel icon={Filter}>Channel:</FilterLabel>
@@ -1070,6 +1375,15 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey }
           ))}
         </div>
       )}
+
+      <div className="grid flex-shrink-0 grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="min-w-0">
+          <ReportSummaryTable summary={summary} activeChannelTab={activeChannelTab} loading={loading} />
+        </div>
+        <div className="min-w-0">
+          <HoursByMonthCharts data={hoursByMonth} activeChannelTab={activeChannelTab} loading={loading} />
+        </div>
+      </div>
 
       <section className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-gray-100 bg-white/40 shadow-md backdrop-blur-sm custom-scrollbar dark:border-gray-700 dark:bg-gray-900/40">
         {loading ? (
@@ -1306,6 +1620,7 @@ export default function ChannelPlanner() {
   const handleSaved = async () => {
     await loadReferenceData();
     await loadPlans();
+    setReportRefreshKey((key) => key + 1);
   };
 
   const handleWorkLogged = () => {
@@ -1319,6 +1634,7 @@ export default function ChannelPlanner() {
       });
       toast.success(plan.status === "completed" ? "Plan reopened" : "Plan completed");
       await loadPlans();
+      setReportRefreshKey((key) => key + 1);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update plan");
     }

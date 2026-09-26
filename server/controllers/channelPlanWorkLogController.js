@@ -110,6 +110,7 @@ exports.getOptions = async (req, res) => {
 
     const filter = {
       status: { $ne: "completed" },
+      scheduledDate: { $ne: null, $exists: true },
       channelId: {
         $in: channelIds.length
           ? channelIds.map((id) => new mongoose.Types.ObjectId(id))
@@ -126,10 +127,15 @@ exports.getOptions = async (req, res) => {
       filter.$and = [{ $or: matchers }];
     }
 
-    const plans = await ChannelPlan.find(filter)
-      .populate("channelId", "name")
-      .sort({ scheduledDate: 1, createdAt: 1 })
-      .lean();
+    const plans = await ChannelPlan.find(filter).populate("channelId", "name").lean();
+
+    plans.sort((a, b) => {
+      const channelCompare = (a.channelId?.name || "").localeCompare(b.channelId?.name || "");
+      if (channelCompare !== 0) return channelCompare;
+      const dateA = a.scheduledDate ? new Date(a.scheduledDate).getTime() : 0;
+      const dateB = b.scheduledDate ? new Date(b.scheduledDate).getTime() : 0;
+      return dateB - dateA;
+    });
 
     return res.json(
       plans.map((plan) => ({

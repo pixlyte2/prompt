@@ -81,6 +81,7 @@ export default function ChannelPlanModal({
     longPlanned: 0,
     shortPlanned: 0,
   });
+  const [footageMinutes, setFootageMinutes] = useState("");
   const [firstCut, setFirstCut] = useState(false);
   const [notes, setNotes] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
@@ -103,6 +104,11 @@ export default function ChannelPlanModal({
         longPlanned: editPlan.longPlanned ?? 0,
         shortPlanned: editPlan.shortPlanned ?? 0,
       });
+      setFootageMinutes(
+        editPlan.footageMinutes != null && editPlan.footageMinutes !== 0
+          ? String(editPlan.footageMinutes)
+          : "",
+      );
       setFirstCut(Boolean(editPlan.firstCut));
       setNotes(editPlan.notes || "");
       setAssignedTo(String(editPlan.assignedTo?._id || editPlan.assignedTo || ""));
@@ -114,6 +120,7 @@ export default function ChannelPlanModal({
         longPlanned: 0,
         shortPlanned: 0,
       });
+      setFootageMinutes("");
       setFirstCut(false);
       setNotes("");
       setAssignedTo("");
@@ -191,6 +198,7 @@ export default function ChannelPlanModal({
       for (const { planned } of COUNT_ROWS) {
         payload.append(planned, String(Number(counts[planned]) || 0));
       }
+      payload.append("footageMinutes", String(Number(footageMinutes) || 0));
       if (thumbnailFile) payload.append("thumbnail", thumbnailFile);
       if (thumbnailRemoved) payload.append("removeThumbnail", "true");
 
@@ -376,6 +384,22 @@ export default function ChannelPlanModal({
             </div>
             <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
               Planned output for this date
+            </p>
+          </div>
+
+          <div>
+            <label className={labelClass}>Footage Minutes</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={footageMinutes}
+              onChange={(e) => setFootageMinutes(e.target.value)}
+              className={inputClass}
+              placeholder="0"
+            />
+            <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+              Total raw footage minutes for this plan (e.g. 600 = 10 hours)
             </p>
           </div>
 

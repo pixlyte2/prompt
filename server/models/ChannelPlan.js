@@ -16,6 +16,8 @@ const channelPlanSchema = new mongoose.Schema(
     longCompleted: { type: Number, min: 0, default: 0 },
     shortPlanned: { type: Number, min: 0, default: 0 },
     shortCompleted: { type: Number, min: 0, default: 0 },
+    /** Total footage minutes planned for this plan. */
+    footageMinutes: { type: Number, min: 0, default: 0 },
     firstCut: { type: Boolean, default: false },
     notes: { type: String, default: "" },
     assignedTo: {

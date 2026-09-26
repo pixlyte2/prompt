@@ -10,6 +10,7 @@ const COUNT_FIELDS = [
   "shortPlanned",
   "shortCompleted",
 ];
+const MINUTES_FIELDS = ["footageMinutes"];
 
 function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -109,6 +110,54 @@ function parseCount(value, field) {
     throw error;
   }
   return number;
+}
+
+function parseMinutes(value, field) {
+  if (value === undefined) return undefined;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) {
+    const error = new Error(`${field} must be a non-negative number`);
+    error.status = 400;
+    throw error;
+  }
+  return number;
+}
+
+function startOfDay(date = new Date()) {
+  const value = new Date(date);
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+function endOfDay(date = new Date()) {
+  const value = startOfDay(date);
+  value.setDate(value.getDate() + 1);
+  return value;
+}
+
+function monthKey(year, month) {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function monthLabel(year, month) {
+  return new Intl.DateTimeFormat("en-IN", { month: "short", year: "numeric" }).format(
+    new Date(year, month - 1, 1),
+  );
+}
+
+function enumerateMonths(from, to) {
+  const months = [];
+  const cursor = new Date(from.getFullYear(), from.getMonth(), 1);
+  const end = new Date(to.getFullYear(), to.getMonth(), 1);
+  while (cursor <= end) {
+    months.push({
+      key: monthKey(cursor.getFullYear(), cursor.getMonth() + 1),
+      year: cursor.getFullYear(),
+      month: cursor.getMonth() + 1,
+      label: monthLabel(cursor.getFullYear(), cursor.getMonth() + 1),
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return months;
 }
 
 /** Accepts real booleans (JSON) and "true"/"false" strings (multipart form data). */
@@ -393,6 +442,9 @@ exports.createPlan = async (req, res) => {
     for (const field of COUNT_FIELDS) {
       values[field] = parseCount(req.body[field] ?? 0, field);
     }
+    for (const field of MINUTES_FIELDS) {
+      values[field] = parseMinutes(req.body[field] ?? 0, field);
+    }
     if (values.status === "completed") values.completedAt = new Date();
 
     const plan = await ChannelPlan.create(values);
@@ -443,6 +495,10 @@ exports.updatePlan = async (req, res) => {
       const value = parseCount(req.body[field], field);
       if (value !== undefined) plan[field] = value;
     }
+    for (const field of MINUTES_FIELDS) {
+      const value = parseMinutes(req.body[field], field);
+      if (value !== undefined) plan[field] = value;
+    }
     if (req.body.status !== undefined) {
       const wasCompleted = plan.status === "completed";
       plan.status = req.body.status;
@@ -458,6 +514,116 @@ exports.updatePlan = async (req, res) => {
     return res.json(plan);
   } catch (error) {
     return sendError(res, "updateChannelPlan", error);
+  }
+};
+
+/**
+ * Footage hours grouped by calendar month per channel.
+ * Sums footageMinutes grouped by month. All statuses included (open and completed).
+ * Uses scheduledDate, or completedAt, or createdAt when unscheduled.
+ */
+exports.getHoursByMonth = async (req, res) => {
+  try {
+    const from = req.query.from ? startOfDay(new Date(req.query.from)) : null;
+    const to = req.query.to ? endOfDay(new Date(req.query.to)) : null;
+    if (!from || !to || from >= to) {
+      return res.status(400).json({ message: "Valid from and to dates are required" });
+    }
+
+    const channelIds = parseChannelIds(req.query);
+    const allowedIds = await companyChannelIds(req);
+    const allowed = new Set(allowedIds.map(String));
+    if (channelIds.some((id) => !allowed.has(id))) {
+      return res.status(404).json({ message: "Channel not found" });
+    }
+
+    const scopedChannelIds = channelIds.length
+      ? channelIds.map((id) => new mongoose.Types.ObjectId(id))
+      : allowedIds;
+
+    const rows = await ChannelPlan.aggregate([
+      {
+        $match: {
+          channelId: { $in: scopedChannelIds },
+          footageMinutes: { $gt: 0 },
+        },
+      },
+      {
+        $addFields: {
+          reportDate: {
+            $ifNull: ["$scheduledDate", { $ifNull: ["$completedAt", "$createdAt"] }],
+          },
+        },
+      },
+      {
+        $match: {
+          reportDate: { $gte: from, $lt: to },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            channelId: "$channelId",
+            year: { $year: "$reportDate" },
+            month: { $month: "$reportDate" },
+          },
+          footageMinutes: { $sum: { $ifNull: ["$footageMinutes", 0] } },
+          planCount: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: "channels",
+          localField: "_id.channelId",
+          foreignField: "_id",
+          as: "channel",
+        },
+      },
+      { $unwind: "$channel" },
+      {
+        $project: {
+          channelId: "$_id.channelId",
+          channelName: "$channel.name",
+          year: "$_id.year",
+          month: "$_id.month",
+          footageMinutes: 1,
+          planCount: 1,
+        },
+      },
+      { $sort: { channelName: 1, year: 1, month: 1 } },
+    ]);
+
+    const monthSlots = enumerateMonths(from, to);
+    const byChannel = new Map();
+
+    for (const row of rows) {
+      const key = String(row.channelId);
+      if (!byChannel.has(key)) {
+        byChannel.set(key, {
+          channelId: key,
+          channelName: row.channelName,
+          months: monthSlots.map((slot) => ({
+            key: slot.key,
+            label: slot.label,
+            hours: 0,
+            planCount: 0,
+          })),
+        });
+      }
+      const channel = byChannel.get(key);
+      const slotKey = monthKey(row.year, row.month);
+      const slot = channel.months.find((entry) => entry.key === slotKey);
+      if (!slot) continue;
+      slot.hours = Math.round((row.footageMinutes / 60) * 10) / 10;
+      slot.planCount = row.planCount;
+    }
+
+    return res.json({
+      range: { from: req.query.from, to: req.query.to },
+      channels: [...byChannel.values()].sort((a, b) => a.channelName.localeCompare(b.channelName)),
+    });
+  } catch (error) {
+    return sendError(res, "getChannelPlanHoursByMonth", error);
   }
 };
 

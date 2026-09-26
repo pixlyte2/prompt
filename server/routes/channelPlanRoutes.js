@@ -23,6 +23,7 @@ function uploadThumbnail(req, res, next) {
 }
 
 router.get("/stats", protect, adminOnly, controller.getStats);
+router.get("/hours-by-month", protect, adminOnly, controller.getHoursByMonth);
 router.get("/", protect, adminOnly, controller.getPlans);
 router.post("/", protect, adminOnly, uploadThumbnail, controller.createPlan);
 router.put("/:id", protect, adminOnly, uploadThumbnail, controller.updatePlan);
