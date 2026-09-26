@@ -25,7 +25,11 @@ function parseChannelIds(query) {
 }
 
 async function companyChannelIds(req) {
-  const channels = await Channel.find({ companyId: req.user.companyId })
+  if (!req.user?.companyId) return [];
+  const companyId = mongoose.Types.ObjectId.isValid(req.user.companyId)
+    ? new mongoose.Types.ObjectId(req.user.companyId)
+    : req.user.companyId;
+  const channels = await Channel.find({ companyId })
     .select("_id name")
     .lean();
   return channels;
@@ -34,6 +38,17 @@ async function companyChannelIds(req) {
 function startOfDay(date = new Date()) {
   const value = new Date(date);
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+function parseDateKey(key) {
+  if (!key) return startOfDay();
+  const match = String(key).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    const error = new Error("logDate must be YYYY-MM-DD");
+    error.status = 400;
+    throw error;
+  }
+  return new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00`);
 }
 
 function endOfDay(date = new Date()) {
@@ -110,7 +125,6 @@ exports.getOptions = async (req, res) => {
 
     const filter = {
       status: { $ne: "completed" },
-      scheduledDate: { $ne: null, $exists: true },
       channelId: {
         $in: channelIds.length
           ? channelIds.map((id) => new mongoose.Types.ObjectId(id))
@@ -134,7 +148,10 @@ exports.getOptions = async (req, res) => {
       if (channelCompare !== 0) return channelCompare;
       const dateA = a.scheduledDate ? new Date(a.scheduledDate).getTime() : 0;
       const dateB = b.scheduledDate ? new Date(b.scheduledDate).getTime() : 0;
-      return dateB - dateA;
+      if (dateA && dateB) return dateB - dateA;
+      if (dateA) return -1;
+      if (dateB) return 1;
+      return new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime();
     });
 
     return res.json(
@@ -145,6 +162,7 @@ exports.getOptions = async (req, res) => {
         channelId: plan.channelId?._id || plan.channelId,
         channelName: plan.channelId?.name || "",
         scheduledDate: plan.scheduledDate,
+        isBacklog: !plan.scheduledDate,
         longPlanned: plan.longPlanned,
         longCompleted: plan.longCompleted,
         shortPlanned: plan.shortPlanned,
@@ -327,7 +345,7 @@ exports.listLogs = async (req, res) => {
     }
 
     const logs = await ChannelPlanWorkLog.find(filter)
-      .populate("planId", "planId title longPlanned longCompleted shortPlanned shortCompleted")
+      .populate("planId", "planId title scheduledDate longPlanned longCompleted shortPlanned shortCompleted")
       .populate("channelId", "name")
       .populate("loggedBy", "name email")
       .sort({ logDate: -1, updatedAt: -1 })
@@ -348,33 +366,35 @@ exports.upsertToday = async (req, res) => {
 
     const longPendingLogged = parsePending(req.body.longPendingLogged, "longPendingLogged");
     const shortPendingLogged = parsePending(req.body.shortPendingLogged, "shortPendingLogged");
-    if (longPendingLogged === undefined && shortPendingLogged === undefined) {
+    if (longPendingLogged === undefined || shortPendingLogged === undefined) {
       return res.status(400).json({
-        message: "Provide longPendingLogged and/or shortPendingLogged",
+        message: "Provide longPendingLogged and shortPendingLogged",
+      });
+    }
+    if (longPendingLogged === 0 && shortPendingLogged === 0) {
+      return res.status(400).json({
+        message: "At least one logged count must be greater than zero",
       });
     }
 
     const plan = await assertPlanInCompany(planObjectId, req);
-    const logDate = startOfDay();
-
-    const existing = await ChannelPlanWorkLog.findOne({ planId: plan._id, logDate }).lean();
-    const fallbackLong = pendingCount(plan.longPlanned, plan.longCompleted);
-    const fallbackShort = pendingCount(plan.shortPlanned, plan.shortCompleted);
+    const logDate = parseDateKey(req.body.logDate);
 
     const payload = {
       planId: plan._id,
       logDate,
-      longPendingLogged:
-        longPendingLogged ?? existing?.longPendingLogged ?? fallbackLong,
-      shortPendingLogged:
-        shortPendingLogged ?? existing?.shortPendingLogged ?? fallbackShort,
+      longPendingLogged,
+      shortPendingLogged,
       planIdNumber: plan.planId,
       title: plan.title,
       channelId: plan.channelId?._id || plan.channelId,
       channelName: plan.channelId?.name || "",
+      planScheduledDate: plan.scheduledDate || null,
       loggedBy: req.user._id || req.user.id,
       companyId: req.user.companyId,
     };
+
+    const existing = await ChannelPlanWorkLog.findOne({ planId: plan._id, logDate }).lean();
 
     const log = await ChannelPlanWorkLog.findOneAndUpdate(
       { planId: plan._id, logDate },
@@ -389,5 +409,50 @@ exports.upsertToday = async (req, res) => {
     return res.status(existing ? 200 : 201).json(log);
   } catch (error) {
     return sendError(res, "upsertChannelPlanWorkLog", error);
+  }
+};
+
+exports.updateLog = async (req, res) => {
+  try {
+    const logId = req.params.id;
+    if (!logId || !mongoose.Types.ObjectId.isValid(logId)) {
+      return res.status(400).json({ message: "A valid log id is required" });
+    }
+
+    const longPendingLogged = parsePending(req.body.longPendingLogged, "longPendingLogged");
+    const shortPendingLogged = parsePending(req.body.shortPendingLogged, "shortPendingLogged");
+    if (longPendingLogged === undefined || shortPendingLogged === undefined) {
+      return res.status(400).json({
+        message: "Provide longPendingLogged and shortPendingLogged",
+      });
+    }
+    if (longPendingLogged === 0 && shortPendingLogged === 0) {
+      return res.status(400).json({
+        message: "At least one logged count must be greater than zero",
+      });
+    }
+
+    const log = await ChannelPlanWorkLog.findOne({
+      _id: logId,
+      companyId: req.user.companyId,
+    });
+    if (!log) {
+      return res.status(404).json({ message: "Work log not found" });
+    }
+
+    log.longPendingLogged = longPendingLogged;
+    log.shortPendingLogged = shortPendingLogged;
+    log.loggedBy = req.user._id || req.user.id;
+    await log.save();
+
+    const updated = await ChannelPlanWorkLog.findById(log._id)
+      .populate("planId", "planId title scheduledDate")
+      .populate("channelId", "name")
+      .populate("loggedBy", "name email")
+      .lean();
+
+    return res.json(updated);
+  } catch (error) {
+    return sendError(res, "updateChannelPlanWorkLog", error);
   }
 };

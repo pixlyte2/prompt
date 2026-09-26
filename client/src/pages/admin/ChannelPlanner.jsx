@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
   CalendarDays,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -33,12 +34,13 @@ import {
 import { toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
 import PageTabBar from "../../components/PageTabBar";
-import api from "../../services/api";
+import api, { httpClient } from "../../services/api";
 import { clearCacheByPrefix } from "../../utils/cache";
 import ChannelPlanModal from "../../components/ChannelPlanModal";
 import ConfirmModal from "../../components/ConfirmModal";
 
 const DATE_GROUP_PAGE_SIZE = 5;
+const LOG_HISTORY_DAYS_PER_PAGE = 10;
 
 const REPORT_PERIODS = [
   { value: "current-week", label: "This week" },
@@ -236,12 +238,21 @@ function formatDateLabel(dateKey) {
 
 function formatLogDate(value) {
   if (!value) return "—";
-  const key = new Date(value).toISOString().slice(0, 10);
-  return formatDateLabel(key);
+  return formatDateLabel(dateToKey(new Date(value)));
 }
 
 function dateToKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function historyRangeForPage(page, daysPerPage = LOG_HISTORY_DAYS_PER_PAGE) {
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const end = new Date(today);
+  end.setDate(end.getDate() - (page - 1) * daysPerPage);
+  const start = new Date(end);
+  start.setDate(start.getDate() - (daysPerPage - 1));
+  return { from: dateToKey(start), to: dateToKey(end) };
 }
 
 function resolveReportRange(period, customFrom, customTo) {
@@ -525,14 +536,320 @@ function DateGroup(props) {
   );
 }
 
-function formatPlanScheduleDate(scheduledDate) {
-  if (!scheduledDate) return "";
+function pendingPlanCount(planned, completed) {
+  return Math.max(0, (Number(planned) || 0) - (Number(completed) || 0));
+}
+
+function mapPlanToLogWorkOption(plan) {
+  return {
+    _id: plan._id,
+    planId: plan.planId,
+    title: plan.title,
+    channelId: plan.channelId?._id || plan.channelId,
+    channelName: plan.channelId?.name || "",
+    scheduledDate: plan.scheduledDate,
+    isBacklog: !plan.scheduledDate,
+    longPlanned: plan.longPlanned ?? 0,
+    shortPlanned: plan.shortPlanned ?? 0,
+    longPending: pendingPlanCount(plan.longPlanned, plan.longCompleted),
+    shortPending: pendingPlanCount(plan.shortPlanned, plan.shortCompleted),
+  };
+}
+
+function flattenPlanGroups(response) {
+  return (response.data?.groups || []).flatMap((group) => group.tasks || []);
+}
+
+function formatPlanScheduleDate(scheduledDate, isBacklog = false) {
+  if (isBacklog || !scheduledDate) return "Backlog";
   const key = new Date(scheduledDate).toISOString().slice(0, 10);
   return new Intl.DateTimeFormat("en-IN", {
     weekday: "short",
     day: "numeric",
     month: "short",
   }).format(new Date(`${key}T00:00:00`));
+}
+
+const LOG_WORK_ROW_GRID =
+  "grid w-full grid-cols-[2.75rem_minmax(0,1.4fr)_minmax(0,1fr)_5.5rem_3.25rem_3.25rem] items-center gap-x-2.5";
+
+const LOG_HISTORY_ROW_GRID =
+  "grid w-full grid-cols-[2.75rem_minmax(0,1.2fr)_minmax(0,0.85fr)_5.5rem_3.25rem_3.25rem] items-center gap-x-2";
+
+const LOG_HISTORY_ROW_GRID_EDITABLE =
+  "grid w-full grid-cols-[2.75rem_minmax(0,1.1fr)_minmax(0,0.8fr)_5rem_3rem_3rem_2rem] items-center gap-x-2";
+
+function parseLoggedCounts(longValue, shortValue) {
+  const longPendingLogged = longValue === "" ? 0 : Number(longValue);
+  const shortPendingLogged = shortValue === "" ? 0 : Number(shortValue);
+  if (
+    !Number.isInteger(longPendingLogged) ||
+    longPendingLogged < 0 ||
+    !Number.isInteger(shortPendingLogged) ||
+    shortPendingLogged < 0
+  ) {
+    return { error: "Counts must be non-negative whole numbers" };
+  }
+  if (longPendingLogged === 0 && shortPendingLogged === 0) {
+    return { error: "Enter at least one count greater than zero" };
+  }
+  return { longPendingLogged, shortPendingLogged };
+}
+
+function LogWorkPlanRowContent({ plan, compact = false }) {
+  const titleClass = compact
+    ? "truncate text-sm font-semibold text-gray-900 dark:text-white"
+    : "truncate text-sm font-semibold text-gray-900 dark:text-white";
+  const metaClass = compact
+    ? "truncate text-xs text-gray-500 dark:text-gray-400"
+    : "truncate text-xs text-gray-500 dark:text-gray-400";
+
+  return (
+    <>
+      <span className="inline-flex justify-center">
+        {plan.planId ? (
+          <span className="inline-flex items-center rounded-full border border-blue-200/70 bg-blue-50 px-2 py-0.5 text-[11px] font-bold tabular-nums text-blue-700 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-300">
+            #{plan.planId}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
+      </span>
+      <span className={titleClass} title={plan.title}>
+        {plan.title}
+      </span>
+      <span className={metaClass} title={plan.channelName}>
+        {plan.channelName}
+      </span>
+      <span className="flex justify-center">
+        {plan.isBacklog ? (
+          <span className="inline-flex rounded-md border border-amber-200/80 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
+            Backlog
+          </span>
+        ) : (
+          <span className={`${metaClass} text-center`}>
+            {formatPlanScheduleDate(plan.scheduledDate, plan.isBacklog)}
+          </span>
+        )}
+      </span>
+      <span
+        className={`inline-flex justify-center rounded-md px-2 py-1 text-[11px] font-bold tabular-nums ${FORMAT_PILL.long}`}
+      >
+        {plan.longPending}/{plan.longPlanned}
+      </span>
+      <span
+        className={`inline-flex justify-center rounded-md px-2 py-1 text-[11px] font-bold tabular-nums ${FORMAT_PILL.short}`}
+      >
+        {plan.shortPending}/{plan.shortPlanned}
+      </span>
+    </>
+  );
+}
+
+function WorkLogEntryRow({ log, compact = false, editable = false, onUpdate }) {
+  const [editing, setEditing] = useState(false);
+  const [longValue, setLongValue] = useState(String(log.longPendingLogged ?? 0));
+  const [shortValue, setShortValue] = useState(String(log.shortPendingLogged ?? 0));
+  const [saving, setSaving] = useState(false);
+
+  const planIdNumber = log.planIdNumber ?? log.planId?.planId;
+  const title = log.title || log.planId?.title || "—";
+  const channel = log.channelName || log.channelId?.name || "—";
+  const scheduledDate = log.planScheduledDate ?? log.planId?.scheduledDate;
+  const isBacklog = !scheduledDate;
+
+  const textSize = compact ? "text-[10px]" : "text-xs";
+  const rowGrid = editable ? LOG_HISTORY_ROW_GRID_EDITABLE : LOG_HISTORY_ROW_GRID;
+
+  useEffect(() => {
+    if (!editing) {
+      setLongValue(String(log.longPendingLogged ?? 0));
+      setShortValue(String(log.shortPendingLogged ?? 0));
+    }
+  }, [log.longPendingLogged, log.shortPendingLogged, editing]);
+
+  const cancelEdit = () => {
+    setLongValue(String(log.longPendingLogged ?? 0));
+    setShortValue(String(log.shortPendingLogged ?? 0));
+    setEditing(false);
+  };
+
+  const handleSave = async () => {
+    const parsed = parseLoggedCounts(longValue, shortValue);
+    if (parsed.error) {
+      toast.error(parsed.error);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onUpdate?.(log._id, parsed.longPendingLogged, parsed.shortPendingLogged);
+      setEditing(false);
+    } catch {
+      // Parent shows toast
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputClass =
+    "w-full rounded-md border border-gray-200 bg-white px-1.5 py-1 text-center text-[11px] font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-600 dark:bg-gray-800 dark:text-white";
+
+  return (
+    <div className={`${rowGrid} px-3 py-2 ${textSize} hover:bg-gray-50/90 dark:hover:bg-gray-800/40`}>
+      <PlanIdPill planId={planIdNumber} />
+      <span className="min-w-0 truncate font-semibold text-gray-900 dark:text-white" title={title}>
+        {title}
+      </span>
+      <span className="min-w-0 truncate text-gray-500 dark:text-gray-400" title={channel}>
+        {channel}
+      </span>
+      {isBacklog ? (
+        <span className="inline-flex justify-center rounded-md border border-amber-200/80 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
+          Backlog
+        </span>
+      ) : (
+        <span
+          className="truncate text-center text-gray-500 dark:text-gray-400"
+          title={`Scheduled ${formatPlanScheduleDate(scheduledDate)}`}
+        >
+          {formatPlanScheduleDate(scheduledDate)}
+        </span>
+      )}
+      {editing ? (
+        <>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={longValue}
+            onChange={(event) => setLongValue(event.target.value)}
+            disabled={saving}
+            className={inputClass}
+            aria-label="Long logged"
+          />
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={shortValue}
+            onChange={(event) => setShortValue(event.target.value)}
+            disabled={saving}
+            className={inputClass}
+            aria-label="Short logged"
+          />
+        </>
+      ) : (
+        <>
+          <span
+            className={`inline-flex justify-center rounded-full border px-2 py-0.5 font-bold tabular-nums ${FORMAT_PILL.long} border-current`}
+          >
+            L {log.longPendingLogged}
+          </span>
+          <span
+            className={`inline-flex justify-center rounded-full border px-2 py-0.5 font-bold tabular-nums ${FORMAT_PILL.short} border-current`}
+          >
+            S {log.shortPendingLogged}
+          </span>
+        </>
+      )}
+      {editable ? (
+        <span className="flex justify-center">
+          {editing ? (
+            <span className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={saving}
+                className="rounded-md p-1 text-emerald-600 transition hover:bg-emerald-50 disabled:opacity-50 dark:hover:bg-emerald-950/40"
+                title="Save"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              </button>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                disabled={saving}
+                className="rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 dark:hover:bg-gray-800"
+                title="Cancel"
+              >
+                <X size={14} />
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded-md p-1 text-gray-400 transition hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40"
+              title="Edit logged counts"
+            >
+              <Pencil size={14} />
+            </button>
+          )}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function WorkLogEntriesList({ logs, loading, emptyMessage, compact = false, editable = false, onUpdateLog }) {
+  const groupedByDate = useMemo(() => {
+    const map = new Map();
+    logs.forEach((log) => {
+      const key = dateToKey(new Date(log.logDate));
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(log);
+    });
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [logs]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-32 flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+        <Loader2 size={20} className="animate-spin text-blue-500" />
+        <span className="text-xs">Loading logged work…</span>
+      </div>
+    );
+  }
+
+  if (groupedByDate.length === 0) {
+    return (
+      <div className="flex min-h-32 flex-col items-center justify-center px-4 text-center">
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No logs in this range</p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{emptyMessage}</p>
+      </div>
+    );
+  }
+
+  const textSize = compact ? "text-[10px]" : "text-xs";
+  const headerSize = compact ? "text-[11px]" : "text-sm";
+
+  return (
+    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+      {groupedByDate.map(([dateKey, dayLogs]) => (
+        <div key={dateKey}>
+          <div className="sticky top-0 z-10 border-b border-gray-100 bg-gray-50/95 px-3 py-2 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/95">
+            <span className={`${headerSize} font-black text-gray-800 dark:text-gray-200`}>
+              {formatDateLabel(dateKey)}
+            </span>
+            <span className={`ml-2 ${textSize} tabular-nums text-gray-500 dark:text-gray-400`}>
+              {dayLogs.length} {dayLogs.length === 1 ? "entry" : "entries"}
+            </span>
+          </div>
+          <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
+            {dayLogs.map((log) => (
+              <WorkLogEntryRow
+                key={log._id}
+                log={log}
+                compact={compact}
+                editable={editable}
+                onUpdate={onUpdateLog}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
@@ -576,14 +893,14 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
 
   return (
     <div ref={containerRef} className="relative min-w-0">
-      <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Plan</span>
+      <span className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-gray-400">Plan</span>
       <button
         type="button"
         disabled={disabled || loading}
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`flex w-full items-center gap-2 rounded-xl border px-3 py-3 text-left transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
           open
             ? "border-blue-400/60 bg-white shadow-md ring-2 ring-blue-500/20 dark:border-blue-500/50 dark:bg-gray-800"
             : "border-gray-200/80 bg-white/90 hover:border-blue-300/60 hover:bg-white dark:border-gray-700 dark:bg-gray-800/90 dark:hover:border-blue-500/40"
@@ -591,54 +908,57 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
       >
         <div className="min-w-0 flex-1">
           {loading ? (
-            <span className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-              <Loader2 size={14} className="animate-spin text-blue-500" />
-              Loading scheduled plans…
+            <span className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <Loader2 size={16} className="animate-spin text-blue-500" />
+              Loading plans…
             </span>
           ) : selected ? (
-            <>
-              <p className="truncate font-semibold text-gray-900 dark:text-white">{selected.title}</p>
-              <p className="mt-0.5 truncate text-[10px] text-gray-500 dark:text-gray-400">
-                {selected.channelName} · {formatPlanScheduleDate(selected.scheduledDate)}
-                {selected.planId ? ` · #${selected.planId}` : ""}
-              </p>
-            </>
+            <div className={`${LOG_WORK_ROW_GRID} pr-1`}>
+              <LogWorkPlanRowContent plan={selected} compact />
+            </div>
           ) : (
-            <span className="text-gray-500 dark:text-gray-400">Select a scheduled plan</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">Select an open plan</span>
           )}
         </div>
         <ChevronDown
-          size={16}
+          size={18}
           className={`flex-shrink-0 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
       </button>
 
       {open && !loading && (
-        <div className="absolute z-[80] mt-1.5 w-full overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
-          <div className="border-b border-gray-100 p-2 dark:border-gray-800">
+        <div className="absolute z-[200] mt-1.5 min-w-full overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
+          <div className="border-b border-gray-100 p-2.5 dark:border-gray-800">
             <div className="relative">
               <Search
-                size={14}
-                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
               />
               <input
                 type="text"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search by title, channel, or plan ID…"
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-8 pr-3 text-[11px] text-gray-900 placeholder:text-gray-400 focus:border-blue-400/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 autoFocus
               />
             </div>
           </div>
-          <ul
-            role="listbox"
-            className="max-h-72 overflow-y-auto p-1.5 custom-scrollbar"
+          <div
+            className={`${LOG_WORK_ROW_GRID} border-b border-gray-100 bg-gray-50/90 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400`}
           >
+            <span className="text-center">ID</span>
+            <span>Title</span>
+            <span>Channel</span>
+            <span className="text-center">Scheduled</span>
+            <span className="text-center">Long</span>
+            <span className="text-center">Short</span>
+          </div>
+          <ul role="listbox" className="max-h-80 overflow-y-auto p-1 custom-scrollbar">
             {filteredPlans.length === 0 ? (
-              <li className="px-3 py-6 text-center text-[11px] text-gray-500 dark:text-gray-400">
+              <li className="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                 {plans.length === 0
-                  ? "No scheduled open plans. Backlog and completed plans are hidden here."
+                  ? "No open plans available. Completed plans are hidden — add or reopen a plan on the Plans tab."
                   : "No plans match your search."}
               </li>
             ) : (
@@ -654,37 +974,13 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
                         onChange(String(plan._id));
                         setOpen(false);
                       }}
-                      className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors ${
+                      className={`${LOG_WORK_ROW_GRID} rounded-lg px-3 py-2.5 text-left transition-colors ${
                         isSelected
                           ? "bg-blue-50 ring-1 ring-blue-200/80 dark:bg-blue-950/30 dark:ring-blue-800/60"
                           : "hover:bg-gray-50 dark:hover:bg-gray-800/70"
                       }`}
                     >
-                      {plan.planId ? (
-                        <span className="mt-0.5 inline-flex flex-shrink-0 items-center rounded-full border border-blue-200/70 bg-blue-50 px-1.5 py-px text-[9px] font-bold tabular-nums text-blue-700 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-300">
-                          #{plan.planId}
-                        </span>
-                      ) : null}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[11px] font-semibold text-gray-900 dark:text-white">
-                          {plan.title}
-                        </p>
-                        <p className="mt-0.5 truncate text-[10px] text-gray-500 dark:text-gray-400">
-                          {plan.channelName} · {formatPlanScheduleDate(plan.scheduledDate)}
-                        </p>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                          <span
-                            className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold tabular-nums ${FORMAT_PILL.long}`}
-                          >
-                            L {plan.longPending}/{plan.longPlanned}
-                          </span>
-                          <span
-                            className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold tabular-nums ${FORMAT_PILL.short}`}
-                          >
-                            S {plan.shortPending}/{plan.shortPlanned}
-                          </span>
-                        </div>
-                      </div>
+                      <LogWorkPlanRowContent plan={plan} />
                     </button>
                   </li>
                 );
@@ -697,13 +993,18 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
   );
 }
 
-function LogWorkPanel({ filterParams, search, onLogged }) {
+function LogWorkPanel({ onLogged, isActive, refreshKey }) {
   const [planOptions, setPlanOptions] = useState([]);
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [longPending, setLongPending] = useState("");
   const [shortPending, setShortPending] = useState("");
   const [loadingOptions, setLoadingOptions] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [historyLogs, setHistoryLogs] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyHasOlder, setHistoryHasOlder] = useState(false);
 
   const selectedPlan = useMemo(
     () => planOptions.find((plan) => String(plan._id) === selectedPlanId),
@@ -712,32 +1013,95 @@ function LogWorkPanel({ filterParams, search, onLogged }) {
 
   const loadOptions = useCallback(async () => {
     setLoadingOptions(true);
+    setLoadError(null);
     try {
-      const params = new URLSearchParams(filterParams);
-      if (search.trim()) params.set("search", search.trim());
-      const response = await api.get(`/channel-plan-work-logs/options?${params.toString()}`);
-      setPlanOptions(response.data || []);
+      clearCacheByPrefix("/channel-plans");
+      clearCacheByPrefix("/channel-plan-work-logs");
+      const [scheduleRes, backlogRes] = await Promise.all([
+        httpClient.get("/channel-plans?bucket=schedule&limit=50&page=1"),
+        httpClient.get("/channel-plans?bucket=backlog&limit=50&page=1"),
+      ]);
+      const merged = [...flattenPlanGroups(scheduleRes), ...flattenPlanGroups(backlogRes)].filter(
+        (plan) => plan.status !== "completed",
+      );
+      const uniquePlans = [...new Map(merged.map((plan) => [String(plan._id), plan])).values()];
+      uniquePlans.sort((a, b) => {
+        const channelCompare = (a.channelId?.name || "").localeCompare(b.channelId?.name || "");
+        if (channelCompare !== 0) return channelCompare;
+        const dateA = a.scheduledDate ? new Date(a.scheduledDate).getTime() : 0;
+        const dateB = b.scheduledDate ? new Date(b.scheduledDate).getTime() : 0;
+        if (dateA && dateB) return dateB - dateA;
+        if (dateA) return -1;
+        if (dateB) return 1;
+        return 0;
+      });
+      setPlanOptions(uniquePlans.map(mapPlanToLogWorkOption));
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load plans");
+      const message = error.response?.data?.message || "Failed to load plans";
+      setLoadError(message);
+      setPlanOptions([]);
+      toast.error(message);
     } finally {
       setLoadingOptions(false);
     }
-  }, [filterParams, search]);
+  }, []);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => void loadOptions(), 250);
-    return () => window.clearTimeout(timer);
-  }, [loadOptions]);
-
-  useEffect(() => {
-    if (!selectedPlan) {
-      setLongPending("");
-      setShortPending("");
-      return;
+  const loadHistory = useCallback(async (page) => {
+    const range = historyRangeForPage(page);
+    setHistoryLoading(true);
+    try {
+      clearCacheByPrefix("/channel-plan-work-logs");
+      const params = new URLSearchParams({ from: range.from, to: range.to });
+      const [currentRes, olderRes] = await Promise.all([
+        httpClient.get(`/channel-plan-work-logs?${params.toString()}`),
+        httpClient.get(
+          `/channel-plan-work-logs?${new URLSearchParams({
+            from: historyRangeForPage(page + 1).from,
+            to: historyRangeForPage(page + 1).to,
+          }).toString()}`,
+        ),
+      ]);
+      setHistoryLogs(currentRes.data.logs || []);
+      setHistoryHasOlder((olderRes.data.logs || []).length > 0);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to load logged work");
+      setHistoryLogs([]);
+      setHistoryHasOlder(false);
+    } finally {
+      setHistoryLoading(false);
     }
-    setLongPending(String(selectedPlan.longPending ?? 0));
-    setShortPending(String(selectedPlan.shortPending ?? 0));
-  }, [selectedPlan]);
+  }, []);
+
+  useEffect(() => {
+    if (!isActive) return undefined;
+    const timer = window.setTimeout(() => void loadOptions(), 100);
+    return () => window.clearTimeout(timer);
+  }, [isActive, loadOptions]);
+
+  useEffect(() => {
+    if (!isActive) return undefined;
+    void loadHistory(historyPage);
+  }, [isActive, historyPage, refreshKey, loadHistory]);
+
+  useEffect(() => {
+    setLongPending("0");
+    setShortPending("0");
+  }, [selectedPlanId]);
+
+  const handleUpdateLog = async (logId, longPendingLogged, shortPendingLogged) => {
+    try {
+      clearCacheByPrefix("/channel-plan-work-logs");
+      await httpClient.patch(`/channel-plan-work-logs/${logId}`, {
+        longPendingLogged,
+        shortPendingLogged,
+      });
+      toast.success("Log updated");
+      await Promise.all([loadHistory(historyPage), onLogged?.()]);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update log");
+      throw error;
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -746,27 +1110,25 @@ function LogWorkPanel({ filterParams, search, onLogged }) {
       return;
     }
 
-    const longValue = longPending === "" ? undefined : Number(longPending);
-    const shortValue = shortPending === "" ? undefined : Number(shortPending);
-    if (
-      (longValue !== undefined && (!Number.isInteger(longValue) || longValue < 0)) ||
-      (shortValue !== undefined && (!Number.isInteger(shortValue) || shortValue < 0))
-    ) {
-      toast.error("Counts must be non-negative whole numbers");
-      return;
-    }
-    if (longValue === undefined && shortValue === undefined) {
-      toast.error("Enter at least one count");
+    const parsed = parseLoggedCounts(longPending, shortPending);
+    if (parsed.error) {
+      toast.error(parsed.error);
       return;
     }
 
     setSubmitting(true);
     try {
-      const body = { planId: selectedPlanId };
-      if (longValue !== undefined) body.longPendingLogged = longValue;
-      if (shortValue !== undefined) body.shortPendingLogged = shortValue;
-      await api.post("/channel-plan-work-logs", body);
+      await api.post("/channel-plan-work-logs", {
+        planId: selectedPlanId,
+        logDate: toTodayKey(),
+        longPendingLogged: parsed.longPendingLogged,
+        shortPendingLogged: parsed.shortPendingLogged,
+      });
       toast.success("Work logged for today");
+      setLongPending("0");
+      setShortPending("0");
+      setHistoryPage(1);
+      await Promise.all([loadOptions(), loadHistory(1)]);
       await onLogged?.();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to log work");
@@ -776,66 +1138,129 @@ function LogWorkPanel({ filterParams, search, onLogged }) {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto custom-scrollbar">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-visible">
       <form
         onSubmit={handleSubmit}
-        className="flex-shrink-0 overflow-hidden rounded-2xl border border-gray-100 bg-white/40 p-4 shadow-md backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/40"
+        className="relative z-20 flex-shrink-0 overflow-visible rounded-2xl border border-gray-100 bg-white/40 p-4 shadow-md backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/40"
       >
         <div className="mb-3 flex items-center gap-2">
           <ClipboardList size={16} className="text-blue-500" />
           <h2 className="text-sm font-black text-gray-900 dark:text-white">Log today&apos;s work</h2>
         </div>
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_7rem_7rem_auto] lg:items-end">
-          <LogWorkPlanPicker
-            plans={planOptions}
-            value={selectedPlanId}
-            onChange={setSelectedPlanId}
-            loading={loadingOptions}
-            disabled={loadingOptions}
-          />
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Long</span>
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={longPending}
-              onChange={(event) => setLongPending(event.target.value)}
-              disabled={!selectedPlanId}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              placeholder="0"
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+          <div className="min-w-0 flex-1">
+            <LogWorkPlanPicker
+              plans={planOptions}
+              value={selectedPlanId}
+              onChange={setSelectedPlanId}
+              loading={loadingOptions}
+              disabled={loadingOptions}
             />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">Short</span>
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={shortPending}
-              onChange={(event) => setShortPending(event.target.value)}
-              disabled={!selectedPlanId}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              placeholder="0"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={submitting || !selectedPlanId}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-black uppercase tracking-tight text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-700 hover:to-indigo-700 active:scale-95 disabled:opacity-50"
-          >
-            {submitting ? <Loader2 size={14} className="animate-spin" /> : null}
-            Submit
-          </button>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-end gap-3">
+            <label className="block w-[5.5rem]">
+              <span className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-gray-400">Long logged</span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={longPending}
+                onChange={(event) => setLongPending(event.target.value)}
+                disabled={!selectedPlanId}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                placeholder="0"
+              />
+            </label>
+            <label className="block w-[5.5rem]">
+              <span className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-gray-400">Short logged</span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={shortPending}
+                onChange={(event) => setShortPending(event.target.value)}
+                disabled={!selectedPlanId}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                placeholder="0"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={submitting || !selectedPlanId}
+              className="inline-flex h-[42px] items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-gradient-to-r from-blue-600 to-indigo-600 px-5 text-sm font-black uppercase tracking-tight text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-700 hover:to-indigo-700 active:scale-95 disabled:opacity-50"
+            >
+              {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
+              Submit
+            </button>
+          </div>
         </div>
+        {loadError && (
+          <p className="mt-2 text-[11px] font-medium text-red-600 dark:text-red-400">{loadError}</p>
+        )}
+        {!loadingOptions && !loadError && planOptions.length === 0 && (
+          <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">
+            No open plans found. Add a plan on the Plans tab or reopen a completed one.
+          </p>
+        )}
         {selectedPlan && (
-          <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
-            Current plan — L {selectedPlan.longPending} of {selectedPlan.longPlanned} · S{" "}
-            {selectedPlan.shortPending} of {selectedPlan.shortPlanned}
+          <p className="mt-2.5 text-xs text-gray-500 dark:text-gray-400">
+            Plan targets (unchanged by log) — Long {selectedPlan.longPlanned} planned · Short{" "}
+            {selectedPlan.shortPlanned} planned
           </p>
         )}
       </form>
 
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white/40 shadow-md backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/40">
+        <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+          <div>
+            <h3 className="text-sm font-black text-gray-900 dark:text-white">Recent logged work</h3>
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              Last {LOG_HISTORY_DAYS_PER_PAGE} days per page · newest first
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={historyLoading || historyPage <= 1}
+              onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}
+              className="rounded-lg border border-gray-200 p-1.5 text-gray-500 transition hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 dark:border-gray-600"
+              title="Newer dates"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="min-w-[5rem] text-center text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-300">
+              Page {historyPage}
+            </span>
+            <button
+              type="button"
+              disabled={historyLoading || !historyHasOlder}
+              onClick={() => setHistoryPage((page) => page + 1)}
+              className="rounded-lg border border-gray-200 p-1.5 text-gray-500 transition hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 dark:border-gray-600"
+              title="Older dates"
+            >
+              <ChevronRight size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => void loadHistory(historyPage)}
+              disabled={historyLoading}
+              className="rounded-lg border border-gray-200/60 bg-white/80 p-1.5 text-gray-500 shadow-sm transition-all hover:border-blue-300 hover:text-blue-600 dark:border-gray-700/60 dark:bg-gray-800/80"
+              title="Refresh history"
+            >
+              <RefreshCw size={14} className={historyLoading ? "animate-spin" : ""} />
+            </button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
+          <WorkLogEntriesList
+            logs={historyLogs}
+            loading={historyLoading}
+            emptyMessage="Submit a log above to see it here."
+            editable
+            onUpdateLog={handleUpdateLog}
+          />
+        </div>
+      </section>
     </div>
   );
 }
@@ -1197,7 +1622,7 @@ function HoursByMonthCharts({ data, activeChannelTab, loading }) {
   );
 }
 
-function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey }) {
+function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, isActive }) {
   const [allLogs, setAllLogs] = useState([]);
   const [summary, setSummary] = useState(null);
   const [hoursByMonth, setHoursByMonth] = useState(null);
@@ -1225,9 +1650,9 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey }
       clearCacheByPrefix("/channel-plans");
       const params = new URLSearchParams({ from: range.from, to: range.to });
       const [logsResponse, summaryResponse, hoursResponse] = await Promise.all([
-        api.get(`/channel-plan-work-logs?${params.toString()}`),
-        api.get(`/channel-plan-work-logs/summary?${params.toString()}`),
-        api.get(`/channel-plans/hours-by-month?${params.toString()}`),
+        httpClient.get(`/channel-plan-work-logs?${params.toString()}`),
+        httpClient.get(`/channel-plan-work-logs/summary?${params.toString()}`),
+        httpClient.get(`/channel-plans/hours-by-month?${params.toString()}`),
       ]);
       setAllLogs(logsResponse.data.logs || []);
       setSummary(summaryResponse.data);
@@ -1248,8 +1673,9 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey }
   }, [period, customFrom, customTo]);
 
   useEffect(() => {
+    if (!isActive && refreshKey === 0) return;
     void loadReport();
-  }, [loadReport, refreshKey]);
+  }, [loadReport, refreshKey, isActive]);
 
   const logs = useMemo(() => {
     if (activeChannelTab === "all") return allLogs;
@@ -1285,16 +1711,6 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey }
       })
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [allLogs, summary]);
-
-  const groupedByDate = useMemo(() => {
-    const map = new Map();
-    logs.forEach((log) => {
-      const key = new Date(log.logDate).toISOString().slice(0, 10);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(log);
-    });
-    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-  }, [logs]);
 
   const totalLong = logs.reduce((sum, log) => sum + (log.longPendingLogged || 0), 0);
   const totalShort = logs.reduce((sum, log) => sum + (log.shortPendingLogged || 0), 0);
@@ -1386,61 +1802,12 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey }
       </div>
 
       <section className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-gray-100 bg-white/40 shadow-md backdrop-blur-sm custom-scrollbar dark:border-gray-700 dark:bg-gray-900/40">
-        {loading ? (
-          <div className="flex min-h-48 flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
-            <Loader2 size={24} className="animate-spin text-blue-500" />
-            <span className="text-xs">Loading report…</span>
-          </div>
-        ) : groupedByDate.length === 0 ? (
-          <div className="flex min-h-48 flex-col items-center justify-center px-4 text-center">
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No logs in this period</p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Use Log Work to record pending long/short counts.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            {groupedByDate.map(([dateKey, dayLogs]) => (
-              <div key={dateKey}>
-                <div className="sticky top-0 z-10 border-b border-gray-100 bg-gray-50/95 px-3 py-1.5 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/95">
-                  <span className="text-[11px] font-black text-gray-800 dark:text-gray-200">
-                    {formatDateLabel(dateKey)}
-                  </span>
-                  <span className="ml-2 text-[10px] tabular-nums text-gray-500 dark:text-gray-400">
-                    {dayLogs.length} {dayLogs.length === 1 ? "entry" : "entries"}
-                  </span>
-                </div>
-                <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
-                  {dayLogs.map((log) => {
-                    const planIdNumber = log.planIdNumber ?? log.planId?.planId;
-                    const title = log.title || log.planId?.title || "—";
-                    const channel = log.channelName || log.channelId?.name || "—";
-                    return (
-                      <div
-                        key={log._id}
-                        className="flex items-center gap-1 px-2 py-0.5 text-[10px] hover:bg-gray-50/90 dark:hover:bg-gray-800/40"
-                      >
-                        <PlanIdPill planId={planIdNumber} />
-                        <span className="min-w-0 flex-1 truncate font-semibold text-gray-900 dark:text-white" title={title}>
-                          {title}
-                        </span>
-                        <span className="hidden max-w-[6rem] truncate text-gray-500 sm:inline dark:text-gray-400" title={channel}>
-                          {channel}
-                        </span>
-                        <span className={`inline-flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-px text-[9px] font-bold tabular-nums ${FORMAT_PILL.long} border-current`}>
-                          L {log.longPendingLogged}
-                        </span>
-                        <span className={`inline-flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-px text-[9px] font-bold tabular-nums ${FORMAT_PILL.short} border-current`}>
-                          S {log.shortPendingLogged}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <WorkLogEntriesList
+          logs={logs}
+          loading={loading}
+          compact
+          emptyMessage="Use Log Work to record long/short counts for today."
+        />
       </section>
     </div>
   );
@@ -1615,6 +1982,7 @@ export default function ChannelPlanner() {
     setPageTab(tab);
     setActiveChannelTab("all");
     setDateGroupPage(1);
+    if (tab === "log-work") setSearch("");
   };
 
   const handleSaved = async () => {
@@ -1834,15 +2202,11 @@ export default function ChannelPlanner() {
         </ChannelPlannerTabPanel>
 
         <ChannelPlannerTabPanel tabId="log-work" activeTab={pageTab}>
-          <div className="mb-2 sm:hidden">
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Search plans..."
-              onClear={() => setSearch("")}
-            />
-          </div>
-          <LogWorkPanel filterParams={filterParams} search={search} onLogged={handleWorkLogged} />
+          <LogWorkPanel
+            isActive={pageTab === "log-work"}
+            refreshKey={reportRefreshKey}
+            onLogged={handleWorkLogged}
+          />
         </ChannelPlannerTabPanel>
 
         <ChannelPlannerTabPanel tabId="report" activeTab={pageTab}>
@@ -1850,6 +2214,7 @@ export default function ChannelPlanner() {
             activeChannelTab={activeChannelTab}
             onChannelTabChange={changeChannelTab}
             refreshKey={reportRefreshKey}
+            isActive={pageTab === "report"}
           />
         </ChannelPlannerTabPanel>
       </div>

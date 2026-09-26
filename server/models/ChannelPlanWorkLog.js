@@ -3,9 +3,9 @@ const mongoose = require("mongoose");
 /**
  * Daily work log for a channel plan.
  *
- * `longPendingLogged` / `shortPendingLogged` store the **absolute pending count**
- * the user reported at submit time (remaining items = planned − completed as entered),
- * not a delta from the previous log.
+ * `longPendingLogged` / `shortPendingLogged` store the long/short counts the user
+ * logged for that calendar day. These are independent from Add Plan video counts
+ * on ChannelPlan (longPlanned, shortPlanned, etc.).
  */
 const channelPlanWorkLogSchema = new mongoose.Schema(
   {
@@ -22,6 +22,8 @@ const channelPlanWorkLogSchema = new mongoose.Schema(
     title: { type: String, default: "" },
     channelId: { type: mongoose.Schema.Types.ObjectId, ref: "Channel" },
     channelName: { type: String, default: "" },
+    /** Plan scheduled date at time of log (snapshot for history display). */
+    planScheduledDate: { type: Date, default: null },
     loggedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company" },
   },
