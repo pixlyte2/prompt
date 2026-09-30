@@ -80,7 +80,7 @@ function buildOptionLabel(plan) {
 }
 
 function parsePending(value, field) {
-  if (value === undefined || value === null || value === "") return undefined;
+  if (value === undefined || value === null || value === "") return 0;
   const number = Number(value);
   if (!Number.isInteger(number) || number < 0) {
     const error = new Error(`${field} must be a non-negative integer`);
@@ -88,6 +88,29 @@ function parsePending(value, field) {
     throw error;
   }
   return number;
+}
+
+function parseBooleanFlag(value) {
+  if (value === undefined || value === null || value === "") return false;
+  if (typeof value === "boolean") return value;
+  const normalized = String(value).trim().toLowerCase();
+  return normalized === "true" || normalized === "1" || normalized === "yes";
+}
+
+async function syncPlanOutputFromLogs(planObjectId) {
+  const logs = await ChannelPlanWorkLog.find({ planId: planObjectId }).lean();
+  const longCompleted = logs.reduce((sum, log) => sum + (log.longPendingLogged || 0), 0);
+  const shortCompleted = logs.reduce((sum, log) => sum + (log.shortPendingLogged || 0), 0);
+  const firstCutFromLogs = logs.some((log) => log.firstCutLogged);
+
+  const plan = await ChannelPlan.findById(planObjectId);
+  if (!plan) return null;
+
+  plan.longCompleted = longCompleted;
+  plan.shortCompleted = shortCompleted;
+  if (firstCutFromLogs) plan.firstCut = true;
+  await plan.save();
+  return plan;
 }
 
 function sendError(res, label, error) {
@@ -366,14 +389,10 @@ exports.upsertToday = async (req, res) => {
 
     const longPendingLogged = parsePending(req.body.longPendingLogged, "longPendingLogged");
     const shortPendingLogged = parsePending(req.body.shortPendingLogged, "shortPendingLogged");
-    if (longPendingLogged === undefined || shortPendingLogged === undefined) {
+    const firstCutLogged = parseBooleanFlag(req.body.firstCutLogged);
+    if (longPendingLogged === 0 && shortPendingLogged === 0 && !firstCutLogged) {
       return res.status(400).json({
-        message: "Provide longPendingLogged and shortPendingLogged",
-      });
-    }
-    if (longPendingLogged === 0 && shortPendingLogged === 0) {
-      return res.status(400).json({
-        message: "At least one logged count must be greater than zero",
+        message: "Enter at least one long/short count or mark first cut ready",
       });
     }
 
@@ -385,6 +404,7 @@ exports.upsertToday = async (req, res) => {
       logDate,
       longPendingLogged,
       shortPendingLogged,
+      firstCutLogged,
       planIdNumber: plan.planId,
       title: plan.title,
       channelId: plan.channelId?._id || plan.channelId,
@@ -406,6 +426,8 @@ exports.upsertToday = async (req, res) => {
       .populate("loggedBy", "name email")
       .lean();
 
+    await syncPlanOutputFromLogs(plan._id);
+
     return res.status(existing ? 200 : 201).json(log);
   } catch (error) {
     return sendError(res, "upsertChannelPlanWorkLog", error);
@@ -421,14 +443,10 @@ exports.updateLog = async (req, res) => {
 
     const longPendingLogged = parsePending(req.body.longPendingLogged, "longPendingLogged");
     const shortPendingLogged = parsePending(req.body.shortPendingLogged, "shortPendingLogged");
-    if (longPendingLogged === undefined || shortPendingLogged === undefined) {
+    const firstCutLogged = parseBooleanFlag(req.body.firstCutLogged);
+    if (longPendingLogged === 0 && shortPendingLogged === 0 && !firstCutLogged) {
       return res.status(400).json({
-        message: "Provide longPendingLogged and shortPendingLogged",
-      });
-    }
-    if (longPendingLogged === 0 && shortPendingLogged === 0) {
-      return res.status(400).json({
-        message: "At least one logged count must be greater than zero",
+        message: "Enter at least one long/short count or mark first cut ready",
       });
     }
 
@@ -442,8 +460,11 @@ exports.updateLog = async (req, res) => {
 
     log.longPendingLogged = longPendingLogged;
     log.shortPendingLogged = shortPendingLogged;
+    log.firstCutLogged = firstCutLogged;
     log.loggedBy = req.user._id || req.user.id;
     await log.save();
+
+    await syncPlanOutputFromLogs(log.planId);
 
     const updated = await ChannelPlanWorkLog.findById(log._id)
       .populate("planId", "planId title scheduledDate")
@@ -454,5 +475,30 @@ exports.updateLog = async (req, res) => {
     return res.json(updated);
   } catch (error) {
     return sendError(res, "updateChannelPlanWorkLog", error);
+  }
+};
+
+exports.deleteLog = async (req, res) => {
+  try {
+    const logId = req.params.id;
+    if (!logId || !mongoose.Types.ObjectId.isValid(logId)) {
+      return res.status(400).json({ message: "A valid log id is required" });
+    }
+
+    const log = await ChannelPlanWorkLog.findOne({
+      _id: logId,
+      companyId: req.user.companyId,
+    });
+    if (!log) {
+      return res.status(404).json({ message: "Work log not found" });
+    }
+
+    const planId = log.planId;
+    await log.deleteOne();
+    await syncPlanOutputFromLogs(planId);
+
+    return res.json({ message: "Work log deleted" });
+  } catch (error) {
+    return sendError(res, "deleteChannelPlanWorkLog", error);
   }
 };

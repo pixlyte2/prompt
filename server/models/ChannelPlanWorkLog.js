@@ -16,8 +16,10 @@ const channelPlanWorkLogSchema = new mongoose.Schema(
     },
     /** Calendar day of the log; normalized to local start-of-day. */
     logDate: { type: Date, required: true },
-    longPendingLogged: { type: Number, min: 0, required: true },
-    shortPendingLogged: { type: Number, min: 0, required: true },
+    longPendingLogged: { type: Number, min: 0, default: 0 },
+    shortPendingLogged: { type: Number, min: 0, default: 0 },
+    /** When true, marks the plan's first cut as ready for that log day. */
+    firstCutLogged: { type: Boolean, default: false },
     planIdNumber: { type: Number },
     title: { type: String, default: "" },
     channelId: { type: mongoose.Schema.Types.ObjectId, ref: "Channel" },

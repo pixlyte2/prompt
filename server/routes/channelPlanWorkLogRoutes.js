@@ -11,5 +11,6 @@ router.get("/summary", protect, adminOnly, controller.getSummary);
 router.get("/", protect, adminOnly, controller.listLogs);
 router.post("/", protect, adminOnly, controller.upsertToday);
 router.patch("/:id", protect, adminOnly, controller.updateLog);
+router.delete("/:id", protect, adminOnly, controller.deleteLog);
 
 module.exports = router;

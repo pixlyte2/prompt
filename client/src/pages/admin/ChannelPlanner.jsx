@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   BarChart3,
   CalendarDays,
@@ -39,18 +40,32 @@ import { clearCacheByPrefix } from "../../utils/cache";
 import ChannelPlanModal from "../../components/ChannelPlanModal";
 import ConfirmModal from "../../components/ConfirmModal";
 
-const DATE_GROUP_PAGE_SIZE = 5;
+const DATE_GROUP_PAGE_SIZE = 10;
 const LOG_HISTORY_DAYS_PER_PAGE = 10;
 
 const REPORT_PERIODS = [
-  { value: "current-week", label: "This week" },
-  { value: "last-3-weeks", label: "Last 3 weeks" },
-  { value: "current-month", label: "This month" },
-  { value: "last-12-months", label: "Last 12 months" },
+  { value: "current-week", label: "This week", shortLabel: "Week" },
+  { value: "last-3-weeks", label: "Last 3 weeks", shortLabel: "3 wks" },
+  { value: "current-month", label: "This month", shortLabel: "Month" },
+  { value: "last-12-months", label: "Last 12 months", shortLabel: "12 mo" },
   { value: "custom", label: "Custom" },
 ];
 
 const FOOTAGE_CHART_COLOR = "#2C4BFF";
+
+function FootageChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const hours = Number(payload[0]?.value ?? 0);
+  const minutes = Math.round(hours * 60);
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] shadow-lg dark:border-gray-700 dark:bg-gray-900">
+      <p className="font-semibold text-gray-900 dark:text-white">{label}</p>
+      <p className="mt-0.5 font-medium tabular-nums text-primary-600 dark:text-primary-400">
+        Footage: {hours.toFixed(1)}h ({minutes} min)
+      </p>
+    </div>
+  );
+}
 
 const PAGE_TABS = [
   { id: "plans", label: "Plans", shortLabel: "Plans", icon: CalendarDays },
@@ -77,31 +92,32 @@ const NOTES_PILL =
 
 function FilterSegment({ options, value, onChange, variant = "default" }) {
   const activeVariants = {
-    default: "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm",
+    default: "bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm",
     success: "bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm",
   };
 
   return (
-    <div className="inline-flex rounded-xl border border-gray-200/50 bg-gray-100/80 p-1 backdrop-blur-md dark:border-gray-700/50 dark:bg-gray-800/80">
+    <div className="inline-flex max-w-full min-w-0 overflow-x-auto scrollbar-hide rounded-xl border border-gray-200/50 bg-gray-100/80 p-1 dark:border-gray-700/50 dark:bg-gray-800/80">
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`relative flex items-center justify-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-all duration-300 sm:px-3.5 sm:py-1.5 sm:text-xs ${
+          className={`relative flex min-h-9 flex-shrink-0 items-center justify-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold touch-manipulation transition-colors sm:min-h-0 sm:px-3.5 sm:py-1.5 sm:text-xs ${
             value === option.value
               ? activeVariants[variant]
               : "text-gray-600 hover:bg-gray-200/50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200"
           }`}
         >
-          {option.label}
+          <span className="sm:hidden">{option.shortLabel ?? option.label}</span>
+          <span className="hidden sm:inline">{option.label}</span>
           {option.count !== undefined && option.count > 0 && (
             <span
               className={`ml-0.5 rounded-md px-1 py-0.5 text-[9px] font-bold tabular-nums ${
                 value === option.value
                   ? variant === "success"
                     ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                    : "bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                    : "bg-primary-50 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
                   : "bg-gray-200 text-gray-500 dark:bg-gray-600 dark:text-gray-400"
               }`}
             >
@@ -119,10 +135,10 @@ function FilterChip({ active, onClick, children, count }) {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-semibold tracking-wide transition-all duration-300 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs ${
+      className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[10px] font-semibold tracking-wide touch-manipulation transition-colors sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs ${
         active
-          ? "scale-[1.02] border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25"
-          : "border-gray-200/80 bg-white/60 text-gray-700 backdrop-blur-md hover:-translate-y-0.5 hover:border-blue-400/50 hover:bg-white hover:shadow-md dark:border-gray-700/80 dark:bg-gray-800/50 dark:text-gray-200 dark:hover:border-blue-500/50 dark:hover:bg-gray-800"
+          ? "border-transparent bg-primary-500 text-white shadow-sm"
+          : "border-gray-200/80 bg-white/60 text-gray-700 hover:border-primary-400/50 hover:bg-white hover:shadow-sm dark:border-gray-700/80 dark:bg-gray-800/50 dark:text-gray-200 dark:hover:border-primary-500/50 dark:hover:bg-gray-800"
       }`}
     >
       {children}
@@ -141,22 +157,23 @@ function FilterChip({ active, onClick, children, count }) {
 
 function SearchInput({ value, onChange, placeholder, onClear }) {
   return (
-    <div className="group relative min-w-[200px] max-w-md flex-1">
+    <div className="group relative min-w-0 w-full max-w-md flex-1">
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-        <Search size={14} className="text-gray-400 transition-colors duration-300 group-focus-within:text-blue-500" />
+        <Search size={14} className="text-gray-400 transition-colors duration-300 group-focus-within:text-primary-500" />
       </div>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-200/60 bg-white/60 py-1 pl-7 pr-7 text-[10px] text-gray-900 shadow-sm backdrop-blur-md transition-all duration-300 placeholder:text-gray-400 focus:border-blue-400/50 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700/60 dark:bg-gray-800/60 dark:text-white sm:rounded-xl sm:text-xs"
+        className="buffer-input min-h-10 w-full py-2 pl-8 pr-8 text-sm sm:min-h-0 sm:rounded-xl sm:py-1 sm:pl-7 sm:pr-7 sm:text-xs"
       />
       {value && (
         <button
           type="button"
           onClick={onClear}
-          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 transition-colors duration-200 hover:text-gray-600 dark:hover:text-gray-300"
+          className="absolute inset-y-0 right-0 flex min-w-10 items-center justify-center pr-1 text-gray-400 transition-colors duration-200 hover:text-gray-600 dark:hover:text-gray-300 sm:min-w-0 sm:pr-3"
+          aria-label="Clear search"
         >
           <X size={14} />
         </button>
@@ -165,22 +182,22 @@ function SearchInput({ value, onChange, placeholder, onClear }) {
   );
 }
 
-function FilterLabel({ icon: Icon, children }) {
+function FilterLabel({ icon: Icon, children, className = "" }) {
   return (
-    <div className="flex flex-shrink-0 items-center gap-1.5 px-1 text-[11px] font-bold tracking-tight text-gray-700 dark:text-gray-300 sm:px-1.5 sm:text-xs">
-      {Icon && <Icon size={12} className="h-3 w-3 text-blue-500 drop-shadow-sm dark:text-blue-400 sm:h-3.5 sm:w-3.5" />}
-      <span className="whitespace-nowrap bg-gradient-to-r from-gray-700 to-gray-500 bg-clip-text text-transparent dark:from-gray-100 dark:to-gray-400">
+    <div className={`flex flex-shrink-0 items-center gap-1.5 px-1 text-[11px] font-bold tracking-tight text-gray-700 dark:text-gray-300 sm:px-1.5 sm:text-xs ${className}`}>
+      {Icon && <Icon size={12} className="h-3 w-3 text-primary-500 dark:text-primary-400 sm:h-3.5 sm:w-3.5" />}
+      <span className="whitespace-nowrap text-gray-700 dark:text-gray-300">
         {children}
       </span>
     </div>
   );
 }
 
-function StatCard({ icon: Icon, label, count, color }) {
+function StatCard({ icon, label, count, color }) {
   return (
     <div className="flex min-w-0 items-center gap-1.5 rounded border-none bg-transparent transition-opacity hover:opacity-80">
       <div className={`flex h-4.5 w-4.5 flex-shrink-0 items-center justify-center rounded ring-1 ring-inset ring-white/10 ${color}`}>
-        <Icon size={11} />
+        {icon ? createElement(icon, { size: 11 }) : null}
       </div>
       <div className="flex min-w-0 items-baseline gap-1">
         <span className="text-[13px] font-black tabular-nums leading-none text-gray-900 dark:text-white sm:text-[15px]">
@@ -201,7 +218,11 @@ function ChannelPlannerTabPanel({ tabId, activeTab, children }) {
       role="tabpanel"
       hidden={!isActive}
       aria-hidden={!isActive}
-      className={isActive ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "hidden"}
+      className={
+        isActive
+          ? "flex flex-col max-sm:h-auto max-sm:flex-none sm:min-h-0 sm:flex-1 sm:overflow-hidden"
+          : "hidden"
+      }
     >
       {children}
     </div>
@@ -340,19 +361,28 @@ function NotesPill({ notes, onOpen }) {
   );
 }
 
-function CountPill({ label, planned }) {
-  const total = Math.max(0, Number(planned) || 0);
+function CountPill({ label, planned, logged = 0 }) {
+  const plannedN = Math.max(0, Number(planned) || 0);
+  const loggedN = Math.max(0, Number(logged) || 0);
   const formatClass = label === "L" ? FORMAT_PILL.long : FORMAT_PILL.short;
+  const tone =
+    plannedN > 0 && loggedN >= plannedN
+      ? COUNT_TONES.complete.pill
+      : loggedN > 0
+        ? `${formatClass} border-current`
+        : plannedN > 0
+          ? `${formatClass} border-current`
+          : COUNT_TONES.idle.pill;
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold shadow-sm sm:px-2.5 sm:py-1 sm:text-[10px] min-h-[22px] sm:min-h-[26px] ${ROW_PILL_SIZES.count} ${
-        total > 0 ? `${formatClass} border-current` : COUNT_TONES.idle.pill
-      }`}
-      title={`${label === "L" ? "Long" : "Short"} planned: ${total}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold shadow-sm sm:px-2.5 sm:py-1 sm:text-[10px] min-h-[22px] sm:min-h-[26px] ${ROW_PILL_SIZES.count} ${tone}`}
+      title={`${label === "L" ? "Long" : "Short"}: ${loggedN} logged / ${plannedN} planned`}
     >
       <span className="opacity-70">{label}</span>
-      <span className="tabular-nums">{total}</span>
+      <span className="tabular-nums">
+        {loggedN}/{plannedN}
+      </span>
     </span>
   );
 }
@@ -376,29 +406,31 @@ function FirstCutBadge({ ready }) {
 function ChannelPlanRow({ plan, onEdit, onDelete, onToggleStatus, onThumbnail, onOpenNotes }) {
   const isCompleted = plan.status === "completed";
   const notes = String(plan.notes || "").trim();
-  const channelLabel = [plan.channelId?.name || "Unknown", plan.assignedTo?.name].filter(Boolean).join(" · ");
+  const channelName = plan.channelId?.name || "Unknown";
+  const assigneeName = plan.assignedTo?.name;
+  const channelLabel = [channelName, assigneeName].filter(Boolean).join(" · ");
 
   return (
-    <div className="group flex flex-col gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2 transition-all duration-300 hover:border-blue-400/60 hover:bg-blue-100/70 hover:shadow-sm dark:border-gray-700/50 dark:bg-gray-800/80 dark:hover:border-blue-700/60 dark:hover:bg-blue-900/40 sm:flex-row sm:items-center sm:gap-2 sm:py-1">
+    <div className="group flex flex-col gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2.5 transition-colors hover:border-primary-400/60 hover:bg-primary-50/70 hover:shadow-sm dark:border-gray-700/50 dark:bg-gray-800/80 dark:hover:border-primary-700/60 dark:hover:bg-primary-900/40 sm:flex-row sm:items-center sm:gap-2 sm:py-1">
       <div className="flex min-w-0 items-center gap-2 sm:contents">
         <button
           type="button"
           onClick={() => onToggleStatus(plan)}
-          className={`flex-shrink-0 rounded-full transition-colors ${
+          className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full touch-manipulation transition-colors sm:h-auto sm:w-auto ${
             isCompleted
               ? "text-emerald-500 hover:text-amber-500"
               : "text-gray-300 hover:text-emerald-500 dark:text-gray-600 dark:hover:text-emerald-400"
           }`}
           title={isCompleted ? "Reopen plan" : "Mark completed"}
         >
-          {isCompleted ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+          {isCompleted ? <CheckCircle2 size={22} /> : <Circle size={22} />}
         </button>
 
-        <div className="order-last ml-auto flex flex-shrink-0 items-center gap-0.5 opacity-60 transition-opacity group-hover:opacity-100 sm:order-none sm:ml-0 sm:opacity-40">
+        <div className="order-last ml-auto flex flex-shrink-0 items-center gap-0.5 sm:order-none sm:ml-0 sm:opacity-40 sm:transition-opacity sm:group-hover:opacity-100">
           <button
             type="button"
             onClick={() => onEdit(plan)}
-            className="rounded-lg p-1 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/40 dark:hover:text-blue-400"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 touch-manipulation transition-colors hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/40 dark:hover:text-primary-400 sm:h-auto sm:w-auto sm:p-1"
             title="Edit plan"
           >
             <Pencil className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
@@ -406,7 +438,7 @@ function ChannelPlanRow({ plan, onEdit, onDelete, onToggleStatus, onThumbnail, o
           <button
             type="button"
             onClick={() => onDelete(plan)}
-            className="rounded-lg p-1 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 touch-manipulation transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30 dark:hover:text-red-400 sm:h-auto sm:w-auto sm:p-1"
             title="Delete plan"
           >
             <Trash2 className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
@@ -419,7 +451,7 @@ function ChannelPlanRow({ plan, onEdit, onDelete, onToggleStatus, onThumbnail, o
           type="button"
           disabled={!plan.thumbnail}
           onClick={() => plan.thumbnail && onThumbnail(plan.thumbnail)}
-          className="flex h-6 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border border-gray-200 bg-gray-100 shadow-sm disabled:cursor-default dark:border-gray-700 dark:bg-gray-700/50 sm:h-7 sm:w-12"
+          className="flex h-8 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border border-gray-200 bg-gray-100 shadow-sm disabled:cursor-default dark:border-gray-700 dark:bg-gray-700/50 sm:h-7 sm:w-12"
           title={plan.thumbnail ? "View thumbnail" : "No thumbnail"}
         >
           {plan.thumbnail ? (
@@ -431,21 +463,24 @@ function ChannelPlanRow({ plan, onEdit, onDelete, onToggleStatus, onThumbnail, o
 
         <div className="min-w-0 flex-1">
           <p
-            className={`truncate text-[11px] font-semibold leading-tight sm:text-xs ${
+            className={`truncate text-[13px] font-semibold leading-tight sm:text-xs ${
               isCompleted ? "text-gray-400 line-through dark:text-gray-500" : "text-gray-900 dark:text-white"
             }`}
             title={`${plan.title}${channelLabel ? ` · ${channelLabel}` : ""}`}
           >
             {plan.title}
-            <span className="font-normal text-gray-400 dark:text-gray-500"> · {channelLabel}</span>
+            <span className="hidden font-normal text-gray-400 dark:text-gray-500 sm:inline"> · {channelLabel}</span>
+          </p>
+          <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400 sm:hidden" title={channelLabel}>
+            {channelLabel}
           </p>
         </div>
       </div>
 
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 pl-8 sm:contents sm:pl-0">
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 pl-12 sm:contents sm:pl-0">
         <NotesPill notes={notes} onOpen={() => onOpenNotes(plan)} />
-        <CountPill label="L" planned={plan.longPlanned} />
-        <CountPill label="S" planned={plan.shortPlanned} />
+        <CountPill label="L" planned={plan.longPlanned} logged={plan.longCompleted} />
+        <CountPill label="S" planned={plan.shortPlanned} logged={plan.shortCompleted} />
         <FirstCutBadge ready={Boolean(plan.firstCut)} />
       </div>
     </div>
@@ -454,7 +489,7 @@ function ChannelPlanRow({ plan, onEdit, onDelete, onToggleStatus, onThumbnail, o
 
 function DateGroup(props) {
   const { group, viewMode } = props;
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const totals = group.totals;
   const rawCat = viewMode === "completed" ? "completed" : getDateCategory(group.date);
   const cat =
@@ -507,20 +542,20 @@ function DateGroup(props) {
             {group.tasks.length}
           </span>
         </div>
-        <div className="hidden flex-shrink-0 items-center gap-2 sm:flex">
-          <span className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200/50 bg-white/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-gray-500 shadow-sm dark:border-gray-700/50 dark:bg-gray-800/60 dark:text-gray-400">
+        <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
+          <span className="inline-flex items-center gap-1 rounded-lg border border-gray-200/50 bg-white/60 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-gray-500 sm:gap-1.5 sm:rounded-xl sm:px-2.5 sm:py-1 sm:text-[10px] dark:border-gray-700/50 dark:bg-gray-800/60 dark:text-gray-400">
             {totals.longPlanned > 0 && (
-              <span className={`rounded-lg px-1.5 py-0.5 font-bold tabular-nums ${FORMAT_PILL.long}`}>
-                {totals.longPlanned}L
+              <span className={`rounded-md px-1 py-0.5 font-bold tabular-nums sm:rounded-lg sm:px-1.5 ${FORMAT_PILL.long}`}>
+                {totals.longCompleted || 0}/{totals.longPlanned}L
               </span>
             )}
             {totals.shortPlanned > 0 && (
-              <span className={`rounded-lg px-1.5 py-0.5 font-bold tabular-nums ${FORMAT_PILL.short}`}>
-                {totals.shortPlanned}S
+              <span className={`rounded-md px-1 py-0.5 font-bold tabular-nums sm:rounded-lg sm:px-1.5 ${FORMAT_PILL.short}`}>
+                {totals.shortCompleted || 0}/{totals.shortPlanned}S
               </span>
             )}
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-              {totals.firstCut || 0} ready
+            <span className="text-[9px] font-bold text-emerald-600 sm:text-[10px] dark:text-emerald-400">
+              {totals.firstCut || 0} <span className="hidden sm:inline">ready</span>
             </span>
           </span>
         </div>
@@ -571,15 +606,9 @@ function formatPlanScheduleDate(scheduledDate, isBacklog = false) {
 }
 
 const LOG_WORK_ROW_GRID =
-  "grid w-full grid-cols-[2.75rem_minmax(0,1.4fr)_minmax(0,1fr)_5.5rem_3.25rem_3.25rem] items-center gap-x-2.5";
+  "w-full grid-cols-[2.75rem_minmax(0,1.4fr)_minmax(0,1fr)_5.5rem_3.25rem_3.25rem] items-center gap-x-2.5";
 
-const LOG_HISTORY_ROW_GRID =
-  "grid w-full grid-cols-[2.75rem_minmax(0,1.2fr)_minmax(0,0.85fr)_5.5rem_3.25rem_3.25rem] items-center gap-x-2";
-
-const LOG_HISTORY_ROW_GRID_EDITABLE =
-  "grid w-full grid-cols-[2.75rem_minmax(0,1.1fr)_minmax(0,0.8fr)_5rem_3rem_3rem_2rem] items-center gap-x-2";
-
-function parseLoggedCounts(longValue, shortValue) {
+function parseLoggedCounts(longValue, shortValue, firstCutLogged = false) {
   const longPendingLogged = longValue === "" ? 0 : Number(longValue);
   const shortPendingLogged = shortValue === "" ? 0 : Number(shortValue);
   if (
@@ -590,19 +619,54 @@ function parseLoggedCounts(longValue, shortValue) {
   ) {
     return { error: "Counts must be non-negative whole numbers" };
   }
-  if (longPendingLogged === 0 && shortPendingLogged === 0) {
-    return { error: "Enter at least one count greater than zero" };
+  if (longPendingLogged === 0 && shortPendingLogged === 0 && !firstCutLogged) {
+    return { error: "Enter at least one count or mark first cut ready" };
   }
-  return { longPendingLogged, shortPendingLogged };
+  return { longPendingLogged, shortPendingLogged, firstCutLogged: Boolean(firstCutLogged) };
 }
 
-function LogWorkPlanRowContent({ plan, compact = false }) {
-  const titleClass = compact
-    ? "truncate text-sm font-semibold text-gray-900 dark:text-white"
-    : "truncate text-sm font-semibold text-gray-900 dark:text-white";
-  const metaClass = compact
-    ? "truncate text-xs text-gray-500 dark:text-gray-400"
-    : "truncate text-xs text-gray-500 dark:text-gray-400";
+function LogWorkPlanMobileCard({ plan }) {
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <div className="flex items-center gap-2">
+        {plan.planId ? (
+          <span className="inline-flex items-center rounded-full border border-blue-200/70 bg-blue-50 px-2 py-0.5 text-[11px] font-bold tabular-nums text-blue-700 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-300">
+            #{plan.planId}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
+        <span className="min-w-0 truncate text-sm font-semibold text-gray-900 dark:text-white" title={plan.title}>
+          {plan.title}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="min-w-0 truncate text-xs text-gray-500 dark:text-gray-400" title={plan.channelName}>
+          {plan.channelName}
+        </span>
+        {plan.isBacklog ? (
+          <span className="inline-flex rounded-md border border-amber-200/80 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
+            Backlog
+          </span>
+        ) : (
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {formatPlanScheduleDate(plan.scheduledDate, plan.isBacklog)}
+          </span>
+        )}
+        <span className={`inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${FORMAT_PILL.long}`}>
+          {plan.longPending}/{plan.longPlanned} L
+        </span>
+        <span className={`inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${FORMAT_PILL.short}`}>
+          {plan.shortPending}/{plan.shortPlanned} S
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function LogWorkPlanRowContent({ plan }) {
+  const titleClass = "truncate text-sm font-semibold text-gray-900 dark:text-white";
+  const metaClass = "truncate text-xs text-gray-500 dark:text-gray-400";
 
   return (
     <>
@@ -646,43 +710,41 @@ function LogWorkPlanRowContent({ plan, compact = false }) {
   );
 }
 
-function WorkLogEntryRow({ log, compact = false, editable = false, onUpdate }) {
+function WorkLogEntryRow({ log, editable = false, onUpdate, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [longValue, setLongValue] = useState(String(log.longPendingLogged ?? 0));
   const [shortValue, setShortValue] = useState(String(log.shortPendingLogged ?? 0));
+  const [firstCutValue, setFirstCutValue] = useState(Boolean(log.firstCutLogged));
   const [saving, setSaving] = useState(false);
 
   const planIdNumber = log.planIdNumber ?? log.planId?.planId;
   const title = log.title || log.planId?.title || "—";
   const channel = log.channelName || log.channelId?.name || "—";
-  const scheduledDate = log.planScheduledDate ?? log.planId?.scheduledDate;
-  const isBacklog = !scheduledDate;
-
-  const textSize = compact ? "text-[10px]" : "text-xs";
-  const rowGrid = editable ? LOG_HISTORY_ROW_GRID_EDITABLE : LOG_HISTORY_ROW_GRID;
 
   useEffect(() => {
     if (!editing) {
       setLongValue(String(log.longPendingLogged ?? 0));
       setShortValue(String(log.shortPendingLogged ?? 0));
+      setFirstCutValue(Boolean(log.firstCutLogged));
     }
-  }, [log.longPendingLogged, log.shortPendingLogged, editing]);
+  }, [log.longPendingLogged, log.shortPendingLogged, log.firstCutLogged, editing]);
 
   const cancelEdit = () => {
     setLongValue(String(log.longPendingLogged ?? 0));
     setShortValue(String(log.shortPendingLogged ?? 0));
+    setFirstCutValue(Boolean(log.firstCutLogged));
     setEditing(false);
   };
 
   const handleSave = async () => {
-    const parsed = parseLoggedCounts(longValue, shortValue);
+    const parsed = parseLoggedCounts(longValue, shortValue, firstCutValue);
     if (parsed.error) {
       toast.error(parsed.error);
       return;
     }
     setSaving(true);
     try {
-      await onUpdate?.(log._id, parsed.longPendingLogged, parsed.shortPendingLogged);
+      await onUpdate?.(log._id, parsed);
       setEditing(false);
     } catch {
       // Parent shows toast
@@ -692,106 +754,202 @@ function WorkLogEntryRow({ log, compact = false, editable = false, onUpdate }) {
   };
 
   const inputClass =
-    "w-full rounded-md border border-gray-200 bg-white px-1.5 py-1 text-center text-[11px] font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-600 dark:bg-gray-800 dark:text-white";
+    "w-full rounded-md border border-gray-200 bg-white px-1.5 py-1.5 text-center text-[11px] font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-gray-600 dark:bg-gray-800 dark:text-white";
 
   return (
-    <div className={`${rowGrid} px-3 py-2 ${textSize} hover:bg-gray-50/90 dark:hover:bg-gray-800/40`}>
-      <PlanIdPill planId={planIdNumber} />
-      <span className="min-w-0 truncate font-semibold text-gray-900 dark:text-white" title={title}>
-        {title}
-      </span>
-      <span className="min-w-0 truncate text-gray-500 dark:text-gray-400" title={channel}>
-        {channel}
-      </span>
-      {isBacklog ? (
-        <span className="inline-flex justify-center rounded-md border border-amber-200/80 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
-          Backlog
+    <div className="group flex flex-col gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2.5 transition-colors hover:border-primary-400/60 hover:bg-primary-50/70 hover:shadow-sm dark:border-gray-700/50 dark:bg-gray-800/80 dark:hover:border-primary-700/60 dark:hover:bg-primary-900/40 sm:flex-row sm:items-center sm:gap-2 sm:py-1">
+      <div className="flex min-w-0 items-center gap-2 sm:contents">
+        {editable && (
+          <div className="order-last ml-auto flex flex-shrink-0 items-center gap-0.5 sm:order-none sm:ml-0 sm:opacity-40 sm:transition-opacity sm:group-hover:opacity-100">
+            {editing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void handleSave()}
+                  disabled={saving}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-emerald-600 transition hover:bg-emerald-50 disabled:opacity-50 dark:hover:bg-emerald-950/40 sm:h-auto sm:w-auto sm:p-1"
+                  title="Save"
+                >
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  disabled={saving}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 dark:hover:bg-gray-800 sm:h-auto sm:w-auto sm:p-1"
+                  title="Cancel"
+                >
+                  <X size={16} />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 transition hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/40 sm:h-auto sm:w-auto sm:p-1"
+                  title="Edit log"
+                >
+                  <Pencil className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+                </button>
+                {onDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(log)}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 sm:h-auto sm:w-auto sm:p-1"
+                    title="Delete log"
+                  >
+                    <Trash2 className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+                  </button>
+                ) : null}
+              </>
+            )}
+          </div>
+        )}
+
+        <PlanIdPill planId={planIdNumber} />
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold leading-tight text-gray-900 dark:text-white sm:text-xs" title={title}>
+            {title}
+          </p>
+          <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400 sm:hidden" title={channel}>
+            {channel}
+          </p>
+        </div>
+
+        <span className="hidden min-w-0 truncate text-xs text-gray-500 dark:text-gray-400 sm:block" title={channel}>
+          {channel}
         </span>
-      ) : (
-        <span
-          className="truncate text-center text-gray-500 dark:text-gray-400"
-          title={`Scheduled ${formatPlanScheduleDate(scheduledDate)}`}
-        >
-          {formatPlanScheduleDate(scheduledDate)}
-        </span>
-      )}
-      {editing ? (
-        <>
-          <input
-            type="number"
-            min={0}
-            step={1}
-            value={longValue}
-            onChange={(event) => setLongValue(event.target.value)}
-            disabled={saving}
-            className={inputClass}
-            aria-label="Long logged"
-          />
-          <input
-            type="number"
-            min={0}
-            step={1}
-            value={shortValue}
-            onChange={(event) => setShortValue(event.target.value)}
-            disabled={saving}
-            className={inputClass}
-            aria-label="Short logged"
-          />
-        </>
-      ) : (
-        <>
-          <span
-            className={`inline-flex justify-center rounded-full border px-2 py-0.5 font-bold tabular-nums ${FORMAT_PILL.long} border-current`}
-          >
-            L {log.longPendingLogged}
-          </span>
-          <span
-            className={`inline-flex justify-center rounded-full border px-2 py-0.5 font-bold tabular-nums ${FORMAT_PILL.short} border-current`}
-          >
-            S {log.shortPendingLogged}
-          </span>
-        </>
-      )}
-      {editable ? (
-        <span className="flex justify-center">
-          {editing ? (
-            <span className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={() => void handleSave()}
+      </div>
+
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 pl-12 sm:contents sm:pl-0">
+        {editing ? (
+          <>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={longValue}
+              onChange={(event) => setLongValue(event.target.value)}
+              disabled={saving}
+              className={`${inputClass} w-[3.25rem]`}
+              aria-label="Long logged"
+            />
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={shortValue}
+              onChange={(event) => setShortValue(event.target.value)}
+              disabled={saving}
+              className={`${inputClass} w-[3.25rem]`}
+              aria-label="Short logged"
+            />
+            <label className="inline-flex min-h-[22px] cursor-pointer items-center gap-1.5 rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-semibold dark:border-gray-600">
+              <input
+                type="checkbox"
+                checked={firstCutValue}
+                onChange={(event) => setFirstCutValue(event.target.checked)}
                 disabled={saving}
-                className="rounded-md p-1 text-emerald-600 transition hover:bg-emerald-50 disabled:opacity-50 dark:hover:bg-emerald-950/40"
-                title="Save"
+                className="rounded border-gray-300 text-primary-500 focus:ring-primary-500/40"
+              />
+              FC
+            </label>
+          </>
+        ) : (
+          <>
+            {(log.longPendingLogged ?? 0) > 0 && (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold tabular-nums ${FORMAT_PILL.long} border-current ${ROW_PILL_SIZES.count}`}
               >
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-              </button>
-              <button
-                type="button"
-                onClick={cancelEdit}
-                disabled={saving}
-                className="rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 dark:hover:bg-gray-800"
-                title="Cancel"
+                L {log.longPendingLogged}
+              </span>
+            )}
+            {(log.shortPendingLogged ?? 0) > 0 && (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold tabular-nums ${FORMAT_PILL.short} border-current ${ROW_PILL_SIZES.count}`}
               >
-                <X size={14} />
-              </button>
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="rounded-md p-1 text-gray-400 transition hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40"
-              title="Edit logged counts"
-            >
-              <Pencil size={14} />
-            </button>
-          )}
-        </span>
-      ) : null}
+                S {log.shortPendingLogged}
+              </span>
+            )}
+            {log.firstCutLogged ? <FirstCutBadge ready /> : null}
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-function WorkLogEntriesList({ logs, loading, emptyMessage, compact = false, editable = false, onUpdateLog }) {
+function WorkLogDateGroup({ dateKey, logs, editable, onUpdateLog, onDeleteLog }) {
+  const [open, setOpen] = useState(false);
+  const totals = useMemo(
+    () => ({
+      long: logs.reduce((sum, log) => sum + (log.longPendingLogged || 0), 0),
+      short: logs.reduce((sum, log) => sum + (log.shortPendingLogged || 0), 0),
+      firstCut: logs.filter((log) => log.firstCutLogged).length,
+    }),
+    [logs],
+  );
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-gray-100 border-l-[4px] border-l-primary-500 bg-white/40 shadow-md shadow-gray-200/20 backdrop-blur-sm transition-all duration-300 dark:border-gray-700 dark:bg-gray-900/40 dark:shadow-black/20">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-3 bg-primary-50/40 px-3 py-1.5 text-left backdrop-blur-md transition-colors hover:brightness-95 dark:bg-primary-950/10"
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <ChevronRight
+            size={14}
+            className="flex-shrink-0 text-gray-500 transition-transform duration-300 dark:text-gray-400"
+            style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
+          />
+          <span className="truncate text-sm font-black text-primary-600 dark:text-primary-400">
+            {formatDateLabel(dateKey)}
+          </span>
+          <span className="flex-shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-black tabular-nums text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+            {logs.length}
+          </span>
+        </div>
+        <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
+          <span className="inline-flex items-center gap-1 rounded-lg border border-gray-200/50 bg-white/60 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-gray-500 sm:gap-1.5 sm:rounded-xl sm:px-2.5 sm:py-1 sm:text-[10px] dark:border-gray-700/50 dark:bg-gray-800/60 dark:text-gray-400">
+            {totals.long > 0 && (
+              <span className={`rounded-md px-1 py-0.5 font-bold tabular-nums sm:rounded-lg sm:px-1.5 ${FORMAT_PILL.long}`}>
+                {totals.long}L
+              </span>
+            )}
+            {totals.short > 0 && (
+              <span className={`rounded-md px-1 py-0.5 font-bold tabular-nums sm:rounded-lg sm:px-1.5 ${FORMAT_PILL.short}`}>
+                {totals.short}S
+              </span>
+            )}
+            {totals.firstCut > 0 && (
+              <span className="text-[9px] font-bold text-emerald-600 sm:text-[10px] dark:text-emerald-400">
+                {totals.firstCut} FC
+              </span>
+            )}
+          </span>
+        </div>
+      </button>
+      {open && (
+        <div className="space-y-2 bg-gray-50/50 p-3 dark:bg-gray-800/20">
+          {logs.map((log) => (
+            <WorkLogEntryRow
+              key={log._id}
+              log={log}
+              editable={editable}
+              onUpdate={onUpdateLog}
+              onDelete={onDeleteLog}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function WorkLogEntriesList({ logs, loading, emptyMessage, editable = false, onUpdateLog, onDeleteLog }) {
   const groupedByDate = useMemo(() => {
     const map = new Map();
     logs.forEach((log) => {
@@ -805,7 +963,7 @@ function WorkLogEntriesList({ logs, loading, emptyMessage, compact = false, edit
   if (loading) {
     return (
       <div className="flex min-h-32 flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
-        <Loader2 size={20} className="animate-spin text-blue-500" />
+        <Loader2 size={20} className="animate-spin text-primary-500" />
         <span className="text-xs">Loading logged work…</span>
       </div>
     );
@@ -820,33 +978,17 @@ function WorkLogEntriesList({ logs, loading, emptyMessage, compact = false, edit
     );
   }
 
-  const textSize = compact ? "text-[10px]" : "text-xs";
-  const headerSize = compact ? "text-[11px]" : "text-sm";
-
   return (
-    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+    <div className="space-y-2 p-3">
       {groupedByDate.map(([dateKey, dayLogs]) => (
-        <div key={dateKey}>
-          <div className="sticky top-0 z-10 border-b border-gray-100 bg-gray-50/95 px-3 py-2 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/95">
-            <span className={`${headerSize} font-black text-gray-800 dark:text-gray-200`}>
-              {formatDateLabel(dateKey)}
-            </span>
-            <span className={`ml-2 ${textSize} tabular-nums text-gray-500 dark:text-gray-400`}>
-              {dayLogs.length} {dayLogs.length === 1 ? "entry" : "entries"}
-            </span>
-          </div>
-          <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
-            {dayLogs.map((log) => (
-              <WorkLogEntryRow
-                key={log._id}
-                log={log}
-                compact={compact}
-                editable={editable}
-                onUpdate={onUpdateLog}
-              />
-            ))}
-          </div>
-        </div>
+        <WorkLogDateGroup
+          key={dateKey}
+          dateKey={dateKey}
+          logs={dayLogs}
+          editable={editable}
+          onUpdateLog={onUpdateLog}
+          onDeleteLog={onDeleteLog}
+        />
       ))}
     </div>
   );
@@ -855,6 +997,9 @@ function WorkLogEntriesList({ logs, loading, emptyMessage, compact = false, edit
 function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [isMobileLayout, setIsMobileLayout] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches,
+  );
   const containerRef = useRef(null);
 
   const selected = useMemo(
@@ -879,17 +1024,88 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
   }, [plans, query]);
 
   useEffect(() => {
+    const media = window.matchMedia("(max-width: 639px)");
+    const update = () => setIsMobileLayout(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  const closePicker = useCallback(() => {
+    setOpen(false);
+    setQuery("");
+  }, []);
+
+  useEffect(() => {
     if (!open) return undefined;
     const handlePointerDown = (event) => {
-      if (!containerRef.current?.contains(event.target)) setOpen(false);
+      if (isMobileLayout) return;
+      if (!containerRef.current?.contains(event.target)) closePicker();
     };
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [open]);
+  }, [open, isMobileLayout, closePicker]);
 
   useEffect(() => {
-    if (!open) setQuery("");
-  }, [open]);
+    if (!open || !isMobileLayout) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open, isMobileLayout]);
+
+  const emptyMessage =
+    plans.length === 0
+      ? "No open plans available. Completed plans are hidden — add or reopen a plan on the Plans tab."
+      : "No plans match your search.";
+
+  const renderSearchField = () => (
+    <div className="relative">
+      <Search
+        size={16}
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+      />
+      <input
+        type="text"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Search by title, channel, or plan ID…"
+        className="buffer-input py-2.5 pl-9 pr-3 text-sm"
+        autoFocus
+      />
+    </div>
+  );
+
+  const planButtons = (mobile) =>
+    filteredPlans.length === 0 ? (
+      <li className="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">{emptyMessage}</li>
+    ) : (
+      filteredPlans.map((plan) => {
+        const isSelected = String(plan._id) === value;
+        return (
+          <li key={plan._id}>
+            <button
+              type="button"
+              role="option"
+              aria-selected={isSelected}
+              onClick={() => {
+                onChange(String(plan._id));
+                closePicker();
+              }}
+              className={`w-full rounded-lg px-3 py-2.5 text-left transition-colors ${
+                mobile ? "" : `grid ${LOG_WORK_ROW_GRID}`
+              } ${
+                isSelected
+                  ? "bg-primary-50 ring-1 ring-primary-200/80 dark:bg-primary-900/30 dark:ring-primary-800/60"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800/70"
+              }`}
+            >
+              {mobile ? <LogWorkPlanMobileCard plan={plan} /> : <LogWorkPlanRowContent plan={plan} />}
+            </button>
+          </li>
+        );
+      })
+    );
 
   return (
     <div ref={containerRef} className="relative min-w-0">
@@ -897,25 +1113,33 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
       <button
         type="button"
         disabled={disabled || loading}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          if (open) closePicker();
+          else setOpen(true);
+        }}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`flex w-full items-center gap-2 rounded-xl border px-3 py-3 text-left transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`flex min-h-12 w-full items-center gap-2 rounded-xl border px-3 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
           open
-            ? "border-blue-400/60 bg-white shadow-md ring-2 ring-blue-500/20 dark:border-blue-500/50 dark:bg-gray-800"
-            : "border-gray-200/80 bg-white/90 hover:border-blue-300/60 hover:bg-white dark:border-gray-700 dark:bg-gray-800/90 dark:hover:border-blue-500/40"
+            ? "border-primary-400/60 bg-white shadow-md ring-2 ring-primary-500/20 dark:border-primary-500/50 dark:bg-gray-800"
+            : "border-gray-200/80 bg-white/90 hover:border-primary-300/60 hover:bg-white dark:border-gray-700 dark:bg-gray-800/90 dark:hover:border-primary-500/40"
         }`}
       >
         <div className="min-w-0 flex-1">
           {loading ? (
             <span className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <Loader2 size={16} className="animate-spin text-blue-500" />
+              <Loader2 size={16} className="animate-spin text-primary-500" />
               Loading plans…
             </span>
           ) : selected ? (
-            <div className={`${LOG_WORK_ROW_GRID} pr-1`}>
-              <LogWorkPlanRowContent plan={selected} compact />
-            </div>
+            <>
+              <div className="sm:hidden">
+                <LogWorkPlanMobileCard plan={selected} />
+              </div>
+              <div className={`hidden pr-1 sm:grid ${LOG_WORK_ROW_GRID}`}>
+                <LogWorkPlanRowContent plan={selected} />
+              </div>
+            </>
           ) : (
             <span className="text-sm text-gray-500 dark:text-gray-400">Select an open plan</span>
           )}
@@ -926,66 +1150,54 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
         />
       </button>
 
-      {open && !loading && (
-        <div className="absolute z-[200] mt-1.5 min-w-full overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
-          <div className="border-b border-gray-100 p-2.5 dark:border-gray-800">
-            <div className="relative">
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                type="text"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search by title, channel, or plan ID…"
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                autoFocus
-              />
+      {open &&
+        !loading &&
+        isMobileLayout &&
+        createPortal(
+          <div>
+            <button
+              type="button"
+              className="fixed inset-0 z-[200] bg-black/40"
+              aria-label="Close plan picker"
+              onClick={closePicker}
+            />
+            <div className="fixed inset-x-0 bottom-0 z-[201] flex max-h-[80vh] flex-col rounded-t-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900">
+              <div className="mx-auto mt-2 h-1 w-12 flex-shrink-0 rounded-full bg-gray-300 dark:bg-gray-600" />
+              <div className="flex items-center justify-between px-4 py-2">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Select a plan</p>
+                <button
+                  type="button"
+                  onClick={closePicker}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800"
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="border-b border-gray-100 px-3 pb-2.5 dark:border-gray-800">{renderSearchField()}</div>
+              <ul role="listbox" className="min-h-0 flex-1 overflow-y-auto p-1 custom-scrollbar">
+                {planButtons(true)}
+              </ul>
             </div>
-          </div>
+          </div>,
+          document.body,
+        )}
+
+      {open && !loading && !isMobileLayout && (
+        <div className="absolute z-[200] mt-1.5 min-w-full overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
+          <div className="border-b border-gray-100 p-2.5 dark:border-gray-800">{renderSearchField()}</div>
           <div
-            className={`${LOG_WORK_ROW_GRID} border-b border-gray-100 bg-gray-50/90 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400`}
+            className={`grid ${LOG_WORK_ROW_GRID} border-b border-gray-100 bg-gray-50/90 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400`}
           >
             <span className="text-center">ID</span>
             <span>Title</span>
             <span>Channel</span>
-            <span className="text-center">Scheduled</span>
+            <span className="text-center">Shoot date</span>
             <span className="text-center">Long</span>
             <span className="text-center">Short</span>
           </div>
           <ul role="listbox" className="max-h-80 overflow-y-auto p-1 custom-scrollbar">
-            {filteredPlans.length === 0 ? (
-              <li className="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                {plans.length === 0
-                  ? "No open plans available. Completed plans are hidden — add or reopen a plan on the Plans tab."
-                  : "No plans match your search."}
-              </li>
-            ) : (
-              filteredPlans.map((plan) => {
-                const isSelected = String(plan._id) === value;
-                return (
-                  <li key={plan._id}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={isSelected}
-                      onClick={() => {
-                        onChange(String(plan._id));
-                        setOpen(false);
-                      }}
-                      className={`${LOG_WORK_ROW_GRID} rounded-lg px-3 py-2.5 text-left transition-colors ${
-                        isSelected
-                          ? "bg-blue-50 ring-1 ring-blue-200/80 dark:bg-blue-950/30 dark:ring-blue-800/60"
-                          : "hover:bg-gray-50 dark:hover:bg-gray-800/70"
-                      }`}
-                    >
-                      <LogWorkPlanRowContent plan={plan} />
-                    </button>
-                  </li>
-                );
-              })
-            )}
+            {planButtons(false)}
           </ul>
         </div>
       )}
@@ -996,8 +1208,10 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
 function LogWorkPanel({ onLogged, isActive, refreshKey }) {
   const [planOptions, setPlanOptions] = useState([]);
   const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [logDate, setLogDate] = useState(() => toTodayKey());
   const [longPending, setLongPending] = useState("");
   const [shortPending, setShortPending] = useState("");
+  const [firstCutLogged, setFirstCutLogged] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -1005,6 +1219,8 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyHasOlder, setHistoryHasOlder] = useState(false);
+  const [deleteLog, setDeleteLog] = useState(null);
+  const [deletingLog, setDeletingLog] = useState(false);
 
   const selectedPlan = useMemo(
     () => planOptions.find((plan) => String(plan._id) === selectedPlanId),
@@ -1086,20 +1302,36 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
   useEffect(() => {
     setLongPending("0");
     setShortPending("0");
+    setFirstCutLogged(false);
   }, [selectedPlanId]);
 
-  const handleUpdateLog = async (logId, longPendingLogged, shortPendingLogged) => {
+  const handleUpdateLog = async (logId, parsed) => {
     try {
       clearCacheByPrefix("/channel-plan-work-logs");
-      await httpClient.patch(`/channel-plan-work-logs/${logId}`, {
-        longPendingLogged,
-        shortPendingLogged,
-      });
+      clearCacheByPrefix("/channel-plans");
+      await httpClient.patch(`/channel-plan-work-logs/${logId}`, parsed);
       toast.success("Log updated");
-      await Promise.all([loadHistory(historyPage), onLogged?.()]);
+      await Promise.all([loadHistory(historyPage), loadOptions(), onLogged?.()]);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update log");
       throw error;
+    }
+  };
+
+  const handleDeleteLog = async () => {
+    if (!deleteLog) return;
+    setDeletingLog(true);
+    try {
+      clearCacheByPrefix("/channel-plan-work-logs");
+      clearCacheByPrefix("/channel-plans");
+      await api.delete(`/channel-plan-work-logs/${deleteLog._id}`);
+      toast.success("Log deleted");
+      setDeleteLog(null);
+      await Promise.all([loadHistory(historyPage), loadOptions(), onLogged?.()]);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete log");
+    } finally {
+      setDeletingLog(false);
     }
   };
 
@@ -1109,8 +1341,12 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
       toast.error("Select a plan first");
       return;
     }
+    if (!logDate) {
+      toast.error("Select a log date");
+      return;
+    }
 
-    const parsed = parseLoggedCounts(longPending, shortPending);
+    const parsed = parseLoggedCounts(longPending, shortPending, firstCutLogged);
     if (parsed.error) {
       toast.error(parsed.error);
       return;
@@ -1118,15 +1354,18 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
 
     setSubmitting(true);
     try {
+      clearCacheByPrefix("/channel-plans");
       await api.post("/channel-plan-work-logs", {
         planId: selectedPlanId,
-        logDate: toTodayKey(),
+        logDate,
         longPendingLogged: parsed.longPendingLogged,
         shortPendingLogged: parsed.shortPendingLogged,
+        firstCutLogged: parsed.firstCutLogged,
       });
-      toast.success("Work logged for today");
+      toast.success(logDate === toTodayKey() ? "Work logged for today" : "Work logged");
       setLongPending("0");
       setShortPending("0");
+      setFirstCutLogged(false);
       setHistoryPage(1);
       await Promise.all([loadOptions(), loadHistory(1)]);
       await onLogged?.();
@@ -1138,56 +1377,80 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-visible">
+    <div className="flex flex-col gap-3 max-sm:flex-none sm:min-h-0 sm:flex-1 sm:overflow-hidden">
       <form
         onSubmit={handleSubmit}
-        className="relative z-20 flex-shrink-0 overflow-visible rounded-2xl border border-gray-100 bg-white/40 p-4 shadow-md backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/40"
+        className="relative z-20 flex-shrink-0 overflow-visible rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/40"
       >
         <div className="mb-3 flex items-center gap-2">
-          <ClipboardList size={16} className="text-blue-500" />
-          <h2 className="text-sm font-black text-gray-900 dark:text-white">Log today&apos;s work</h2>
+          <ClipboardList size={16} className="text-primary-500" />
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Log shoot output</h2>
         </div>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <div className="min-w-0 flex-1">
-            <LogWorkPlanPicker
-              plans={planOptions}
-              value={selectedPlanId}
-              onChange={setSelectedPlanId}
-              loading={loadingOptions}
-              disabled={loadingOptions}
-            />
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
+          <div className="flex min-w-0 w-full items-end gap-2 sm:gap-3 xl:w-1/2 xl:max-w-[50%]">
+            <div className="min-w-0 flex-1">
+              <LogWorkPlanPicker
+                plans={planOptions}
+                value={selectedPlanId}
+                onChange={setSelectedPlanId}
+                loading={loadingOptions}
+                disabled={loadingOptions}
+              />
+            </div>
+            <label className="block w-[8.25rem] shrink-0">
+              <span className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-gray-400">Log date</span>
+              <input
+                type="date"
+                value={logDate}
+                max={toTodayKey()}
+                onChange={(event) => setLogDate(event.target.value)}
+                className="buffer-input min-h-12 py-2.5 text-sm"
+              />
+            </label>
           </div>
-          <div className="flex shrink-0 flex-wrap items-end gap-3">
-            <label className="block w-[5.5rem]">
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0 sm:flex-wrap sm:items-end">
+            <label className="block min-w-0 sm:w-[5.5rem]">
               <span className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-gray-400">Long logged</span>
               <input
                 type="number"
                 min={0}
                 step={1}
+                inputMode="numeric"
                 value={longPending}
                 onChange={(event) => setLongPending(event.target.value)}
                 disabled={!selectedPlanId}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                className="buffer-input min-h-11 text-sm font-semibold tabular-nums"
                 placeholder="0"
               />
             </label>
-            <label className="block w-[5.5rem]">
+            <label className="block min-w-0 sm:w-[5.5rem]">
               <span className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-gray-400">Short logged</span>
               <input
                 type="number"
                 min={0}
                 step={1}
+                inputMode="numeric"
                 value={shortPending}
                 onChange={(event) => setShortPending(event.target.value)}
                 disabled={!selectedPlanId}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                className="buffer-input min-h-11 text-sm font-semibold tabular-nums"
                 placeholder="0"
               />
+            </label>
+            <label className="col-span-2 flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200 sm:col-span-1 sm:w-auto">
+              <input
+                type="checkbox"
+                checked={firstCutLogged}
+                onChange={(event) => setFirstCutLogged(event.target.checked)}
+                disabled={!selectedPlanId}
+                className="rounded border-gray-300 text-primary-500 focus:ring-primary-500/40"
+              />
+              First cut ready
             </label>
             <button
               type="submit"
               disabled={submitting || !selectedPlanId}
-              className="inline-flex h-[42px] items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-gradient-to-r from-blue-600 to-indigo-600 px-5 text-sm font-black uppercase tracking-tight text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-700 hover:to-indigo-700 active:scale-95 disabled:opacity-50"
+              className="buffer-button-primary col-span-2 inline-flex min-h-11 items-center justify-center gap-1.5 disabled:opacity-50 sm:col-span-1 sm:h-[42px] sm:min-h-0 sm:px-5"
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
               Submit
@@ -1204,16 +1467,16 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
         )}
         {selectedPlan && (
           <p className="mt-2.5 text-xs text-gray-500 dark:text-gray-400">
-            Plan targets (unchanged by log) — Long {selectedPlan.longPlanned} planned · Short{" "}
-            {selectedPlan.shortPlanned} planned
+            Plan progress — Long {selectedPlan.longPending}/{selectedPlan.longPlanned} pending · Short{" "}
+            {selectedPlan.shortPending}/{selectedPlan.shortPlanned} pending
           </p>
         )}
       </form>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white/40 shadow-md backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/40">
+      <section className="flex flex-col overflow-visible rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40 sm:min-h-0 sm:flex-1 sm:overflow-hidden">
         <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
           <div>
-            <h3 className="text-sm font-black text-gray-900 dark:text-white">Recent logged work</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Recent logged work</h3>
             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
               Last {LOG_HISTORY_DAYS_PER_PAGE} days per page · newest first
             </p>
@@ -1223,44 +1486,66 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
               type="button"
               disabled={historyLoading || historyPage <= 1}
               onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}
-              className="rounded-lg border border-gray-200 p-1.5 text-gray-500 transition hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 dark:border-gray-600"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-primary-300 hover:text-primary-600 disabled:opacity-30 dark:border-gray-600"
               title="Newer dates"
             >
-              <ChevronLeft size={14} />
+              <ChevronLeft size={16} />
             </button>
-            <span className="min-w-[5rem] text-center text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-300">
+            <span className="min-w-[4.5rem] text-center text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-300">
               Page {historyPage}
             </span>
             <button
               type="button"
               disabled={historyLoading || !historyHasOlder}
               onClick={() => setHistoryPage((page) => page + 1)}
-              className="rounded-lg border border-gray-200 p-1.5 text-gray-500 transition hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 dark:border-gray-600"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-primary-300 hover:text-primary-600 disabled:opacity-30 dark:border-gray-600"
               title="Older dates"
             >
-              <ChevronRight size={14} />
+              <ChevronRight size={16} />
             </button>
             <button
               type="button"
               onClick={() => void loadHistory(historyPage)}
               disabled={historyLoading}
-              className="rounded-lg border border-gray-200/60 bg-white/80 p-1.5 text-gray-500 shadow-sm transition-all hover:border-blue-300 hover:text-blue-600 dark:border-gray-700/60 dark:bg-gray-800/80"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200/60 bg-white/80 text-gray-500 shadow-sm transition hover:border-primary-300 hover:text-primary-600 dark:border-gray-700/60 dark:bg-gray-800/80"
               title="Refresh history"
             >
               <RefreshCw size={14} className={historyLoading ? "animate-spin" : ""} />
             </button>
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
+        <div className="overflow-visible sm:min-h-0 sm:flex-1 sm:overflow-y-auto custom-scrollbar">
           <WorkLogEntriesList
             logs={historyLogs}
             loading={historyLoading}
             emptyMessage="Submit a log above to see it here."
             editable
             onUpdateLog={handleUpdateLog}
+            onDeleteLog={setDeleteLog}
           />
         </div>
       </section>
+
+      <ConfirmModal
+        isOpen={Boolean(deleteLog)}
+        title="Delete work log?"
+        message={
+          deleteLog ? (
+            <>
+              This removes the log for <strong>{deleteLog.title || deleteLog.planId?.title || "this plan"}</strong> on{" "}
+              <strong>{formatLogDate(dateToKey(new Date(deleteLog.logDate)))}</strong>. Plan completed counts will be
+              recalculated.
+            </>
+          ) : null
+        }
+        confirmText="Delete"
+        danger
+        loading={deletingLog}
+        onConfirm={() => void handleDeleteLog()}
+        onCancel={() => {
+          if (!deletingLog) setDeleteLog(null);
+        }}
+      />
     </div>
   );
 }
@@ -1391,13 +1676,17 @@ function ReportSummaryTable({ summary, activeChannelTab, loading }) {
     );
   }
 
-  const displayRows = activeChannelTab === "all" ? [{ ...totals, channelName: "All channels", channelId: "all", isTotal: true }, ...rows] : rows;
+  const sortedRows = [...rows].sort((a, b) => a.channelName.localeCompare(b.channelName));
+  const displayRows =
+    activeChannelTab === "all"
+      ? [{ ...totals, channelName: "All channels", channelId: "all", isTotal: true }, ...sortedRows]
+      : sortedRows;
 
   return (
-    <section className="flex h-full min-h-[320px] flex-col overflow-hidden rounded-xl border border-gray-100 bg-white/40 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+    <section className="flex flex-col overflow-visible rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40 sm:h-full sm:min-h-[320px] sm:overflow-hidden">
       <div className="flex flex-shrink-0 flex-wrap items-start justify-between gap-2 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
         <div>
-          <h3 className="text-xs font-black text-gray-900 dark:text-white">Channel summary</h3>
+          <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Channel summary</h3>
           <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
             Long/Short use plans scheduled in the period. First cut counts all open plans (incl. backlog).
           </p>
@@ -1410,7 +1699,7 @@ function ReportSummaryTable({ summary, activeChannelTab, loading }) {
             <span className="normal-case">Open plan pending</span>
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200/80 bg-white/80 px-2.5 py-1 dark:border-gray-700 dark:bg-gray-800/80">
-            <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+            <span className="rounded-md bg-primary-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
               Log
             </span>
             <span className="normal-case">Latest work log</span>
@@ -1427,7 +1716,53 @@ function ReportSummaryTable({ summary, activeChannelTab, loading }) {
           </span>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto custom-scrollbar">
+      <div className="space-y-2 p-3 sm:hidden">
+        {displayRows.map((row) => (
+          <div
+            key={row.channelId}
+            className={`rounded-xl border p-3 ${
+              row.isTotal
+                ? "border-primary-200 bg-primary-50/60 dark:border-primary-800/60 dark:bg-primary-900/20"
+                : "border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900/40"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-sm font-semibold text-gray-900 dark:text-white" title={row.channelName}>
+                {row.channelName}
+              </p>
+              <span className="flex-shrink-0 text-[11px] tabular-nums text-gray-500 dark:text-gray-400">
+                {row.planCount} plans
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-gray-400">First cut</p>
+                <SummaryFirstCutCell
+                  pending={row.firstCut?.pending ?? 0}
+                  complete={row.firstCut?.complete ?? 0}
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-gray-400">Long</p>
+                <SummaryCompareCell
+                  actual={row.actual.long}
+                  logged={row.logged.long}
+                  pillClass={FORMAT_PILL.long}
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-gray-400">Short</p>
+                <SummaryCompareCell
+                  actual={row.actual.short}
+                  logged={row.logged.short}
+                  pillClass={FORMAT_PILL.short}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="hidden min-h-0 overflow-auto custom-scrollbar sm:block sm:flex-1">
         <table className="w-full min-w-0 text-[10px]">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/80 text-[9px] font-black uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400">
@@ -1461,7 +1796,7 @@ function ReportSummaryTable({ summary, activeChannelTab, loading }) {
                 key={row.channelId}
                 className={
                   row.isTotal
-                    ? "bg-blue-50/50 font-semibold dark:bg-blue-950/20"
+                    ? "bg-primary-50/50 font-semibold dark:bg-primary-900/20"
                     : "hover:bg-gray-50/80 dark:hover:bg-gray-800/30"
                 }
               >
@@ -1507,13 +1842,15 @@ function ChannelHoursChart({ channel, compact = false }) {
   const totalHours = channel.months.reduce((sum, month) => sum + (month.hours || 0), 0);
   const hasData = totalHours > 0;
   const chartHeight = compact ? 200 : 220;
+  const maxHours = Math.max(...channel.months.map((month) => month.hours || 0), 0);
+  const yAxisMax = maxHours <= 0 ? 1 : Math.ceil(maxHours * 1.2 * 10) / 10;
 
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-100 bg-white/40 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+    <section className="overflow-visible rounded-xl border border-gray-100 bg-white/40 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
       <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
         <div className="flex min-w-0 items-center gap-2">
-          <BarChart3 size={14} className="flex-shrink-0 text-blue-500" />
-          <h4 className="truncate text-xs font-black text-gray-900 dark:text-white" title={channel.channelName}>
+          <BarChart3 size={14} className="flex-shrink-0 text-primary-500" />
+          <h4 className="truncate text-xs font-semibold text-gray-900 dark:text-white" title={channel.channelName}>
             {channel.channelName}
           </h4>
         </div>
@@ -1521,37 +1858,50 @@ function ChannelHoursChart({ channel, compact = false }) {
           {totalHours.toFixed(1)}h total
         </span>
       </div>
-      <div className="px-2 py-3">
+      <div className="overflow-visible px-2 py-3">
         {hasData ? (
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <BarChart data={channel.months} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.12)" />
-              <XAxis dataKey="label" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
-              <YAxis
-                tick={{ fontSize: 9 }}
-                width={32}
-                tickLine={false}
-                allowDecimals
-                label={{ value: "Hours", angle: -90, position: "insideLeft", style: { fontSize: 9 } }}
-              />
-              <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                formatter={(value) => {
-                  const hours = Number(value);
-                  const minutes = Math.round(hours * 60);
-                  return [`${hours.toFixed(1)}h (${minutes} min)`, "Footage"];
-                }}
-                labelFormatter={(label) => label}
-              />
-              <Bar
-                dataKey="hours"
-                name="Footage"
-                fill={FOOTAGE_CHART_COLOR}
-                radius={[4, 4, 0, 0]}
-                maxBarSize={28}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full min-w-0" style={{ height: chartHeight }}>
+            <ResponsiveContainer width="100%" height={chartHeight} debounce={50}>
+              <BarChart
+                data={channel.months}
+                margin={{ top: 8, right: 12, left: 4, bottom: 4 }}
+                barCategoryGap="20%"
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.12)" />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 9, fill: "currentColor" }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 9, fill: "currentColor" }}
+                  width={36}
+                  axisLine={false}
+                  tickLine={false}
+                  domain={[0, yAxisMax]}
+                  tickCount={5}
+                  allowDecimals={yAxisMax <= 2}
+                />
+                <Tooltip
+                  content={<FootageChartTooltip />}
+                  cursor={false}
+                  isAnimationActive={false}
+                  wrapperStyle={{ zIndex: 20, outline: "none", pointerEvents: "none" }}
+                />
+                <Bar
+                  dataKey="hours"
+                  name="Footage"
+                  fill={FOOTAGE_CHART_COLOR}
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={32}
+                  isAnimationActive={false}
+                  activeBar={{ fill: FOOTAGE_CHART_COLOR, opacity: 0.85 }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         ) : (
           <div
             className="flex flex-col items-center justify-center px-4 text-center"
@@ -1587,10 +1937,11 @@ function HoursByMonthCharts({ data, activeChannelTab, loading }) {
       );
     }
 
-    const channels =
+    const channels = (
       activeChannelTab === "all"
         ? data.channels
-        : data.channels.filter((channel) => String(channel.channelId) === activeChannelTab);
+        : data.channels.filter((channel) => String(channel.channelId) === activeChannelTab)
+    ).slice().sort((a, b) => a.channelName.localeCompare(b.channelName));
 
     if (channels.length === 0) {
       return (
@@ -1601,7 +1952,7 @@ function HoursByMonthCharts({ data, activeChannelTab, loading }) {
     }
 
     return (
-      <div className="max-h-[420px] space-y-3 overflow-y-auto p-3 custom-scrollbar">
+      <div className="max-h-none space-y-3 overflow-visible p-3 sm:max-h-[420px] sm:overflow-y-auto custom-scrollbar">
         {channels.map((channel) => (
           <ChannelHoursChart key={channel.channelId} channel={channel} compact />
         ))}
@@ -1610,9 +1961,9 @@ function HoursByMonthCharts({ data, activeChannelTab, loading }) {
   })();
 
   return (
-    <section className="flex h-full min-h-[320px] flex-col overflow-hidden rounded-xl border border-gray-100 bg-white/40 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+    <section className="flex flex-col overflow-visible rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40 sm:h-full sm:min-h-[320px] sm:overflow-hidden">
       <div className="flex-shrink-0 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
-        <h3 className="text-xs font-black text-gray-900 dark:text-white">Footage hours by month</h3>
+        <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Footage hours by month</h3>
         <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
           Footage minutes from all plans (open or completed), grouped by month. One chart per channel.
         </p>
@@ -1622,8 +1973,227 @@ function HoursByMonthCharts({ data, activeChannelTab, loading }) {
   );
 }
 
+function buildReportInsights(summary, hoursByMonth, activeChannelTab) {
+  if (!summary) return null;
+
+  const rows =
+    activeChannelTab === "all"
+      ? summary.channels
+      : summary.channels.filter((row) => String(row.channelId) === activeChannelTab);
+  const totals =
+    activeChannelTab === "all"
+      ? summary.totals
+      : rows[0] || {
+          actual: { long: 0, short: 0 },
+          logged: { long: 0, short: 0 },
+          firstCut: { pending: 0, complete: 0 },
+          planCount: 0,
+        };
+
+  const actualTotal = (totals.actual?.long ?? 0) + (totals.actual?.short ?? 0);
+  const loggedTotal = (totals.logged?.long ?? 0) + (totals.logged?.short ?? 0);
+  const captureRate =
+    actualTotal > 0 ? Math.round((loggedTotal / actualTotal) * 100) : loggedTotal > 0 ? 100 : 0;
+
+  const fcPending = totals.firstCut?.pending ?? 0;
+  const fcComplete = totals.firstCut?.complete ?? 0;
+  const fcTotal = fcPending + fcComplete;
+  const fcRate = fcTotal > 0 ? Math.round((fcComplete / fcTotal) * 100) : 0;
+
+  const hoursChannels =
+    activeChannelTab === "all"
+      ? hoursByMonth?.channels || []
+      : (hoursByMonth?.channels || []).filter((channel) => String(channel.channelId) === activeChannelTab);
+  const footageHours = hoursChannels.reduce(
+    (sum, channel) => sum + channel.months.reduce((monthSum, month) => monthSum + (month.hours || 0), 0),
+    0,
+  );
+
+  const leaderboard = [...rows]
+    .map((row) => ({
+      channelId: row.channelId,
+      channelName: row.channelName,
+      loggedTotal: (row.logged?.long ?? 0) + (row.logged?.short ?? 0),
+      longLogged: row.logged?.long ?? 0,
+      shortLogged: row.logged?.short ?? 0,
+      planCount: row.planCount ?? 0,
+    }))
+    .filter((row) => row.loggedTotal > 0 || row.planCount > 0)
+    .sort(
+      (a, b) =>
+        b.loggedTotal - a.loggedTotal ||
+        b.planCount - a.planCount ||
+        a.channelName.localeCompare(b.channelName),
+    )
+    .slice(0, 5);
+
+  return {
+    totals,
+    actualTotal,
+    loggedTotal,
+    captureRate,
+    fcRate,
+    fcComplete,
+    fcTotal,
+    footageHours,
+    leaderboard,
+  };
+}
+
+function ReportInsightCard({ label, value, hint, tone = "default" }) {
+  const toneClass =
+    tone === "long"
+      ? "border-indigo-200/80 bg-indigo-50/60 dark:border-indigo-800/50 dark:bg-indigo-950/20"
+      : tone === "short"
+        ? "border-orange-200/80 bg-orange-50/60 dark:border-orange-800/50 dark:bg-orange-950/20"
+        : tone === "success"
+          ? "border-emerald-200/80 bg-emerald-50/60 dark:border-emerald-800/50 dark:bg-emerald-950/20"
+          : "border-gray-100 bg-white/70 dark:border-gray-700 dark:bg-gray-900/50";
+
+  return (
+    <div className={`flex h-full flex-col rounded-xl border p-3 ${toneClass}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="mt-1 text-xl font-black tabular-nums text-gray-900 dark:text-white">{value}</p>
+      {hint ? <p className="mt-auto pt-1 text-[10px] leading-snug text-gray-500 dark:text-gray-400">{hint}</p> : null}
+    </div>
+  );
+}
+
+function ReportKpiStrip({ insights, loading }) {
+  if (loading) {
+    return (
+      <div className="flex min-h-[7.5rem] items-center justify-center gap-2 rounded-xl border border-gray-100 bg-white/40 px-3 py-4 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
+        <Loader2 size={14} className="animate-spin text-primary-500" />
+        Loading period overview…
+      </div>
+    );
+  }
+
+  if (!insights) {
+    return (
+      <div className="flex min-h-[7.5rem] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-4 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
+        Period overview appears once summary data is available.
+      </div>
+    );
+  }
+
+  const { totals, captureRate, loggedTotal, actualTotal, fcRate, fcComplete, fcTotal, footageHours } = insights;
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+      <div className="border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
+        <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Period overview</h3>
+        <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+          Open pending → logged output → capture rate → first cut → planned footage.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 xl:grid-cols-5">
+        <ReportInsightCard
+          label="Open pending"
+          value={actualTotal}
+          hint={`${totals.actual?.long ?? 0} long · ${totals.actual?.short ?? 0} short still open`}
+          tone="short"
+        />
+        <ReportInsightCard
+          label="Videos logged"
+          value={loggedTotal}
+          hint={`${totals.logged?.long ?? 0} long · ${totals.logged?.short ?? 0} short`}
+          tone="long"
+        />
+        <ReportInsightCard
+          label="Log capture"
+          value={`${captureRate}%`}
+          hint={
+            actualTotal > 0
+              ? `${loggedTotal} logged of ${actualTotal} open pending`
+              : loggedTotal > 0
+                ? "Logged with no dated open plans in range"
+                : "No logged output in this period"
+          }
+        />
+        <ReportInsightCard
+          label="First cut ready"
+          value={fcTotal > 0 ? `${fcRate}%` : "—"}
+          hint={fcTotal > 0 ? `${fcComplete} of ${fcTotal} open plans` : "No open plans tracked"}
+          tone="success"
+        />
+        <ReportInsightCard
+          label="Footage planned"
+          value={footageHours > 0 ? `${footageHours.toFixed(1)}h` : "—"}
+          hint={
+            footageHours > 0
+              ? "Total shoot hours from dated plans in period"
+              : "Add footage minutes on plans to track time"
+          }
+        />
+      </div>
+    </section>
+  );
+}
+
+function ReportLeaderboardCard({ insights, loading }) {
+  if (loading) {
+    return (
+      <div className="flex min-h-[12rem] items-center justify-center gap-2 rounded-xl border border-gray-100 bg-white/40 px-3 py-4 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
+        <Loader2 size={14} className="animate-spin text-primary-500" />
+        Loading channel ranks…
+      </div>
+    );
+  }
+
+  if (!insights) return null;
+
+  const { totals, leaderboard } = insights;
+
+  return (
+    <section className="flex h-full min-h-[12rem] flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+      <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
+        <div>
+          <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Top channels</h3>
+          <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">Ranked by logged output in this period</p>
+        </div>
+        <span className="flex-shrink-0 text-[10px] tabular-nums text-gray-500 dark:text-gray-400">
+          {totals.planCount ?? 0} plans
+        </span>
+      </div>
+      <div className="flex-1 p-3">
+        {leaderboard.length === 0 ? (
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">No channel activity in this period.</p>
+        ) : (
+          <ul className="space-y-2">
+            {leaderboard.map((row, index) => (
+              <li
+                key={row.channelId}
+                className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50/80 px-2.5 py-2 dark:border-gray-700 dark:bg-gray-800/30"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-gray-900 dark:text-white" title={row.channelName}>
+                    {index + 1}. {row.channelName}
+                  </p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">{row.planCount} plans</p>
+                </div>
+                <div className="flex flex-shrink-0 items-center gap-1">
+                  {row.longLogged > 0 && (
+                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums ${FORMAT_PILL.long}`}>
+                      {row.longLogged}L
+                    </span>
+                  )}
+                  {row.shortLogged > 0 && (
+                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums ${FORMAT_PILL.short}`}>
+                      {row.shortLogged}S
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, isActive }) {
-  const [allLogs, setAllLogs] = useState([]);
   const [summary, setSummary] = useState(null);
   const [hoursByMonth, setHoursByMonth] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1649,12 +2219,10 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, 
       clearCacheByPrefix("/channel-plan-work-logs");
       clearCacheByPrefix("/channel-plans");
       const params = new URLSearchParams({ from: range.from, to: range.to });
-      const [logsResponse, summaryResponse, hoursResponse] = await Promise.all([
-        httpClient.get(`/channel-plan-work-logs?${params.toString()}`),
+      const [summaryResponse, hoursResponse] = await Promise.all([
         httpClient.get(`/channel-plan-work-logs/summary?${params.toString()}`),
         httpClient.get(`/channel-plans/hours-by-month?${params.toString()}`),
       ]);
-      setAllLogs(logsResponse.data.logs || []);
       setSummary(summaryResponse.data);
       setHoursByMonth(hoursResponse.data);
     } catch (error) {
@@ -1677,67 +2245,60 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, 
     void loadReport();
   }, [loadReport, refreshKey, isActive]);
 
-  const logs = useMemo(() => {
-    if (activeChannelTab === "all") return allLogs;
-    return allLogs.filter(
-      (log) => String(log.channelId?._id || log.channelId || "") === activeChannelTab,
-    );
-  }, [allLogs, activeChannelTab]);
-
   const reportChannels = useMemo(() => {
-    const logCounts = new Map();
-    allLogs.forEach((log) => {
-      const id = String(log.channelId?._id || log.channelId || "");
-      if (!id) return;
-      logCounts.set(id, (logCounts.get(id) || 0) + 1);
-    });
-
-    if (summary?.channels?.length) {
-      return summary.channels.map((row) => ({
+    if (!summary?.channels?.length) return [];
+    return summary.channels
+      .map((row) => ({
         _id: row.channelId,
         name: row.channelName,
-        count: logCounts.get(String(row.channelId)) || 0,
-      }));
-    }
-
-    return [...logCounts.entries()]
-      .map(([id, count]) => {
-        const log = allLogs.find((entry) => String(entry.channelId?._id || entry.channelId) === id);
-        return {
-          _id: id,
-          name: log?.channelName || log?.channelId?.name || "Unknown",
-          count,
-        };
-      })
+        count: (row.logged?.long ?? 0) + (row.logged?.short ?? 0) + (row.planCount ?? 0),
+      }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [allLogs, summary]);
+  }, [summary]);
 
-  const totalLong = logs.reduce((sum, log) => sum + (log.longPendingLogged || 0), 0);
-  const totalShort = logs.reduce((sum, log) => sum + (log.shortPendingLogged || 0), 0);
+  const scopedTotals = useMemo(() => {
+    if (!summary) return { long: 0, short: 0 };
+    if (activeChannelTab === "all") {
+      return {
+        long: summary.totals?.logged?.long ?? 0,
+        short: summary.totals?.logged?.short ?? 0,
+      };
+    }
+    const row = summary.channels.find((entry) => String(entry.channelId) === activeChannelTab);
+    return {
+      long: row?.logged?.long ?? 0,
+      short: row?.logged?.short ?? 0,
+    };
+  }, [summary, activeChannelTab]);
+
+  const reportInsights = useMemo(
+    () => buildReportInsights(summary, hoursByMonth, activeChannelTab),
+    [summary, hoursByMonth, activeChannelTab],
+  );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+    <div className="flex flex-col gap-4 max-sm:flex-none sm:min-h-0 sm:flex-1 sm:overflow-y-auto sm:pr-1 custom-scrollbar">
       <div className="flex flex-shrink-0 flex-col gap-2 px-1">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <FilterLabel icon={CalendarDays}>Period:</FilterLabel>
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto scrollbar-hide">
+            <FilterLabel icon={CalendarDays} className="hidden sm:flex">Period:</FilterLabel>
             <FilterSegment
               options={REPORT_PERIODS}
               value={period}
               onChange={setPeriod}
             />
           </div>
-          <div className="flex items-center gap-2">
-            {!loading && logs.length > 0 && (
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {!loading && (scopedTotals.long > 0 || scopedTotals.short > 0) && (
               <span className="hidden items-center gap-1.5 text-[10px] font-semibold text-gray-500 sm:flex dark:text-gray-400">
-                <span className={`rounded-full px-2 py-0.5 tabular-nums ${FORMAT_PILL.long}`}>L {totalLong}</span>
-                <span className={`rounded-full px-2 py-0.5 tabular-nums ${FORMAT_PILL.short}`}>S {totalShort}</span>
+                <span className={`rounded-full px-2 py-0.5 tabular-nums ${FORMAT_PILL.long}`}>L {scopedTotals.long}</span>
+                <span className={`rounded-full px-2 py-0.5 tabular-nums ${FORMAT_PILL.short}`}>S {scopedTotals.short}</span>
               </span>
             )}
             <button
               type="button"
               onClick={() => void loadReport()}
-              className="rounded-xl border border-gray-200/60 bg-white/80 p-1.5 text-gray-500 shadow-sm transition-all hover:border-blue-300 hover:text-blue-600 active:scale-95 dark:border-gray-700/60 dark:bg-gray-800/80 dark:text-gray-300 dark:hover:text-blue-400"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200/60 bg-white/80 text-gray-500 shadow-sm transition hover:border-primary-300 hover:text-primary-600 dark:border-gray-700/60 dark:bg-gray-800/80 dark:text-gray-300 dark:hover:text-primary-400"
               title="Refresh report"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -1746,36 +2307,36 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, 
         </div>
 
         {period === "custom" && (
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="block">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end">
+            <label className="block min-w-0">
               <span className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-gray-400">From</span>
               <input
                 type="date"
                 value={customFrom}
                 onChange={(event) => setCustomFrom(event.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                className="buffer-input min-h-11 text-sm sm:min-h-0 sm:px-2 sm:py-1 sm:text-xs"
               />
             </label>
-            <label className="block">
+            <label className="block min-w-0">
               <span className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-gray-400">To</span>
               <input
                 type="date"
                 value={customTo}
                 onChange={(event) => setCustomTo(event.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                className="buffer-input min-h-11 text-sm sm:min-h-0 sm:px-2 sm:py-1 sm:text-xs"
               />
             </label>
           </div>
         )}
 
         <p className="text-[10px] text-gray-500 dark:text-gray-400">
-          {periodLabel} · {formatLogDate(range.from)} – {formatLogDate(range.to)} · {logs.length} entries
+          {periodLabel} · {formatLogDate(range.from)} – {formatLogDate(range.to)}
         </p>
       </div>
 
       {reportChannels.length > 0 && (
         <div className="flex max-w-full flex-shrink-0 items-center gap-2 overflow-x-auto scrollbar-hide px-1">
-          <FilterLabel icon={Filter}>Channel:</FilterLabel>
+          <FilterLabel icon={Filter} className="hidden sm:flex">Channel:</FilterLabel>
           <FilterChip active={activeChannelTab === "all"} onClick={() => onChannelTabChange("all")}>
             All
           </FilterChip>
@@ -1792,23 +2353,18 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, 
         </div>
       )}
 
-      <div className="grid flex-shrink-0 grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="min-w-0">
+      <ReportKpiStrip insights={reportInsights} loading={loading} />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
+        <div className="min-w-0 lg:min-h-[20rem]">
           <ReportSummaryTable summary={summary} activeChannelTab={activeChannelTab} loading={loading} />
         </div>
         <div className="min-w-0">
-          <HoursByMonthCharts data={hoursByMonth} activeChannelTab={activeChannelTab} loading={loading} />
+          <ReportLeaderboardCard insights={reportInsights} loading={loading} />
         </div>
       </div>
 
-      <section className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-gray-100 bg-white/40 shadow-md backdrop-blur-sm custom-scrollbar dark:border-gray-700 dark:bg-gray-900/40">
-        <WorkLogEntriesList
-          logs={logs}
-          loading={loading}
-          compact
-          emptyMessage="Use Log Work to record long/short counts for today."
-        />
-      </section>
+      <HoursByMonthCharts data={hoursByMonth} activeChannelTab={activeChannelTab} loading={loading} />
     </div>
   );
 }
@@ -1818,13 +2374,14 @@ function PlanNotesModal({ plan, onClose }) {
   const notes = String(plan.notes || "").trim();
 
   return (
-    <div className="fixed inset-0 z-[96] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[96] flex items-end justify-center p-0 sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-labelledby="plan-notes-modal-title"
-        className="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900"
+        className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 sm:rounded-2xl"
       >
+        <div className="mx-auto mt-2 h-1 w-12 flex-shrink-0 rounded-full bg-gray-300 dark:bg-gray-600 sm:hidden" />
         <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
           <div className="min-w-0">
             <h3 id="plan-notes-modal-title" className="text-sm font-bold leading-snug text-gray-900 dark:text-white">
@@ -1863,9 +2420,9 @@ function PlanNotesModal({ plan, onClose }) {
 function ThumbnailModal({ url, onClose }) {
   if (!url) return null;
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[110] flex items-end justify-center p-0 sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
-      <div className="relative max-w-5xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
+      <div className="relative w-full max-w-5xl overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 sm:rounded-2xl">
         <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent p-4">
           <span className="text-xs font-bold uppercase tracking-widest text-white drop-shadow-md">Thumbnail Preview</span>
           <button
@@ -2024,8 +2581,8 @@ export default function ChannelPlanner() {
   };
 
   const bucketOptions = [
-    { value: "schedule", label: "Schedule", count: stats.schedule },
-    { value: "completed", label: "Completed", count: stats.completed },
+    { value: "schedule", label: "In Production", shortLabel: "Active", count: stats.schedule },
+    { value: "completed", label: "Completed", shortLabel: "Done", count: stats.completed },
     { value: "backlog", label: "Backlog", count: stats.backlog },
   ];
 
@@ -2034,14 +2591,14 @@ export default function ChannelPlanner() {
 
   return (
     <AdminLayout title="Channel Planner" titleInfo="Plan & track channel output" icon={CalendarDays} contentFit noPadding>
-      <div className="flex h-full min-h-0 w-full flex-col gap-1.5 overflow-y-auto px-3 pb-4 pt-2 custom-scrollbar sm:gap-2 sm:overflow-hidden sm:px-4">
+      <div className="flex h-full min-h-0 w-full flex-col gap-2 overflow-y-auto px-3 pb-6 pt-2 custom-scrollbar sm:gap-2 sm:overflow-hidden sm:px-4 sm:pb-4">
         <PageTabBar tabs={PAGE_TABS} activeTab={pageTab} onChange={changePageTab} ariaLabel="Channel Planner views" />
 
         <ChannelPlannerTabPanel tabId="plans" activeTab={pageTab}>
           {showStatsRibbon && (
-            <div className="flex flex-shrink-0 items-center justify-between gap-4 rounded-lg border border-gray-100/50 bg-gray-50/50 px-3 py-1.5 dark:border-gray-700/50 dark:bg-gray-800/30">
+            <div className="flex flex-shrink-0 items-center justify-between gap-3 overflow-x-auto scrollbar-hide rounded-lg border border-gray-100/50 bg-gray-50/50 px-3 py-1.5 dark:border-gray-700/50 dark:bg-gray-800/30">
               <div className="ml-1 flex items-center gap-3 sm:gap-4 md:gap-6">
-                <StatCard icon={CalendarDays} label="Schedule" count={stats.schedule} color="text-blue-500" />
+                <StatCard icon={CalendarDays} label="In Production" count={stats.schedule} color="text-primary-500" />
                 <StatCard icon={ListChecks} label="Backlog" count={stats.backlog} color="text-gray-500" />
                 <StatCard icon={CheckCircle2} label="Done" count={stats.completed} color="text-emerald-500" />
               </div>
@@ -2059,7 +2616,7 @@ export default function ChannelPlanner() {
                   type="button"
                   onClick={() => void loadPlans()}
                   disabled={loading}
-                  className="rounded-lg border border-gray-200/50 bg-white/50 p-1.5 text-gray-500 shadow-sm transition-all hover:bg-white hover:text-blue-600 active:scale-95 dark:border-gray-600/50 dark:bg-gray-700/50 dark:hover:bg-gray-700 dark:hover:text-blue-400"
+                  className="rounded-lg border border-gray-200/50 bg-white/50 p-1.5 text-gray-500 shadow-sm transition hover:bg-white hover:text-primary-600 dark:border-gray-600/50 dark:bg-gray-700/50 dark:hover:bg-gray-700 dark:hover:text-primary-400"
                   title="Refresh"
                 >
                   <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
@@ -2081,10 +2638,10 @@ export default function ChannelPlanner() {
           </div>
 
           <div className="z-30 flex-shrink-0 p-1 sm:p-1.5">
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <FilterLabel icon={Filter}>View:</FilterLabel>
+                <div className="flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-hide">
+                  <FilterLabel icon={Filter} className="hidden sm:flex">View:</FilterLabel>
                   <FilterSegment options={bucketOptions} value={viewMode} onChange={changeView} variant="success" />
                 </div>
                 <button
@@ -2093,16 +2650,16 @@ export default function ChannelPlanner() {
                     setEditPlan(null);
                     setModalOpen(true);
                   }}
-                  className="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-white/10 bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-[10px] font-black uppercase tracking-tight text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-700 hover:to-indigo-700 active:scale-95 sm:gap-1.5 sm:px-4 sm:py-2 sm:text-[11px]"
+                  className="buffer-button-primary inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap px-3 py-2 text-[11px] font-semibold sm:gap-1.5 sm:px-4"
                 >
-                  <Plus size={14} className="drop-shadow-sm sm:h-4 sm:w-4" />
+                  <Plus size={14} className="sm:h-4 sm:w-4" />
                   <span>Add Plan</span>
                 </button>
               </div>
 
               {gridChannels.length > 0 && (
                 <div className="flex max-w-full items-center gap-2 overflow-x-auto scrollbar-hide">
-                  <FilterLabel icon={Layers3}>Channel:</FilterLabel>
+                  <FilterLabel icon={Layers3} className="hidden sm:flex">Channel:</FilterLabel>
                   <FilterChip active={activeChannelTab === "all"} onClick={() => changeChannelTab("all")}>
                     All
                   </FilterChip>
@@ -2121,10 +2678,10 @@ export default function ChannelPlanner() {
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+          <div className="overflow-visible sm:min-h-0 sm:flex-1 sm:overflow-y-auto sm:pr-1 custom-scrollbar">
             {loading ? (
               <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3">
-                <div className="h-10 w-10 animate-spin rounded-full border-3 border-blue-200 border-t-blue-600 dark:border-blue-800 dark:border-t-blue-400" />
+                <div className="h-10 w-10 animate-spin rounded-full border-3 border-primary-200 border-t-primary-600 dark:border-primary-800 dark:border-t-primary-400" />
                 <span className="text-sm text-gray-500 dark:text-gray-400">Loading plans…</span>
               </div>
             ) : groups.length === 0 ? (
@@ -2142,7 +2699,7 @@ export default function ChannelPlanner() {
                     setEditPlan(null);
                     setModalOpen(true);
                   }}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+                  className="buffer-button-primary mt-4 inline-flex items-center gap-1.5 text-xs"
                 >
                   <Plus size={14} /> Add Your First Plan
                 </button>
@@ -2169,29 +2726,32 @@ export default function ChannelPlanner() {
           </div>
 
           {!loading && pagination.totalGroups > 0 && (
-            <div className="flex flex-shrink-0 items-center justify-between rounded-xl border border-gray-100 bg-white/40 px-4 py-2 text-xs text-gray-500 shadow-sm backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
-              <span className="tabular-nums">
+            <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400 sm:px-4">
+              <span className="hidden tabular-nums sm:inline">
                 {pagination.totalGroups} dates · {pagination.totalPlansOnPage ?? pagination.totalPlans} plans on this page ·{" "}
                 {DATE_GROUP_PAGE_SIZE} dates per page
+              </span>
+              <span className="tabular-nums sm:hidden">
+                {pagination.totalPlansOnPage ?? pagination.totalPlans} plans
               </span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   disabled={pagination.page <= 1}
                   onClick={() => setDateGroupPage((page) => page - 1)}
-                  className="rounded-lg border border-gray-200 p-1.5 transition hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 dark:border-gray-600"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 transition hover:border-primary-300 hover:text-primary-600 disabled:opacity-30 dark:border-gray-600 sm:h-auto sm:w-auto sm:p-1.5"
                   title="Previous page"
                 >
                   <ChevronLeft size={14} />
                 </button>
                 <span className="tabular-nums">
-                  Page {pagination.page} of {pagination.totalPages}
+                  {pagination.page} / {pagination.totalPages}
                 </span>
                 <button
                   type="button"
                   disabled={pagination.page >= pagination.totalPages}
                   onClick={() => setDateGroupPage((page) => page + 1)}
-                  className="rounded-lg border border-gray-200 p-1.5 transition hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 dark:border-gray-600"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 transition hover:border-primary-300 hover:text-primary-600 disabled:opacity-30 dark:border-gray-600 sm:h-auto sm:w-auto sm:p-1.5"
                   title="Next page"
                 >
                   <ChevronRight size={14} />

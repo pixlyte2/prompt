@@ -31,8 +31,7 @@ const ASSIGNEE_COLORS = [
   "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
 ];
 
-const inputClass =
-  "w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all duration-200";
+const inputClass = "buffer-input min-h-11 text-sm";
 const labelClass = "block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1";
 
 function readRecentChannels() {
@@ -225,9 +224,10 @@ export default function ChannelPlanModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[95] flex items-end justify-center p-0 sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
+      <div className="relative flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 sm:rounded-2xl">
+        <div className="mx-auto mt-2 h-1 w-12 flex-shrink-0 rounded-full bg-gray-300 dark:bg-gray-600 sm:hidden" />
         <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold text-gray-900 dark:text-white">
@@ -247,7 +247,7 @@ export default function ChannelPlanModal({
           </p>
         </div>
 
-        <div className="max-h-[65vh] space-y-3 overflow-y-auto px-5 py-4 custom-scrollbar">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4 custom-scrollbar">
           <div>
             <label className={labelClass}>Channel</label>
             <select
@@ -324,7 +324,7 @@ export default function ChannelPlanModal({
 
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className={`${labelClass} mb-0`}>Scheduled Date</label>
+              <label className={`${labelClass} mb-0`}>Shoot date</label>
               <div className="flex items-center gap-2">
                 <span
                   className={`text-[9px] font-black uppercase tracking-tighter transition-colors ${
@@ -355,7 +355,7 @@ export default function ChannelPlanModal({
               type="date"
               value={scheduledDate || ""}
               onChange={(e) => setScheduledDate(e.target.value || null)}
-              className={`w-full rounded-lg border px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+              className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary-500/40 ${
                 !scheduledDate
                   ? "border-gray-100 bg-gray-50/50 text-gray-400 opacity-60 dark:border-gray-800 dark:bg-gray-800/50"
                   : "border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
@@ -498,7 +498,7 @@ export default function ChannelPlanModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+              className="buffer-button-secondary flex-shrink-0 px-3 py-2 text-xs"
             >
               Cancel
             </button>
@@ -506,7 +506,7 @@ export default function ChannelPlanModal({
               type="button"
               onClick={handleSave}
               disabled={saving || !canSave}
-              className="ml-auto inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100 sm:px-4"
+              className="buffer-button-primary ml-auto inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2 text-xs disabled:opacity-50 sm:px-4"
             >
               {saving ? (
                 <Loader2 size={12} className="animate-spin" />
@@ -517,7 +517,7 @@ export default function ChannelPlanModal({
               ) : (
                 <ListChecks size={12} />
               )}
-              {isEdit ? "Update Plan" : scheduledDate ? "Schedule Plan" : "Add to Backlog"}
+              {isEdit ? "Update Plan" : scheduledDate ? "Add to Production" : "Add to Backlog"}
             </button>
           </div>
         </div>
