@@ -14,7 +14,6 @@ import {
   Filter,
   Image,
   Layers3,
-  ListChecks,
   Loader2,
   Pencil,
   Plus,
@@ -130,7 +129,44 @@ function FilterSegment({ options, value, onChange, variant = "default" }) {
   );
 }
 
-function FilterChip({ active, onClick, children, count }) {
+function formatFootageMinutes(minutes) {
+  const value = Number(minutes) || 0;
+  if (value <= 0) return null;
+  const hours = value / 60;
+  if (hours >= 1) return `${hours.toFixed(hours >= 10 ? 0 : 1)}h`;
+  return `${Math.round(value)}m`;
+}
+
+function FilterChipMetric({ label, value, active, variant = "neutral" }) {
+  if (value === undefined || value === null || value === "") return null;
+  const tones = {
+    footage: active
+      ? "bg-white/20 text-white"
+      : "border border-teal-200/80 bg-teal-50 text-teal-700 dark:border-teal-800/60 dark:bg-teal-950/40 dark:text-teal-300",
+    long: active
+      ? "bg-white/20 text-white"
+      : `border border-current ${FORMAT_PILL.long}`,
+    short: active
+      ? "bg-white/20 text-white"
+      : `border border-current ${FORMAT_PILL.short}`,
+    neutral: active
+      ? "bg-white/25 text-white"
+      : "border border-gray-200/80 bg-gray-50/80 text-gray-600 dark:border-gray-600/60 dark:bg-gray-800/40 dark:text-gray-300",
+  };
+  return (
+    <span
+      className={`inline-flex items-baseline gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] leading-none transition-colors ${tones[variant]}`}
+      title={`${label}: ${value}`}
+    >
+      <span className="font-medium opacity-65">{label}</span>
+      <span className="font-bold tabular-nums">{value}</span>
+    </span>
+  );
+}
+
+function FilterChip({ active, onClick, children, count, footageMinutes, longCount, shortCount }) {
+  const footageLabel = footageMinutes !== undefined ? formatFootageMinutes(footageMinutes) : null;
+  const showPlanMetrics = footageMinutes !== undefined || longCount !== undefined || shortCount !== undefined;
   return (
     <button
       type="button"
@@ -142,14 +178,15 @@ function FilterChip({ active, onClick, children, count }) {
       }`}
     >
       {children}
-      {count !== undefined && count > 0 && (
-        <span
-          className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums transition-colors ${
-            active ? "bg-white/25 text-white" : "bg-gray-200/70 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
-          }`}
-        >
-          {count}
+      {showPlanMetrics && (
+        <span className="inline-flex items-center gap-1">
+          <FilterChipMetric label="Footage" value={footageLabel} active={active} variant="footage" />
+          <FilterChipMetric label="Long" value={longCount > 0 ? longCount : null} active={active} variant="long" />
+          <FilterChipMetric label="Short" value={shortCount > 0 ? shortCount : null} active={active} variant="short" />
         </span>
+      )}
+      {!showPlanMetrics && count !== undefined && count > 0 && (
+        <FilterChipMetric label="Plans" value={count} active={active} variant="neutral" />
       )}
     </button>
   );
@@ -237,7 +274,7 @@ function toTodayKey() {
 }
 
 function getDateCategory(dateKey) {
-  if (!dateKey || dateKey === "backlog") return "backlog";
+  if (!dateKey) return "upcoming";
   const today = toTodayKey();
   if (dateKey < today) return "overdue";
   if (dateKey === today) return "today";
@@ -245,7 +282,6 @@ function getDateCategory(dateKey) {
 }
 
 function formatDateLabel(dateKey) {
-  if (dateKey === "backlog") return "Backlog";
   const d = new Date(`${dateKey}T00:00:00`);
   const today = toTodayKey();
   const tmrw = new Date();
@@ -498,29 +534,23 @@ function DateGroup(props) {
   const borderColor =
     cat === "today"
       ? "border-l-blue-500"
-      : cat === "backlog"
-        ? "border-l-[3px] border-dashed border-l-gray-400"
-        : cat === "completed"
-          ? "border-l-emerald-500/50"
-          : "border-l-gray-300 dark:border-l-gray-600";
+      : cat === "completed"
+        ? "border-l-emerald-500/50"
+        : "border-l-gray-300 dark:border-l-gray-600";
 
   const headerBg =
     cat === "today"
       ? "bg-blue-50/40 dark:bg-blue-950/10"
-      : cat === "backlog"
-        ? "bg-gray-100/40 dark:bg-gray-800/10"
-        : cat === "completed"
-          ? "bg-emerald-50/30 dark:bg-emerald-950/5"
-          : "bg-gray-50/60 dark:bg-gray-800/30";
+      : cat === "completed"
+        ? "bg-emerald-50/30 dark:bg-emerald-950/5"
+        : "bg-gray-50/60 dark:bg-gray-800/30";
 
   const dateTextClass =
     cat === "today"
       ? "text-blue-600 dark:text-blue-400"
-      : cat === "backlog"
-        ? "italic text-gray-500 dark:text-gray-400"
-        : cat === "completed"
-          ? "text-emerald-700 dark:text-emerald-400"
-          : "text-gray-800 dark:text-gray-200";
+      : cat === "completed"
+        ? "text-emerald-700 dark:text-emerald-400"
+        : "text-gray-800 dark:text-gray-200";
 
   return (
     <section
@@ -583,7 +613,6 @@ function mapPlanToLogWorkOption(plan) {
     channelId: plan.channelId?._id || plan.channelId,
     channelName: plan.channelId?.name || "",
     scheduledDate: plan.scheduledDate,
-    isBacklog: !plan.scheduledDate,
     longPlanned: plan.longPlanned ?? 0,
     shortPlanned: plan.shortPlanned ?? 0,
     longPending: pendingPlanCount(plan.longPlanned, plan.longCompleted),
@@ -595,8 +624,8 @@ function flattenPlanGroups(response) {
   return (response.data?.groups || []).flatMap((group) => group.tasks || []);
 }
 
-function formatPlanScheduleDate(scheduledDate, isBacklog = false) {
-  if (isBacklog || !scheduledDate) return "Backlog";
+function formatPlanScheduleDate(scheduledDate) {
+  if (!scheduledDate) return "—";
   const key = new Date(scheduledDate).toISOString().slice(0, 10);
   return new Intl.DateTimeFormat("en-IN", {
     weekday: "short",
@@ -605,8 +634,12 @@ function formatPlanScheduleDate(scheduledDate, isBacklog = false) {
   }).format(new Date(`${key}T00:00:00`));
 }
 
+const LOG_WORK_PLAN_MOBILE_MQ = "(max-width: 767px)";
+const LOG_WORK_PLAN_TABLE_MQ = "(min-width: 1024px)";
 const LOG_WORK_ROW_GRID =
   "w-full grid-cols-[2.75rem_minmax(0,1.4fr)_minmax(0,1fr)_5.5rem_3.25rem_3.25rem] items-center gap-x-2.5";
+const LOG_WORK_DROPDOWN_PANEL =
+  "absolute z-[200] mt-1.5 left-0 w-full max-w-[min(calc(100vw-1.5rem),42rem)] overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900";
 
 function parseLoggedCounts(longValue, shortValue, firstCutLogged = false) {
   const longPendingLogged = longValue === "" ? 0 : Number(longValue);
@@ -628,31 +661,29 @@ function parseLoggedCounts(longValue, shortValue, firstCutLogged = false) {
 function LogWorkPlanMobileCard({ plan }) {
   return (
     <div className="min-w-0 space-y-1.5">
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         {plan.planId ? (
-          <span className="inline-flex items-center rounded-full border border-blue-200/70 bg-blue-50 px-2 py-0.5 text-[11px] font-bold tabular-nums text-blue-700 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-300">
+          <span className="inline-flex flex-shrink-0 items-center rounded-full border border-blue-200/70 bg-blue-50 px-2 py-0.5 text-[11px] font-bold tabular-nums text-blue-700 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-300">
             #{plan.planId}
           </span>
         ) : (
-          <span className="text-xs text-gray-400">—</span>
+          <span className="flex-shrink-0 text-xs text-gray-400">—</span>
         )}
-        <span className="min-w-0 truncate text-sm font-semibold text-gray-900 dark:text-white" title={plan.title}>
+        <span
+          className="min-w-0 line-clamp-2 text-sm font-semibold leading-snug text-gray-900 dark:text-white"
+          title={plan.title}
+        >
           {plan.title}
         </span>
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="min-w-0 truncate text-xs text-gray-500 dark:text-gray-400" title={plan.channelName}>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-0 sm:pl-0">
+        <span className="min-w-0 text-xs text-gray-500 dark:text-gray-400" title={plan.channelName}>
           {plan.channelName}
         </span>
-        {plan.isBacklog ? (
-          <span className="inline-flex rounded-md border border-amber-200/80 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
-            Backlog
-          </span>
-        ) : (
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {formatPlanScheduleDate(plan.scheduledDate, plan.isBacklog)}
-          </span>
-        )}
+        <span className="text-xs text-gray-400 dark:text-gray-500">·</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          {formatPlanScheduleDate(plan.scheduledDate)}
+        </span>
         <span className={`inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${FORMAT_PILL.long}`}>
           {plan.longPending}/{plan.longPlanned} L
         </span>
@@ -686,15 +717,9 @@ function LogWorkPlanRowContent({ plan }) {
         {plan.channelName}
       </span>
       <span className="flex justify-center">
-        {plan.isBacklog ? (
-          <span className="inline-flex rounded-md border border-amber-200/80 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
-            Backlog
-          </span>
-        ) : (
-          <span className={`${metaClass} text-center`}>
-            {formatPlanScheduleDate(plan.scheduledDate, plan.isBacklog)}
-          </span>
-        )}
+        <span className={`${metaClass} text-center`}>
+          {formatPlanScheduleDate(plan.scheduledDate)}
+        </span>
       </span>
       <span
         className={`inline-flex justify-center rounded-md px-2 py-1 text-[11px] font-bold tabular-nums ${FORMAT_PILL.long}`}
@@ -720,6 +745,7 @@ function WorkLogEntryRow({ log, editable = false, onUpdate, onDelete }) {
   const planIdNumber = log.planIdNumber ?? log.planId?.planId;
   const title = log.title || log.planId?.title || "—";
   const channel = log.channelName || log.channelId?.name || "—";
+  const shootDateLabel = formatPlanScheduleDate(log.planId?.scheduledDate);
 
   useEffect(() => {
     if (!editing) {
@@ -813,13 +839,22 @@ function WorkLogEntryRow({ log, editable = false, onUpdate, onDelete }) {
           <p className="truncate text-[13px] font-semibold leading-tight text-gray-900 dark:text-white sm:text-xs" title={title}>
             {title}
           </p>
-          <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400 sm:hidden" title={channel}>
-            {channel}
+          <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400 sm:hidden">
+            <span title={channel}>{channel}</span>
+            <span className="text-gray-400 dark:text-gray-500"> · </span>
+            <span title="Shoot date">{shootDateLabel}</span>
           </p>
         </div>
 
         <span className="hidden min-w-0 truncate text-xs text-gray-500 dark:text-gray-400 sm:block" title={channel}>
           {channel}
+        </span>
+
+        <span
+          className="hidden flex-shrink-0 text-[11px] tabular-nums text-gray-500 dark:text-gray-400 sm:block sm:max-w-[6.5rem] sm:truncate"
+          title={`Shoot date — ${shootDateLabel}`}
+        >
+          {shootDateLabel}
         </span>
       </div>
 
@@ -998,7 +1033,10 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [isMobileLayout, setIsMobileLayout] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches,
+    () => typeof window !== "undefined" && window.matchMedia(LOG_WORK_PLAN_MOBILE_MQ).matches,
+  );
+  const [isTableLayout, setIsTableLayout] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(LOG_WORK_PLAN_TABLE_MQ).matches,
   );
   const containerRef = useRef(null);
 
@@ -1024,10 +1062,19 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
   }, [plans, query]);
 
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 639px)");
-    const update = () => setIsMobileLayout(media.matches);
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
+    const mobileMedia = window.matchMedia(LOG_WORK_PLAN_MOBILE_MQ);
+    const tableMedia = window.matchMedia(LOG_WORK_PLAN_TABLE_MQ);
+    const update = () => {
+      setIsMobileLayout(mobileMedia.matches);
+      setIsTableLayout(tableMedia.matches);
+    };
+    update();
+    mobileMedia.addEventListener("change", update);
+    tableMedia.addEventListener("change", update);
+    return () => {
+      mobileMedia.removeEventListener("change", update);
+      tableMedia.removeEventListener("change", update);
+    };
   }, []);
 
   const closePicker = useCallback(() => {
@@ -1076,7 +1123,7 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
     </div>
   );
 
-  const planButtons = (mobile) =>
+  const planButtons = (useCardLayout) =>
     filteredPlans.length === 0 ? (
       <li className="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">{emptyMessage}</li>
     ) : (
@@ -1092,15 +1139,15 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
                 onChange(String(plan._id));
                 closePicker();
               }}
-              className={`w-full rounded-lg px-3 py-2.5 text-left transition-colors ${
-                mobile ? "" : `grid ${LOG_WORK_ROW_GRID}`
+              className={`w-full rounded-lg px-2.5 py-2 text-left transition-colors sm:px-3 sm:py-2.5 ${
+                useCardLayout ? "" : `grid ${LOG_WORK_ROW_GRID}`
               } ${
                 isSelected
                   ? "bg-primary-50 ring-1 ring-primary-200/80 dark:bg-primary-900/30 dark:ring-primary-800/60"
                   : "hover:bg-gray-50 dark:hover:bg-gray-800/70"
               }`}
             >
-              {mobile ? <LogWorkPlanMobileCard plan={plan} /> : <LogWorkPlanRowContent plan={plan} />}
+              {useCardLayout ? <LogWorkPlanMobileCard plan={plan} /> : <LogWorkPlanRowContent plan={plan} />}
             </button>
           </li>
         );
@@ -1133,10 +1180,10 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
             </span>
           ) : selected ? (
             <>
-              <div className="sm:hidden">
+              <div className={isTableLayout ? "hidden" : ""}>
                 <LogWorkPlanMobileCard plan={selected} />
               </div>
-              <div className={`hidden pr-1 sm:grid ${LOG_WORK_ROW_GRID}`}>
+              <div className={`${isTableLayout ? "grid" : "hidden"} pr-1 ${LOG_WORK_ROW_GRID}`}>
                 <LogWorkPlanRowContent plan={selected} />
               </div>
             </>
@@ -1184,20 +1231,22 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
         )}
 
       {open && !loading && !isMobileLayout && (
-        <div className="absolute z-[200] mt-1.5 min-w-full overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
-          <div className="border-b border-gray-100 p-2.5 dark:border-gray-800">{renderSearchField()}</div>
-          <div
-            className={`grid ${LOG_WORK_ROW_GRID} border-b border-gray-100 bg-gray-50/90 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400`}
-          >
-            <span className="text-center">ID</span>
-            <span>Title</span>
-            <span>Channel</span>
-            <span className="text-center">Shoot date</span>
-            <span className="text-center">Long</span>
-            <span className="text-center">Short</span>
-          </div>
+        <div className={LOG_WORK_DROPDOWN_PANEL}>
+          <div className="border-b border-gray-100 p-2 dark:border-gray-800 sm:p-2.5">{renderSearchField()}</div>
+          {isTableLayout ? (
+            <div
+              className={`grid ${LOG_WORK_ROW_GRID} border-b border-gray-100 bg-gray-50/90 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400`}
+            >
+              <span className="text-center">ID</span>
+              <span>Title</span>
+              <span>Channel</span>
+              <span className="text-center">Shoot date</span>
+              <span className="text-center">Long</span>
+              <span className="text-center">Short</span>
+            </div>
+          ) : null}
           <ul role="listbox" className="max-h-80 overflow-y-auto p-1 custom-scrollbar">
-            {planButtons(false)}
+            {planButtons(!isTableLayout)}
           </ul>
         </div>
       )}
@@ -1233,14 +1282,8 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
     try {
       clearCacheByPrefix("/channel-plans");
       clearCacheByPrefix("/channel-plan-work-logs");
-      const [scheduleRes, backlogRes] = await Promise.all([
-        httpClient.get("/channel-plans?bucket=schedule&limit=50&page=1"),
-        httpClient.get("/channel-plans?bucket=backlog&limit=50&page=1"),
-      ]);
-      const merged = [...flattenPlanGroups(scheduleRes), ...flattenPlanGroups(backlogRes)].filter(
-        (plan) => plan.status !== "completed",
-      );
-      const uniquePlans = [...new Map(merged.map((plan) => [String(plan._id), plan])).values()];
+      const scheduleRes = await httpClient.get("/channel-plans?bucket=schedule&limit=50&page=1");
+      const uniquePlans = flattenPlanGroups(scheduleRes).filter((plan) => plan.status !== "completed");
       uniquePlans.sort((a, b) => {
         const channelCompare = (a.channelId?.name || "").localeCompare(b.channelId?.name || "");
         if (channelCompare !== 0) return channelCompare;
@@ -1387,7 +1430,7 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Log shoot output</h2>
         </div>
         <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
-          <div className="flex min-w-0 w-full items-end gap-2 sm:gap-3 xl:w-1/2 xl:max-w-[50%]">
+          <div className="flex min-w-0 w-full flex-col gap-3 md:flex-row md:items-end md:gap-3 xl:w-1/2 xl:max-w-[50%]">
             <div className="min-w-0 flex-1">
               <LogWorkPlanPicker
                 plans={planOptions}
@@ -1397,14 +1440,14 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
                 disabled={loadingOptions}
               />
             </div>
-            <label className="block w-[8.25rem] shrink-0">
+            <label className="block w-full shrink-0 md:w-[8.25rem]">
               <span className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-gray-400">Log date</span>
               <input
                 type="date"
                 value={logDate}
                 max={toTodayKey()}
                 onChange={(event) => setLogDate(event.target.value)}
-                className="buffer-input min-h-12 py-2.5 text-sm"
+                className="buffer-input min-h-12 w-full py-2.5 text-sm"
               />
             </label>
           </div>
@@ -1688,7 +1731,7 @@ function ReportSummaryTable({ summary, activeChannelTab, loading }) {
         <div>
           <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Channel summary</h3>
           <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
-            Long/Short use plans scheduled in the period. First cut counts all open plans (incl. backlog).
+            Long/Short use plans scheduled in the period. First cut counts all open plans.
           </p>
         </div>
         <div className="hidden flex-wrap items-center gap-2 text-[9px] font-semibold text-gray-500 xl:flex dark:text-gray-400">
@@ -2451,7 +2494,7 @@ export default function ChannelPlanner() {
   const [search, setSearch] = useState("");
   const [groups, setGroups] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, totalGroups: 0, totalPlans: 0 });
-  const [stats, setStats] = useState({ schedule: 0, completed: 0, backlog: 0 });
+  const [stats, setStats] = useState({ schedule: 0, completed: 0 });
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editPlan, setEditPlan] = useState(null);
@@ -2583,10 +2626,23 @@ export default function ChannelPlanner() {
   const bucketOptions = [
     { value: "schedule", label: "In Production", shortLabel: "Active", count: stats.schedule },
     { value: "completed", label: "Completed", shortLabel: "Done", count: stats.completed },
-    { value: "backlog", label: "Backlog", count: stats.backlog },
   ];
 
-  const hasPlans = stats.schedule + stats.completed + stats.backlog > 0;
+  const showChannelFootage = viewMode === "schedule" || viewMode === "completed";
+  const totalChannelFootage = useMemo(
+    () => gridChannels.reduce((sum, channel) => sum + (Number(channel.footageMinutes) || 0), 0),
+    [gridChannels],
+  );
+  const totalLongCount = useMemo(
+    () => gridChannels.reduce((sum, channel) => sum + (Number(channel.longCount) || 0), 0),
+    [gridChannels],
+  );
+  const totalShortCount = useMemo(
+    () => gridChannels.reduce((sum, channel) => sum + (Number(channel.shortCount) || 0), 0),
+    [gridChannels],
+  );
+
+  const hasPlans = stats.schedule + stats.completed > 0;
   const showStatsRibbon = pageTab === "plans" && !loading && hasPlans;
 
   return (
@@ -2599,7 +2655,6 @@ export default function ChannelPlanner() {
             <div className="flex flex-shrink-0 items-center justify-between gap-3 overflow-x-auto scrollbar-hide rounded-lg border border-gray-100/50 bg-gray-50/50 px-3 py-1.5 dark:border-gray-700/50 dark:bg-gray-800/30">
               <div className="ml-1 flex items-center gap-3 sm:gap-4 md:gap-6">
                 <StatCard icon={CalendarDays} label="In Production" count={stats.schedule} color="text-primary-500" />
-                <StatCard icon={ListChecks} label="Backlog" count={stats.backlog} color="text-gray-500" />
                 <StatCard icon={CheckCircle2} label="Done" count={stats.completed} color="text-emerald-500" />
               </div>
               <div className="ml-auto hidden max-w-sm flex-grow items-center gap-2 sm:flex">
@@ -2660,7 +2715,13 @@ export default function ChannelPlanner() {
               {gridChannels.length > 0 && (
                 <div className="flex max-w-full items-center gap-2 overflow-x-auto scrollbar-hide">
                   <FilterLabel icon={Layers3} className="hidden sm:flex">Channel:</FilterLabel>
-                  <FilterChip active={activeChannelTab === "all"} onClick={() => changeChannelTab("all")}>
+                  <FilterChip
+                    active={activeChannelTab === "all"}
+                    onClick={() => changeChannelTab("all")}
+                    footageMinutes={showChannelFootage ? totalChannelFootage : undefined}
+                    longCount={showChannelFootage ? totalLongCount : undefined}
+                    shortCount={showChannelFootage ? totalShortCount : undefined}
+                  >
                     All
                   </FilterChip>
                   {gridChannels.map((channel) => (
@@ -2668,7 +2729,9 @@ export default function ChannelPlanner() {
                       key={channel._id}
                       active={activeChannelTab === String(channel._id)}
                       onClick={() => changeChannelTab(String(channel._id))}
-                      count={channel.count}
+                      footageMinutes={showChannelFootage ? channel.footageMinutes : undefined}
+                      longCount={showChannelFootage ? channel.longCount : undefined}
+                      shortCount={showChannelFootage ? channel.shortCount : undefined}
                     >
                       {channel.name}
                     </FilterChip>

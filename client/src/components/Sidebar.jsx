@@ -7,15 +7,22 @@ import { useDarkMode } from "../contexts/DarkModeContext";
 import api from "../services/api";
 import { countTomorrowScriptsReady } from "../utils/videoTaskSchedule";
 
+const navIconClass =
+  "flex-shrink-0 w-4 h-4 md:w-[18px] md:h-[18px] transition-colors duration-200";
+const navChevronClass =
+  "ml-auto flex-shrink-0 w-3.5 h-3.5 md:w-4 md:h-4 transition-opacity duration-200";
+
 function navLinkClassName(isActive, isCollapsed) {
   const base =
-    "relative flex items-center rounded-lg text-sm font-medium transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
-  const layout = isCollapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5";
+    "relative flex items-center rounded-lg text-xs md:text-sm font-medium transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
+  const layout = isCollapsed
+    ? "justify-center p-2 md:p-2.5"
+    : "gap-2 md:gap-3 px-2.5 md:px-3 py-2 md:py-2.5";
   if (isActive) {
     const activeAccent = isCollapsed
       ? ""
-      : "border-l-2 border-blue-600 dark:border-blue-400 pl-[10px]";
-    return `${base} ${layout} ${activeAccent} bg-blue-100/90 dark:bg-blue-900/55 text-blue-700 dark:text-blue-200 font-semibold`;
+      : "border-l-2 border-primary-500 dark:border-primary-400 pl-2 md:pl-[10px]";
+    return `${base} ${layout} ${activeAccent} bg-primary-50/90 dark:bg-primary-900/55 text-primary-700 dark:text-primary-200 font-semibold`;
   }
   return `${base} ${layout} text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800`;
 }
@@ -25,7 +32,7 @@ function SidebarLinkList({ menu, onLinkClick, isCollapsed }) {
   return (
     <div className="flex flex-1 flex-col min-h-0">
       <nav
-        className="flex-1 min-h-0 overflow-y-auto p-4 pt-3 space-y-1"
+        className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 pt-2 md:pt-3 space-y-0.5 md:space-y-1"
         aria-label="Main navigation"
       >
         {menu.map((item) => {
@@ -43,10 +50,10 @@ function SidebarLinkList({ menu, onLinkClick, isCollapsed }) {
             >
               {Icon && (
                 <Icon
-                  size={18}
-                  className={`flex-shrink-0 transition-colors duration-200 ${
+                  aria-hidden
+                  className={`${navIconClass} ${
                     isActive
-                      ? "text-blue-600 dark:text-blue-300"
+                      ? "text-primary-500 dark:text-primary-300"
                       : "text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400"
                   }`}
                 />
@@ -54,11 +61,10 @@ function SidebarLinkList({ menu, onLinkClick, isCollapsed }) {
               {!isCollapsed && <span className="truncate flex-1 min-w-0">{item.label}</span>}
               {!isCollapsed && (
                 <ChevronRight
-                  size={16}
                   aria-hidden
-                  className={`ml-auto flex-shrink-0 transition-opacity duration-200 ${
+                  className={`${navChevronClass} ${
                     isActive
-                      ? "text-blue-600 dark:text-blue-300 opacity-100"
+                      ? "text-primary-500 dark:text-primary-300 opacity-100"
                       : "text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-50"
                   }`}
                 />
@@ -111,14 +117,13 @@ function TomorrowPipeline({ isCollapsed, onLinkClick }) {
         onClick={() => onLinkClick?.()}
         title={label}
         aria-label={label}
-        className={`relative ${cardClass} p-2.5 flex justify-center`}
+        className={`relative ${cardClass} p-2 md:p-2.5 flex justify-center`}
       >
         {loading ? (
-          <Loader2 size={18} className="animate-spin text-slate-400" aria-hidden />
+          <Loader2 className="w-4 h-4 md:w-[18px] md:h-[18px] animate-spin text-slate-400" aria-hidden />
         ) : (
           <ScrollText
-            size={18}
-            className={readyCount > 0 ? "text-sky-600 dark:text-sky-400" : "text-slate-400 dark:text-slate-500"}
+            className={`w-4 h-4 md:w-[18px] md:h-[18px] ${readyCount > 0 ? "text-sky-600 dark:text-sky-400" : "text-slate-400 dark:text-slate-500"}`}
             aria-hidden
           />
         )}
@@ -135,24 +140,23 @@ function TomorrowPipeline({ isCollapsed, onLinkClick }) {
     <Link
       to="/admin"
       onClick={() => onLinkClick?.()}
-      className={`${cardClass} px-3 py-2.5`}
+      className={`${cardClass} px-2.5 md:px-3 py-2 md:py-2.5`}
     >
-      <div className="flex items-start gap-2.5 min-w-0">
+      <div className="flex items-start gap-2 md:gap-2.5 min-w-0">
         {loading ? (
-          <Loader2 size={16} className="mt-0.5 flex-shrink-0 animate-spin text-slate-400" aria-hidden />
+          <Loader2 className="mt-0.5 flex-shrink-0 w-3.5 h-3.5 md:w-4 md:h-4 animate-spin text-slate-400" aria-hidden />
         ) : (
           <ScrollText
-            size={16}
-            className={`mt-0.5 flex-shrink-0 ${readyCount > 0 ? "text-sky-600 dark:text-sky-400" : "text-slate-400 dark:text-slate-500"}`}
+            className={`mt-0.5 flex-shrink-0 w-3.5 h-3.5 md:w-4 md:h-4 ${readyCount > 0 ? "text-sky-600 dark:text-sky-400" : "text-slate-400 dark:text-slate-500"}`}
             aria-hidden
           />
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <p className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Tomorrow pipeline
           </p>
           <p
-            className={`text-xs font-medium truncate ${
+            className={`text-[11px] md:text-xs font-medium truncate ${
               loading
                 ? "text-slate-400 dark:text-slate-500"
                 : readyCount > 0
@@ -175,14 +179,14 @@ function SidebarCollapseControl({ isCollapsed, onToggleCollapse }) {
       type="button"
       onClick={onToggleCollapse}
       title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-      className={`hidden md:flex w-full items-center text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
-        isCollapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5"
+      className={`hidden md:flex w-full items-center text-xs md:text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
+        isCollapsed ? "justify-center p-2 md:p-2.5" : "gap-2 md:gap-3 px-2.5 md:px-3 py-2 md:py-2.5"
       }`}
     >
       {isCollapsed ? (
-        <ChevronRight size={18} className="flex-shrink-0" aria-hidden />
+        <ChevronRight className={`${navIconClass}`} aria-hidden />
       ) : (
-        <ChevronLeft size={18} className="flex-shrink-0" aria-hidden />
+        <ChevronLeft className={`${navIconClass}`} aria-hidden />
       )}
       {!isCollapsed && <span>Collapse sidebar</span>}
     </button>
@@ -191,7 +195,7 @@ function SidebarCollapseControl({ isCollapsed, onToggleCollapse }) {
 
 function SidebarBottomPanel({ isCollapsed, onToggleCollapse, showTomorrowPipeline, onLinkClick }) {
   return (
-    <div className="flex-shrink-0 px-4 pb-2 space-y-2 border-t border-gray-100 dark:border-gray-800 pt-3">
+    <div className="flex-shrink-0 px-3 md:px-4 pb-2 space-y-1.5 md:space-y-2 border-t border-gray-100 dark:border-gray-800 pt-2 md:pt-3">
       {showTomorrowPipeline && (
         <TomorrowPipeline isCollapsed={isCollapsed} onLinkClick={onLinkClick} />
       )}
@@ -203,16 +207,16 @@ function SidebarBottomPanel({ isCollapsed, onToggleCollapse, showTomorrowPipelin
 function SidebarFooter({ onLinkClick, isCollapsed }) {
   const { isDark, toggleDarkMode } = useDarkMode();
   return (
-    <div className="p-4 pt-2 space-y-2 flex-shrink-0 border-t border-gray-100 dark:border-gray-800">
+    <div className="p-3 md:p-4 pt-2 space-y-1.5 md:space-y-2 flex-shrink-0 border-t border-gray-100 dark:border-gray-800">
       <button
         type="button"
         onClick={toggleDarkMode}
         title={isCollapsed ? (isDark ? "Light mode" : "Dark mode") : undefined}
-        className={`w-full flex items-center text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium transition-all duration-200 ${
-          isCollapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5"
+        className={`w-full flex items-center text-xs md:text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium transition-all duration-200 ${
+          isCollapsed ? "justify-center p-2 md:p-2.5" : "gap-2 md:gap-3 px-2.5 md:px-3 py-2 md:py-2.5"
         }`}
       >
-        {isDark ? <Sun size={18} className="flex-shrink-0" /> : <Moon size={18} className="flex-shrink-0" />}
+        {isDark ? <Sun className={navIconClass} /> : <Moon className={navIconClass} />}
         {!isCollapsed && <span>{isDark ? "Light Mode" : "Dark Mode"}</span>}
       </button>
       <div
@@ -230,10 +234,10 @@ function SidebarFooter({ onLinkClick, isCollapsed }) {
 function BrandBlock({ isCollapsed }) {
   const location = useLocation();
   return (
-    <div className={`p-4 border-b border-gray-100 dark:border-gray-700 flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
-      <Link to={location.pathname} className="flex items-center gap-3 overflow-hidden">
-        <CreatorAILogo size="sm" variant="sidebar" />
-        {!isCollapsed && <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">Creator AI</h2>}
+    <div className={`p-3 md:p-4 border-b border-gray-100 dark:border-gray-700 flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
+      <Link to={location.pathname} className="flex items-center gap-2 md:gap-3 overflow-hidden min-w-0">
+        <CreatorAILogo size="xs" variant="sidebar" className="md:w-8 md:h-8 md:rounded-lg shrink-0 [&_svg]:md:w-[18px] [&_svg]:md:h-[18px]" />
+        {!isCollapsed && <h2 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white truncate">Creator AI</h2>}
       </Link>
     </div>
   );
@@ -269,7 +273,7 @@ export default function Sidebar({
     <>
       <aside 
         className={`hidden md:flex bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 fixed left-0 top-0 bottom-0 h-screen flex-col z-20 transition-all duration-300 group/sidebar ${
-          isCollapsed ? "w-20" : "w-64"
+          isCollapsed ? "md:w-16 lg:w-20" : "md:w-52 lg:w-60 xl:w-64"
         }`}
       >
         <BrandBlock isCollapsed={isCollapsed} />
@@ -277,7 +281,7 @@ export default function Sidebar({
         {/* Modern Collapse Toggle */}
         <button
           onClick={onToggleCollapse}
-          className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md hover:shadow-blue-500/10 transition-all duration-200 cursor-pointer"
+          className="hidden md:flex absolute -right-2.5 lg:-right-3 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-5 h-5 lg:w-6 lg:h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 hover:border-primary-400 dark:hover:border-primary-500 hover:shadow-md hover:shadow-primary-500/10 transition-all duration-200 cursor-pointer"
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {isCollapsed ? <ChevronRight size={12} strokeWidth={3} /> : <ChevronLeft size={12} strokeWidth={3} />}
@@ -303,23 +307,23 @@ export default function Sidebar({
             onClick={onCloseMobile}
           />
           <aside
-            className="fixed left-0 top-0 bottom-0 z-50 w-[min(16rem,88vw)] flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-xl md:hidden"
+            className="fixed left-0 top-0 bottom-0 z-50 w-[min(13.5rem,82vw)] flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-xl md:hidden"
             role="dialog"
             aria-modal="true"
             aria-label="Main navigation"
           >
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
-              <Link to={location.pathname} className="flex items-center gap-3 min-w-0">
-                <CreatorAILogo size="sm" variant="sidebar" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">Creator AI</h2>
+            <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
+              <Link to={location.pathname} className="flex items-center gap-2 min-w-0">
+                <CreatorAILogo size="xs" variant="sidebar" />
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white truncate">Creator AI</h2>
               </Link>
               <button
                 type="button"
                 onClick={onCloseMobile}
-                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400"
+                className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400"
                 aria-label="Close menu"
               >
-                <X size={20} />
+                <X className="w-4 h-4" />
               </button>
             </div>
             <div className="flex flex-1 flex-col min-h-0">

@@ -33,7 +33,7 @@ export default function ViewerLayout({ title, titleInfo, icon, children, onCache
 
       <div
         className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
-          sidebarCollapsed ? "md:ml-20" : "md:ml-64"
+          sidebarCollapsed ? "md:ml-16 lg:ml-20" : "md:ml-52 lg:ml-60 xl:ml-64"
         }`}
       >
         <Topbar

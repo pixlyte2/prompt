@@ -3,7 +3,7 @@ const ChannelPlan = require("../models/ChannelPlan");
 const Channel = require("../models/channel");
 const User = require("../models/user");
 
-const BUCKETS = new Set(["schedule", "backlog", "completed"]);
+const BUCKETS = new Set(["schedule", "completed"]);
 const COUNT_FIELDS = [
   "longPlanned",
   "longCompleted",
@@ -35,25 +35,13 @@ function parseChannelIds(query) {
 
 function bucketFilter(bucket) {
   if (!BUCKETS.has(bucket)) {
-    const error = new Error("Invalid bucket. Use schedule, backlog, or completed.");
+    const error = new Error("Invalid bucket. Use schedule or completed.");
     error.status = 400;
     throw error;
   }
 
   if (bucket === "schedule") {
-    return {
-      status: { $ne: "completed" },
-      scheduledDate: { $ne: null, $exists: true },
-    };
-  }
-  if (bucket === "backlog") {
-    return {
-      status: { $ne: "completed" },
-      $or: [
-        { scheduledDate: null },
-        { scheduledDate: { $exists: false } },
-      ],
-    };
+    return { status: { $ne: "completed" } };
   }
   return { status: "completed" };
 }
@@ -251,30 +239,7 @@ exports.getStats = async (req, res) => {
           _id: null,
           schedule: {
             $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $ne: ["$status", "completed"] },
-                    { $eq: [{ $type: "$scheduledDate" }, "date"] },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-          backlog: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $ne: ["$status", "completed"] },
-                    { $ne: [{ $type: "$scheduledDate" }, "date"] },
-                  ],
-                },
-                1,
-                0,
-              ],
+              $cond: [{ $ne: ["$status", "completed"] }, 1, 0],
             },
           },
           completed: {
@@ -287,10 +252,9 @@ exports.getStats = async (req, res) => {
     const payload = stats
       ? {
           schedule: stats.schedule,
-          backlog: stats.backlog,
           completed: stats.completed,
         }
-      : { schedule: 0, backlog: 0, completed: 0 };
+      : { schedule: 0, completed: 0 };
 
     const bucket = String(req.query.bucket || "").trim();
     if (BUCKETS.has(bucket)) {
@@ -301,9 +265,19 @@ exports.getStats = async (req, res) => {
           ? channelIds.map((id) => new mongoose.Types.ObjectId(id))
           : allowedIds,
       };
+      const longField = bucket === "completed" ? "$longCompleted" : "$longPlanned";
+      const shortField = bucket === "completed" ? "$shortCompleted" : "$shortPlanned";
       const channelRows = await ChannelPlan.aggregate([
         { $match: bucketFilterQuery },
-        { $group: { _id: "$channelId", count: { $sum: 1 } } },
+        {
+          $group: {
+            _id: "$channelId",
+            count: { $sum: 1 },
+            footageMinutes: { $sum: { $ifNull: ["$footageMinutes", 0] } },
+            longCount: { $sum: { $ifNull: [longField, 0] } },
+            shortCount: { $sum: { $ifNull: [shortField, 0] } },
+          },
+        },
         {
           $lookup: {
             from: "channels",
@@ -318,6 +292,9 @@ exports.getStats = async (req, res) => {
             _id: 1,
             name: "$channel.name",
             count: 1,
+            footageMinutes: 1,
+            longCount: 1,
+            shortCount: 1,
           },
         },
         { $sort: { name: 1 } },
@@ -326,6 +303,9 @@ exports.getStats = async (req, res) => {
         _id: row._id,
         name: row.name,
         count: row.count,
+        footageMinutes: row.footageMinutes || 0,
+        longCount: row.longCount || 0,
+        shortCount: row.shortCount || 0,
       }));
     }
 
@@ -347,9 +327,7 @@ exports.getPlans = async (req, res) => {
     const sort =
       bucket === "completed"
         ? { completedAt: -1, updatedAt: -1 }
-        : bucket === "backlog"
-          ? { updatedAt: -1 }
-          : { scheduledDate: 1, createdAt: 1 };
+        : { scheduledDate: 1, createdAt: 1 };
 
     const plans = await ChannelPlan.find(filter)
       .populate("channelId", "name")
@@ -360,11 +338,10 @@ exports.getPlans = async (req, res) => {
     const grouped = new Map();
     for (const plan of plans) {
       const dateValue =
-        bucket === "completed" ? plan.completedAt || plan.updatedAt : plan.scheduledDate;
-      const key =
-        bucket === "backlog"
-          ? "backlog"
-          : new Date(dateValue).toISOString().slice(0, 10);
+        bucket === "completed"
+          ? plan.completedAt || plan.updatedAt
+          : plan.scheduledDate || plan.createdAt;
+      const key = new Date(dateValue).toISOString().slice(0, 10);
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key).push(plan);
     }
@@ -391,8 +368,6 @@ exports.getPlans = async (req, res) => {
     }));
 
     allGroups.sort((a, b) => {
-      if (a.date === "backlog") return 1;
-      if (b.date === "backlog") return -1;
       if (bucket === "completed") return b.date.localeCompare(a.date);
       return a.date.localeCompare(b.date);
     });

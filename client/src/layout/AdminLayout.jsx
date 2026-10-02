@@ -77,7 +77,7 @@ export default function AdminLayout({
 
       <div
         className={`flex flex-1 min-w-0 min-h-0 flex-row transition-all duration-300 ${
-          sidebarCollapsed ? "md:ml-20" : "md:ml-64"
+          sidebarCollapsed ? "md:ml-16 lg:ml-20" : "md:ml-52 lg:ml-60 xl:ml-64"
         }`}
       >
         <div className="flex flex-1 flex-col min-w-0 min-h-0">

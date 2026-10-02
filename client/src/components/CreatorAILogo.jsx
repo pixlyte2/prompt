@@ -1,4 +1,8 @@
 const SIZE_STYLES = {
+  xs: {
+    container: "w-7 h-7 rounded-md",
+    icon: "w-4 h-4",
+  },
   sm: {
     container: "w-8 h-8 rounded-lg",
     icon: "w-[18px] h-[18px]",
