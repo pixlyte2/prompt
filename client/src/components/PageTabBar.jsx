@@ -112,13 +112,13 @@ export default function PageTabBar({
               role="tab"
               aria-selected={isActive}
               onClick={() => onChange(tab.id)}
-              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-4 sm:py-2.5 text-[11px] sm:text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap ${
                 isActive
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
               }`}
             >
-              {Icon && <Icon size={16} className="flex-shrink-0" />}
+              {Icon && <Icon size={15} className="flex-shrink-0 sm:h-4 sm:w-4" />}
               <span className="sm:hidden">{mobileLabel}</span>
               <span className="hidden sm:inline">{desktopLabel}</span>
               {showBadge && <CountBadge count={count} isActive={isActive} />}

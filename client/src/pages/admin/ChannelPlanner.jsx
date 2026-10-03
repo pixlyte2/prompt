@@ -1,7 +1,6 @@
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  BarChart3,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -22,15 +21,6 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { toast } from "react-hot-toast";
 import AdminLayout from "../../layout/AdminLayout";
 import PageTabBar from "../../components/PageTabBar";
@@ -44,27 +34,16 @@ const LOG_HISTORY_DAYS_PER_PAGE = 10;
 
 const REPORT_PERIODS = [
   { value: "current-week", label: "This week", shortLabel: "Week" },
-  { value: "last-3-weeks", label: "Last 3 weeks", shortLabel: "3 wks" },
+  { value: "last-3-months", label: "Last Three Month", shortLabel: "3 mo" },
   { value: "current-month", label: "This month", shortLabel: "Month" },
   { value: "last-12-months", label: "Last 12 months", shortLabel: "12 mo" },
   { value: "custom", label: "Custom" },
 ];
 
-const FOOTAGE_CHART_COLOR = "#2C4BFF";
-
-function FootageChartTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
-  const hours = Number(payload[0]?.value ?? 0);
-  const minutes = Math.round(hours * 60);
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] shadow-lg dark:border-gray-700 dark:bg-gray-900">
-      <p className="font-semibold text-gray-900 dark:text-white">{label}</p>
-      <p className="mt-0.5 font-medium tabular-nums text-primary-600 dark:text-primary-400">
-        Footage: {hours.toFixed(1)}h ({minutes} min)
-      </p>
-    </div>
-  );
-}
+const REPORT_ATTENTION_FILTERS = [
+  { value: "all", label: "All channels", shortLabel: "All" },
+  { value: "attention", label: "Needs attention", shortLabel: "Alert" },
+];
 
 const PAGE_TABS = [
   { id: "plans", label: "Plans", shortLabel: "Plans", icon: CalendarDays },
@@ -85,7 +64,7 @@ const ROW_PILL_SIZES = {
 };
 
 const NOTES_PILL =
-  "inline-flex shrink-0 items-center gap-1 rounded-full border border-sky-200/90 bg-sky-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-800 shadow-sm transition-colors hover:border-sky-300 hover:bg-sky-100 dark:border-sky-700/60 dark:bg-sky-900/35 dark:text-sky-100 dark:hover:border-sky-500 dark:hover:bg-sky-900/55 min-h-[22px] sm:min-h-[26px] sm:px-2.5 sm:py-1 sm:text-[11px]";
+  "inline-flex shrink-0 items-center gap-0.5 rounded-full border border-sky-200/90 bg-sky-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-800 shadow-sm transition-colors hover:border-sky-300 hover:bg-sky-100 dark:border-sky-700/60 dark:bg-sky-900/35 dark:text-sky-100 dark:hover:border-sky-500 dark:hover:bg-sky-900/55 min-h-[20px] sm:min-h-[26px] sm:gap-1 sm:px-2.5 sm:py-1 sm:text-[11px]";
 
 /* ─── Production Hub-style shared UI ─── */
 
@@ -102,7 +81,7 @@ function FilterSegment({ options, value, onChange, variant = "default" }) {
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`relative flex min-h-9 flex-shrink-0 items-center justify-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold touch-manipulation transition-colors sm:min-h-0 sm:px-3.5 sm:py-1.5 sm:text-xs ${
+          className={`relative flex min-h-8 flex-shrink-0 items-center justify-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold touch-manipulation transition-colors sm:min-h-0 sm:px-3.5 sm:py-1.5 sm:text-xs ${
             value === option.value
               ? activeVariants[variant]
               : "text-gray-600 hover:bg-gray-200/50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200"
@@ -158,7 +137,8 @@ function FilterChipMetric({ label, value, active, variant = "neutral" }) {
       className={`inline-flex items-baseline gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] leading-none transition-colors ${tones[variant]}`}
       title={`${label}: ${value}`}
     >
-      <span className="font-medium opacity-65">{label}</span>
+      <span className="font-medium opacity-65 sm:hidden">{label === "Footage" ? "Ft" : label === "Long" ? "L" : label === "Short" ? "S" : label === "Plans" ? "#" : label}</span>
+      <span className="hidden font-medium opacity-65 sm:inline">{label}</span>
       <span className="font-bold tabular-nums">{value}</span>
     </span>
   );
@@ -171,7 +151,7 @@ function FilterChip({ active, onClick, children, count, footageMinutes, longCoun
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[10px] font-semibold tracking-wide touch-manipulation transition-colors sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs ${
+      className={`inline-flex min-h-8 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-semibold tracking-wide touch-manipulation transition-colors sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs ${
         active
           ? "border-transparent bg-primary-500 text-white shadow-sm"
           : "border-gray-200/80 bg-white/60 text-gray-700 hover:border-primary-400/50 hover:bg-white hover:shadow-sm dark:border-gray-700/80 dark:bg-gray-800/50 dark:text-gray-200 dark:hover:border-primary-500/50 dark:hover:bg-gray-800"
@@ -203,7 +183,7 @@ function SearchInput({ value, onChange, placeholder, onClear }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="buffer-input min-h-10 w-full py-2 pl-8 pr-8 text-sm sm:min-h-0 sm:rounded-xl sm:py-1 sm:pl-7 sm:pr-7 sm:text-xs"
+        className="buffer-input min-h-9 w-full py-1.5 pl-8 pr-8 text-sm sm:min-h-0 sm:rounded-xl sm:py-1 sm:pl-7 sm:pr-7 sm:text-xs"
       />
       {value && (
         <button
@@ -230,18 +210,38 @@ function FilterLabel({ icon: Icon, children, className = "" }) {
   );
 }
 
-function StatCard({ icon, label, count, color }) {
+function StatCard({ icon, label, shortLabel, count, color, compact = false }) {
+  if (compact) {
+    return (
+      <div className="flex min-w-0 items-center gap-1 rounded border-none bg-transparent transition-opacity hover:opacity-80">
+        <div className={`flex h-3 w-3 flex-shrink-0 items-center justify-center rounded ring-1 ring-inset ring-white/10 ${color}`}>
+          {icon ? createElement(icon, { size: 9 }) : null}
+        </div>
+        <div className="flex min-w-0 items-baseline gap-0.5">
+          <span className="text-[11px] font-black tabular-nums leading-none text-gray-900 dark:text-white sm:text-[12px]">
+            {count}
+          </span>
+          <span className="truncate text-[7px] font-bold uppercase tracking-tighter text-gray-500 dark:text-gray-400 sm:text-[8px]">
+            <span className="sm:hidden">{shortLabel ?? label}</span>
+            <span className="hidden sm:inline">{label}</span>
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-w-0 items-center gap-1.5 rounded border-none bg-transparent transition-opacity hover:opacity-80">
-      <div className={`flex h-4.5 w-4.5 flex-shrink-0 items-center justify-center rounded ring-1 ring-inset ring-white/10 ${color}`}>
+    <div className="flex min-w-0 items-center gap-1 rounded border-none bg-transparent transition-opacity hover:opacity-80 sm:gap-1.5">
+      <div className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded ring-1 ring-inset ring-white/10 sm:h-4.5 sm:w-4.5 ${color}`}>
         {icon ? createElement(icon, { size: 11 }) : null}
       </div>
-      <div className="flex min-w-0 items-baseline gap-1">
-        <span className="text-[13px] font-black tabular-nums leading-none text-gray-900 dark:text-white sm:text-[15px]">
+      <div className="flex min-w-0 items-baseline gap-0.5 sm:gap-1">
+        <span className="text-[12px] font-black tabular-nums leading-none text-gray-900 dark:text-white sm:text-[15px]">
           {count}
         </span>
         <span className="truncate text-[8px] font-bold uppercase tracking-tighter text-gray-500 dark:text-gray-400 sm:text-[9px]">
-          {label}
+          <span className="sm:hidden">{shortLabel ?? label}</span>
+          <span className="hidden sm:inline">{label}</span>
         </span>
       </div>
     </div>
@@ -329,9 +329,8 @@ function resolveReportRange(period, customFrom, customTo) {
     return { from: dateToKey(start), to: dateToKey(end) };
   }
 
-  if (period === "last-3-weeks") {
-    const from = new Date(today);
-    from.setDate(from.getDate() - 20);
+  if (period === "last-3-months") {
+    const from = new Date(today.getFullYear(), today.getMonth() - 2, 1);
     return { from: dateToKey(from), to: dateToKey(today) };
   }
 
@@ -391,8 +390,8 @@ function NotesPill({ notes, onOpen }) {
       title="Notes — tap to read"
       aria-label="Open notes"
     >
-      <FileText size={12} className="flex-shrink-0 opacity-90 sm:h-3.5 sm:w-3.5" aria-hidden />
-      <span>Notes</span>
+      <FileText size={11} className="flex-shrink-0 opacity-90 sm:h-3.5 sm:w-3.5" aria-hidden />
+      <span className="hidden sm:inline">Notes</span>
     </button>
   );
 }
@@ -441,43 +440,53 @@ function FirstCutBadge({ ready }) {
 
 function ChannelPlanRow({ plan, onEdit, onDelete, onToggleStatus, onThumbnail, onOpenNotes }) {
   const isCompleted = plan.status === "completed";
+  const completionBlockers = isCompleted ? [] : planCompletionBlockers(plan);
+  const canComplete = completionBlockers.length === 0;
   const notes = String(plan.notes || "").trim();
   const channelName = plan.channelId?.name || "Unknown";
   const assigneeName = plan.assignedTo?.name;
   const channelLabel = [channelName, assigneeName].filter(Boolean).join(" · ");
+  const completeTitle = isCompleted
+    ? "Reopen plan"
+    : canComplete
+      ? "Mark completed"
+      : `Complete all planned videos first: ${completionBlockers.join(", ")}`;
 
   return (
-    <div className="group flex flex-col gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2.5 transition-colors hover:border-primary-400/60 hover:bg-primary-50/70 hover:shadow-sm dark:border-gray-700/50 dark:bg-gray-800/80 dark:hover:border-primary-700/60 dark:hover:bg-primary-900/40 sm:flex-row sm:items-center sm:gap-2 sm:py-1">
-      <div className="flex min-w-0 items-center gap-2 sm:contents">
+    <div className="group flex flex-col gap-1.5 rounded-lg border border-gray-100 bg-white px-2 py-2 transition-colors hover:border-primary-400/60 hover:bg-primary-50/70 hover:shadow-sm dark:border-gray-700/50 dark:bg-gray-800/80 dark:hover:border-primary-700/60 dark:hover:bg-primary-900/40 sm:flex-row sm:items-center sm:gap-2 sm:px-2.5 sm:py-1">
+      <div className="flex min-w-0 items-center gap-1.5 sm:contents sm:gap-2">
         <button
           type="button"
           onClick={() => onToggleStatus(plan)}
-          className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full touch-manipulation transition-colors sm:h-auto sm:w-auto ${
+          disabled={!isCompleted && !canComplete}
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full touch-manipulation transition-colors sm:h-auto sm:w-auto ${
             isCompleted
               ? "text-emerald-500 hover:text-amber-500"
-              : "text-gray-300 hover:text-emerald-500 dark:text-gray-600 dark:hover:text-emerald-400"
+              : canComplete
+                ? "text-gray-300 hover:text-emerald-500 dark:text-gray-600 dark:hover:text-emerald-400"
+                : "cursor-not-allowed text-gray-200 dark:text-gray-700"
           }`}
-          title={isCompleted ? "Reopen plan" : "Mark completed"}
+          title={completeTitle}
         >
-          {isCompleted ? <CheckCircle2 size={22} /> : <Circle size={22} />}
+          {isCompleted ? <CheckCircle2 size={18} className="sm:h-[22px] sm:w-[22px]" /> : <Circle size={18} className="sm:h-[22px] sm:w-[22px]" />}
         </button>
 
         <div className="order-last ml-auto flex flex-shrink-0 items-center gap-0.5 sm:order-none sm:ml-0 sm:opacity-40 sm:transition-opacity sm:group-hover:opacity-100">
           <button
             type="button"
             onClick={() => onEdit(plan)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 touch-manipulation transition-colors hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/40 dark:hover:text-primary-400 sm:h-auto sm:w-auto sm:p-1"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 touch-manipulation transition-colors hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/40 dark:hover:text-primary-400 sm:h-auto sm:w-auto sm:p-1"
             title="Edit plan"
           >
-            <Pencil className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+            <Pencil className="h-3.5 w-3.5 sm:h-[18px] sm:w-[18px]" />
           </button>
           <button
             type="button"
             onClick={() => onDelete(plan)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 touch-manipulation transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30 dark:hover:text-red-400 sm:h-auto sm:w-auto sm:p-1"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 touch-manipulation transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30 dark:hover:text-red-400 sm:h-auto sm:w-auto sm:p-1"
             title="Delete plan"
           >
-            <Trash2 className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+            <Trash2 className="h-3.5 w-3.5 sm:h-[18px] sm:w-[18px]" />
           </button>
         </div>
 
@@ -487,7 +496,7 @@ function ChannelPlanRow({ plan, onEdit, onDelete, onToggleStatus, onThumbnail, o
           type="button"
           disabled={!plan.thumbnail}
           onClick={() => plan.thumbnail && onThumbnail(plan.thumbnail)}
-          className="flex h-8 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border border-gray-200 bg-gray-100 shadow-sm disabled:cursor-default dark:border-gray-700 dark:bg-gray-700/50 sm:h-7 sm:w-12"
+          className="flex h-7 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border border-gray-200 bg-gray-100 shadow-sm disabled:cursor-default dark:border-gray-700 dark:bg-gray-700/50 sm:h-7 sm:w-12"
           title={plan.thumbnail ? "View thumbnail" : "No thumbnail"}
         >
           {plan.thumbnail ? (
@@ -513,7 +522,7 @@ function ChannelPlanRow({ plan, onEdit, onDelete, onToggleStatus, onThumbnail, o
         </div>
       </div>
 
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 pl-12 sm:contents sm:pl-0">
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-1 pl-10 sm:contents sm:gap-1.5 sm:pl-0">
         <NotesPill notes={notes} onOpen={() => onOpenNotes(plan)} />
         <CountPill label="L" planned={plan.longPlanned} logged={plan.longCompleted} />
         <CountPill label="S" planned={plan.shortPlanned} logged={plan.shortCompleted} />
@@ -559,21 +568,21 @@ function DateGroup(props) {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left backdrop-blur-md transition-colors hover:brightness-95 ${headerBg}`}
+        className={`flex w-full items-center justify-between gap-2 px-2.5 py-1 text-left backdrop-blur-md transition-colors hover:brightness-95 sm:gap-3 sm:px-3 sm:py-1.5 ${headerBg}`}
       >
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <ChevronRight
-            size={14}
-            className="flex-shrink-0 text-gray-500 transition-transform duration-300 dark:text-gray-400"
+            size={13}
+            className="flex-shrink-0 text-gray-500 transition-transform duration-300 dark:text-gray-400 sm:h-3.5 sm:w-3.5"
             style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
           />
-          <span className={`truncate text-sm font-black ${dateTextClass}`}>{formatDateLabel(group.date)}</span>
-          <span className="flex-shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-black tabular-nums text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+          <span className={`truncate text-xs font-black sm:text-sm ${dateTextClass}`}>{formatDateLabel(group.date)}</span>
+          <span className="flex-shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-black tabular-nums text-gray-600 dark:bg-gray-700 dark:text-gray-300 sm:px-2 sm:text-[10px]">
             {group.tasks.length}
           </span>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
-          <span className="inline-flex items-center gap-1 rounded-lg border border-gray-200/50 bg-white/60 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-gray-500 sm:gap-1.5 sm:rounded-xl sm:px-2.5 sm:py-1 sm:text-[10px] dark:border-gray-700/50 dark:bg-gray-800/60 dark:text-gray-400">
+        <div className="flex flex-shrink-0 items-center gap-0.5 sm:gap-2">
+          <span className="inline-flex items-center gap-0.5 rounded-md border border-gray-200/50 bg-white/60 px-1 py-0.5 text-[8px] font-black uppercase tracking-wider text-gray-500 sm:gap-1.5 sm:rounded-xl sm:px-2.5 sm:py-1 sm:text-[10px] dark:border-gray-700/50 dark:bg-gray-800/60 dark:text-gray-400">
             {totals.longPlanned > 0 && (
               <span className={`rounded-md px-1 py-0.5 font-bold tabular-nums sm:rounded-lg sm:px-1.5 ${FORMAT_PILL.long}`}>
                 {totals.longCompleted || 0}/{totals.longPlanned}L
@@ -584,14 +593,14 @@ function DateGroup(props) {
                 {totals.shortCompleted || 0}/{totals.shortPlanned}S
               </span>
             )}
-            <span className="text-[9px] font-bold text-emerald-600 sm:text-[10px] dark:text-emerald-400">
-              {totals.firstCut || 0} <span className="hidden sm:inline">ready</span>
+            <span className="text-[8px] font-bold text-emerald-600 sm:text-[10px] dark:text-emerald-400">
+              {totals.firstCut || 0}<span className="hidden sm:inline"> ready</span><span className="sm:hidden"> FC</span>
             </span>
           </span>
         </div>
       </button>
       {open && (
-        <div className="space-y-2 bg-gray-50/50 p-3 dark:bg-gray-800/20">
+        <div className="space-y-1.5 bg-gray-50/50 p-2 dark:bg-gray-800/20 sm:space-y-2 sm:p-3">
           {group.tasks.map((plan) => (
             <ChannelPlanRow key={plan._id} plan={plan} {...props} />
           ))}
@@ -605,6 +614,20 @@ function pendingPlanCount(planned, completed) {
   return Math.max(0, (Number(planned) || 0) - (Number(completed) || 0));
 }
 
+function planCompletionBlockers(plan) {
+  const blockers = [];
+  const longRemaining = pendingPlanCount(plan.longPlanned, plan.longCompleted);
+  const shortRemaining = pendingPlanCount(plan.shortPlanned, plan.shortCompleted);
+
+  if (longRemaining > 0) {
+    blockers.push(`${longRemaining} long${longRemaining === 1 ? "" : "s"} remaining`);
+  }
+  if (shortRemaining > 0) {
+    blockers.push(`${shortRemaining} short${shortRemaining === 1 ? "" : "s"} remaining`);
+  }
+  return blockers;
+}
+
 function mapPlanToLogWorkOption(plan) {
   return {
     _id: plan._id,
@@ -615,8 +638,31 @@ function mapPlanToLogWorkOption(plan) {
     scheduledDate: plan.scheduledDate,
     longPlanned: plan.longPlanned ?? 0,
     shortPlanned: plan.shortPlanned ?? 0,
+    longCompleted: plan.longCompleted ?? 0,
+    shortCompleted: plan.shortCompleted ?? 0,
     longPending: pendingPlanCount(plan.longPlanned, plan.longCompleted),
     shortPending: pendingPlanCount(plan.shortPlanned, plan.shortCompleted),
+  };
+}
+
+function workLogDateKey(value) {
+  if (!value) return "";
+  return dateToKey(new Date(value));
+}
+
+function maxLogEntryCount(planned, completedTotal, currentEntryCount = 0) {
+  return Math.max(
+    0,
+    (Number(planned) || 0) - (Number(completedTotal) || 0) + (Number(currentEntryCount) || 0),
+  );
+}
+
+function buildLogCountLimits({ longPlanned, shortPlanned, longCompleted, shortCompleted, existingLong = 0, existingShort = 0 }) {
+  return {
+    maxLong: maxLogEntryCount(longPlanned, longCompleted, existingLong),
+    maxShort: maxLogEntryCount(shortPlanned, shortCompleted, existingShort),
+    longPlanned: longPlanned ?? 0,
+    shortPlanned: shortPlanned ?? 0,
   };
 }
 
@@ -639,9 +685,9 @@ const LOG_WORK_PLAN_TABLE_MQ = "(min-width: 1024px)";
 const LOG_WORK_ROW_GRID =
   "w-full grid-cols-[2.75rem_minmax(0,1.4fr)_minmax(0,1fr)_5.5rem_3.25rem_3.25rem] items-center gap-x-2.5";
 const LOG_WORK_DROPDOWN_PANEL =
-  "absolute z-[200] mt-1.5 left-0 w-full max-w-[min(calc(100vw-1.5rem),42rem)] overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900";
+  "fixed z-[200] overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900";
 
-function parseLoggedCounts(longValue, shortValue, firstCutLogged = false) {
+function parseLoggedCounts(longValue, shortValue, firstCutLogged = false, limits = null) {
   const longPendingLogged = longValue === "" ? 0 : Number(longValue);
   const shortPendingLogged = shortValue === "" ? 0 : Number(shortValue);
   if (
@@ -651,6 +697,18 @@ function parseLoggedCounts(longValue, shortValue, firstCutLogged = false) {
     shortPendingLogged < 0
   ) {
     return { error: "Counts must be non-negative whole numbers" };
+  }
+  if (limits) {
+    if (longPendingLogged > limits.maxLong) {
+      return {
+        error: `Long logged cannot exceed ${limits.maxLong} (planned ${limits.longPlanned})`,
+      };
+    }
+    if (shortPendingLogged > limits.maxShort) {
+      return {
+        error: `Short logged cannot exceed ${limits.maxShort} (planned ${limits.shortPlanned})`,
+      };
+    }
   }
   if (longPendingLogged === 0 && shortPendingLogged === 0 && !firstCutLogged) {
     return { error: "Enter at least one count or mark first cut ready" };
@@ -762,8 +820,21 @@ function WorkLogEntryRow({ log, editable = false, onUpdate, onDelete }) {
     setEditing(false);
   };
 
+  const editLimits = useMemo(() => {
+    const planMeta = log.planId;
+    if (!planMeta || typeof planMeta !== "object") return null;
+    return buildLogCountLimits({
+      longPlanned: planMeta.longPlanned,
+      shortPlanned: planMeta.shortPlanned,
+      longCompleted: planMeta.longCompleted,
+      shortCompleted: planMeta.shortCompleted,
+      existingLong: log.longPendingLogged ?? 0,
+      existingShort: log.shortPendingLogged ?? 0,
+    });
+  }, [log]);
+
   const handleSave = async () => {
-    const parsed = parseLoggedCounts(longValue, shortValue, firstCutValue);
+    const parsed = parseLoggedCounts(longValue, shortValue, firstCutValue, editLimits);
     if (parsed.error) {
       toast.error(parsed.error);
       return;
@@ -783,8 +854,8 @@ function WorkLogEntryRow({ log, editable = false, onUpdate, onDelete }) {
     "w-full rounded-md border border-gray-200 bg-white px-1.5 py-1.5 text-center text-[11px] font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-gray-600 dark:bg-gray-800 dark:text-white";
 
   return (
-    <div className="group flex flex-col gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2.5 transition-colors hover:border-primary-400/60 hover:bg-primary-50/70 hover:shadow-sm dark:border-gray-700/50 dark:bg-gray-800/80 dark:hover:border-primary-700/60 dark:hover:bg-primary-900/40 sm:flex-row sm:items-center sm:gap-2 sm:py-1">
-      <div className="flex min-w-0 items-center gap-2 sm:contents">
+    <div className="group flex flex-col gap-1.5 rounded-lg border border-gray-100 bg-white px-2 py-2 transition-colors hover:border-primary-400/60 hover:bg-primary-50/70 hover:shadow-sm dark:border-gray-700/50 dark:bg-gray-800/80 dark:hover:border-primary-700/60 dark:hover:bg-primary-900/40 sm:flex-row sm:items-center sm:gap-2 sm:px-2.5 sm:py-1">
+      <div className="flex min-w-0 items-center gap-1.5 sm:contents sm:gap-2">
         {editable && (
           <div className="order-last ml-auto flex flex-shrink-0 items-center gap-0.5 sm:order-none sm:ml-0 sm:opacity-40 sm:transition-opacity sm:group-hover:opacity-100">
             {editing ? (
@@ -793,7 +864,7 @@ function WorkLogEntryRow({ log, editable = false, onUpdate, onDelete }) {
                   type="button"
                   onClick={() => void handleSave()}
                   disabled={saving}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-emerald-600 transition hover:bg-emerald-50 disabled:opacity-50 dark:hover:bg-emerald-950/40 sm:h-auto sm:w-auto sm:p-1"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-600 transition hover:bg-emerald-50 disabled:opacity-50 dark:hover:bg-emerald-950/40 sm:h-auto sm:w-auto sm:p-1"
                   title="Save"
                 >
                   {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
@@ -802,7 +873,7 @@ function WorkLogEntryRow({ log, editable = false, onUpdate, onDelete }) {
                   type="button"
                   onClick={cancelEdit}
                   disabled={saving}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 dark:hover:bg-gray-800 sm:h-auto sm:w-auto sm:p-1"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 dark:hover:bg-gray-800 sm:h-auto sm:w-auto sm:p-1"
                   title="Cancel"
                 >
                   <X size={16} />
@@ -813,19 +884,19 @@ function WorkLogEntryRow({ log, editable = false, onUpdate, onDelete }) {
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 transition hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/40 sm:h-auto sm:w-auto sm:p-1"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/40 sm:h-auto sm:w-auto sm:p-1"
                   title="Edit log"
                 >
-                  <Pencil className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+                  <Pencil className="h-3.5 w-3.5 sm:h-[18px] sm:w-[18px]" />
                 </button>
                 {onDelete ? (
                   <button
                     type="button"
                     onClick={() => onDelete(log)}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 sm:h-auto sm:w-auto sm:p-1"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 sm:h-auto sm:w-auto sm:p-1"
                     title="Delete log"
                   >
-                    <Trash2 className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+                    <Trash2 className="h-3.5 w-3.5 sm:h-[18px] sm:w-[18px]" />
                   </button>
                 ) : null}
               </>
@@ -836,7 +907,7 @@ function WorkLogEntryRow({ log, editable = false, onUpdate, onDelete }) {
         <PlanIdPill planId={planIdNumber} />
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold leading-tight text-gray-900 dark:text-white sm:text-xs" title={title}>
+          <p className="truncate text-[12px] font-semibold leading-tight text-gray-900 dark:text-white sm:text-xs" title={title}>
             {title}
           </p>
           <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400 sm:hidden">
@@ -858,22 +929,24 @@ function WorkLogEntryRow({ log, editable = false, onUpdate, onDelete }) {
         </span>
       </div>
 
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 pl-12 sm:contents sm:pl-0">
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-1 pl-10 sm:contents sm:gap-1.5 sm:pl-0">
         {editing ? (
           <>
             <input
               type="number"
               min={0}
+              max={editLimits?.maxLong ?? undefined}
               step={1}
               value={longValue}
               onChange={(event) => setLongValue(event.target.value)}
               disabled={saving}
-              className={`${inputClass} w-[3.25rem]`}
+              className={`${inputClass} w-[3rem] sm:w-[3.25rem]`}
               aria-label="Long logged"
             />
             <input
               type="number"
               min={0}
+              max={editLimits?.maxShort ?? undefined}
               step={1}
               value={shortValue}
               onChange={(event) => setShortValue(event.target.value)}
@@ -932,23 +1005,23 @@ function WorkLogDateGroup({ dateKey, logs, editable, onUpdateLog, onDeleteLog })
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-3 bg-primary-50/40 px-3 py-1.5 text-left backdrop-blur-md transition-colors hover:brightness-95 dark:bg-primary-950/10"
+        className="flex w-full items-center justify-between gap-2 bg-primary-50/40 px-2.5 py-1 text-left backdrop-blur-md transition-colors hover:brightness-95 dark:bg-primary-950/10 sm:gap-3 sm:px-3 sm:py-1.5"
       >
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <ChevronRight
-            size={14}
-            className="flex-shrink-0 text-gray-500 transition-transform duration-300 dark:text-gray-400"
+            size={13}
+            className="flex-shrink-0 text-gray-500 transition-transform duration-300 dark:text-gray-400 sm:h-3.5 sm:w-3.5"
             style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
           />
-          <span className="truncate text-sm font-black text-primary-600 dark:text-primary-400">
+          <span className="truncate text-xs font-black text-primary-600 dark:text-primary-400 sm:text-sm">
             {formatDateLabel(dateKey)}
           </span>
-          <span className="flex-shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-black tabular-nums text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+          <span className="flex-shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-black tabular-nums text-gray-600 dark:bg-gray-700 dark:text-gray-300 sm:px-2 sm:text-[10px]">
             {logs.length}
           </span>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
-          <span className="inline-flex items-center gap-1 rounded-lg border border-gray-200/50 bg-white/60 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-gray-500 sm:gap-1.5 sm:rounded-xl sm:px-2.5 sm:py-1 sm:text-[10px] dark:border-gray-700/50 dark:bg-gray-800/60 dark:text-gray-400">
+        <div className="flex flex-shrink-0 items-center gap-0.5 sm:gap-2">
+          <span className="inline-flex items-center gap-0.5 rounded-md border border-gray-200/50 bg-white/60 px-1 py-0.5 text-[8px] font-black uppercase tracking-wider text-gray-500 sm:gap-1.5 sm:rounded-xl sm:px-2.5 sm:py-1 sm:text-[10px] dark:border-gray-700/50 dark:bg-gray-800/60 dark:text-gray-400">
             {totals.long > 0 && (
               <span className={`rounded-md px-1 py-0.5 font-bold tabular-nums sm:rounded-lg sm:px-1.5 ${FORMAT_PILL.long}`}>
                 {totals.long}L
@@ -968,7 +1041,7 @@ function WorkLogDateGroup({ dateKey, logs, editable, onUpdateLog, onDeleteLog })
         </div>
       </button>
       {open && (
-        <div className="space-y-2 bg-gray-50/50 p-3 dark:bg-gray-800/20">
+        <div className="space-y-1.5 bg-gray-50/50 p-2 dark:bg-gray-800/20 sm:space-y-2 sm:p-3">
           {logs.map((log) => (
             <WorkLogEntryRow
               key={log._id}
@@ -1014,7 +1087,7 @@ function WorkLogEntriesList({ logs, loading, emptyMessage, editable = false, onU
   }
 
   return (
-    <div className="space-y-2 p-3">
+    <div className="space-y-1.5 p-2 sm:space-y-2 sm:p-3">
       {groupedByDate.map(([dateKey, dayLogs]) => (
         <WorkLogDateGroup
           key={dateKey}
@@ -1032,6 +1105,7 @@ function WorkLogEntriesList({ logs, loading, emptyMessage, editable = false, onU
 function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [panelStyle, setPanelStyle] = useState(null);
   const [isMobileLayout, setIsMobileLayout] = useState(
     () => typeof window !== "undefined" && window.matchMedia(LOG_WORK_PLAN_MOBILE_MQ).matches,
   );
@@ -1082,11 +1156,43 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
     setQuery("");
   }, []);
 
+  const updatePanelStyle = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const horizontalInset = window.innerWidth >= 640 ? 16 : 12;
+    setPanelStyle({
+      top: rect.bottom + 6,
+      left: horizontalInset,
+      width: window.innerWidth - horizontalInset * 2,
+      maxWidth: "none",
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open || isMobileLayout) {
+      setPanelStyle(null);
+      return undefined;
+    }
+    updatePanelStyle();
+    window.addEventListener("resize", updatePanelStyle);
+    window.addEventListener("scroll", updatePanelStyle, true);
+    return () => {
+      window.removeEventListener("resize", updatePanelStyle);
+      window.removeEventListener("scroll", updatePanelStyle, true);
+    };
+  }, [open, isMobileLayout, updatePanelStyle]);
+
   useEffect(() => {
     if (!open) return undefined;
     const handlePointerDown = (event) => {
       if (isMobileLayout) return;
-      if (!containerRef.current?.contains(event.target)) closePicker();
+      const panel = document.getElementById("log-work-plan-picker-panel");
+      if (
+        !containerRef.current?.contains(event.target) &&
+        !panel?.contains(event.target)
+      ) {
+        closePicker();
+      }
     };
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
@@ -1230,26 +1336,31 @@ function LogWorkPlanPicker({ plans, value, onChange, loading, disabled }) {
           document.body,
         )}
 
-      {open && !loading && !isMobileLayout && (
-        <div className={LOG_WORK_DROPDOWN_PANEL}>
-          <div className="border-b border-gray-100 p-2 dark:border-gray-800 sm:p-2.5">{renderSearchField()}</div>
-          {isTableLayout ? (
-            <div
-              className={`grid ${LOG_WORK_ROW_GRID} border-b border-gray-100 bg-gray-50/90 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400`}
-            >
-              <span className="text-center">ID</span>
-              <span>Title</span>
-              <span>Channel</span>
-              <span className="text-center">Shoot date</span>
-              <span className="text-center">Long</span>
-              <span className="text-center">Short</span>
-            </div>
-          ) : null}
-          <ul role="listbox" className="max-h-80 overflow-y-auto p-1 custom-scrollbar">
-            {planButtons(!isTableLayout)}
-          </ul>
-        </div>
-      )}
+      {open &&
+        !loading &&
+        !isMobileLayout &&
+        panelStyle &&
+        createPortal(
+          <div id="log-work-plan-picker-panel" className={LOG_WORK_DROPDOWN_PANEL} style={panelStyle}>
+            <div className="border-b border-gray-100 p-2 dark:border-gray-800 sm:p-2.5">{renderSearchField()}</div>
+            {isTableLayout ? (
+              <div
+                className={`grid ${LOG_WORK_ROW_GRID} border-b border-gray-100 bg-gray-50/90 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400`}
+              >
+                <span className="text-center">ID</span>
+                <span>Title</span>
+                <span>Channel</span>
+                <span className="text-center">Shoot date</span>
+                <span className="text-center">Long</span>
+                <span className="text-center">Short</span>
+              </div>
+            ) : null}
+            <ul role="listbox" className="max-h-80 overflow-y-auto p-1 custom-scrollbar">
+              {planButtons(!isTableLayout)}
+            </ul>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -1348,6 +1459,23 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
     setFirstCutLogged(false);
   }, [selectedPlanId]);
 
+  const submitLimits = useMemo(() => {
+    if (!selectedPlan) return null;
+    const existingLog = historyLogs.find(
+      (entry) =>
+        String(entry.planId?._id || entry.planId) === selectedPlanId &&
+        workLogDateKey(entry.logDate) === logDate,
+    );
+    return buildLogCountLimits({
+      longPlanned: selectedPlan.longPlanned,
+      shortPlanned: selectedPlan.shortPlanned,
+      longCompleted: selectedPlan.longCompleted,
+      shortCompleted: selectedPlan.shortCompleted,
+      existingLong: existingLog?.longPendingLogged ?? 0,
+      existingShort: existingLog?.shortPendingLogged ?? 0,
+    });
+  }, [selectedPlan, selectedPlanId, logDate, historyLogs]);
+
   const handleUpdateLog = async (logId, parsed) => {
     try {
       clearCacheByPrefix("/channel-plan-work-logs");
@@ -1389,7 +1517,7 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
       return;
     }
 
-    const parsed = parseLoggedCounts(longPending, shortPending, firstCutLogged);
+    const parsed = parseLoggedCounts(longPending, shortPending, firstCutLogged, submitLimits);
     if (parsed.error) {
       toast.error(parsed.error);
       return;
@@ -1420,17 +1548,17 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
   };
 
   return (
-    <div className="flex flex-col gap-3 max-sm:flex-none sm:min-h-0 sm:flex-1 sm:overflow-hidden">
+    <div className="flex flex-col gap-2 max-sm:flex-none sm:min-h-0 sm:flex-1 sm:gap-3 sm:overflow-hidden">
       <form
         onSubmit={handleSubmit}
-        className="relative z-20 flex-shrink-0 overflow-visible rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/40"
+        className="relative z-20 flex-shrink-0 overflow-visible rounded-xl border border-gray-100 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900/40 sm:rounded-2xl sm:p-4"
       >
-        <div className="mb-3 flex items-center gap-2">
-          <ClipboardList size={16} className="text-primary-500" />
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Log shoot output</h2>
+        <div className="mb-2 flex items-center gap-2 sm:mb-3">
+          <ClipboardList size={15} className="text-primary-500 sm:h-4 sm:w-4" />
+          <h2 className="text-xs font-semibold text-gray-900 dark:text-white sm:text-sm">Log shoot output</h2>
         </div>
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
-          <div className="flex min-w-0 w-full flex-col gap-3 md:flex-row md:items-end md:gap-3 xl:w-1/2 xl:max-w-[50%]">
+        <div className="flex flex-col gap-2 xl:flex-row xl:items-end sm:gap-3">
+          <div className="flex min-w-0 w-full flex-col gap-2 md:flex-row md:items-end md:gap-3 xl:w-1/2 xl:max-w-[50%] sm:gap-3">
             <div className="min-w-0 flex-1">
               <LogWorkPlanPicker
                 plans={planOptions}
@@ -1441,46 +1569,48 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
               />
             </div>
             <label className="block w-full shrink-0 md:w-[8.25rem]">
-              <span className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-gray-400">Log date</span>
+              <span className="mb-1 block text-[11px] font-semibold text-gray-600 dark:text-gray-400 sm:mb-1.5 sm:text-xs">Log date</span>
               <input
                 type="date"
                 value={logDate}
                 max={toTodayKey()}
                 onChange={(event) => setLogDate(event.target.value)}
-                className="buffer-input min-h-12 w-full py-2.5 text-sm"
+                className="buffer-input min-h-10 w-full py-2 text-sm sm:min-h-12 sm:py-2.5"
               />
             </label>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0 sm:flex-wrap sm:items-end">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:items-end sm:gap-3">
             <label className="block min-w-0 sm:w-[5.5rem]">
-              <span className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-gray-400">Long logged</span>
+              <span className="mb-1 block text-[11px] font-semibold text-gray-600 dark:text-gray-400 sm:mb-1.5 sm:text-xs">Long logged</span>
               <input
                 type="number"
                 min={0}
+                max={submitLimits?.maxLong ?? undefined}
                 step={1}
                 inputMode="numeric"
                 value={longPending}
                 onChange={(event) => setLongPending(event.target.value)}
                 disabled={!selectedPlanId}
-                className="buffer-input min-h-11 text-sm font-semibold tabular-nums"
+                className="buffer-input min-h-10 text-sm font-semibold tabular-nums sm:min-h-11"
                 placeholder="0"
               />
             </label>
             <label className="block min-w-0 sm:w-[5.5rem]">
-              <span className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-gray-400">Short logged</span>
+              <span className="mb-1 block text-[11px] font-semibold text-gray-600 dark:text-gray-400 sm:mb-1.5 sm:text-xs">Short logged</span>
               <input
                 type="number"
                 min={0}
+                max={submitLimits?.maxShort ?? undefined}
                 step={1}
                 inputMode="numeric"
                 value={shortPending}
                 onChange={(event) => setShortPending(event.target.value)}
                 disabled={!selectedPlanId}
-                className="buffer-input min-h-11 text-sm font-semibold tabular-nums"
+                className="buffer-input min-h-10 text-sm font-semibold tabular-nums sm:min-h-11"
                 placeholder="0"
               />
             </label>
-            <label className="col-span-2 flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200 sm:col-span-1 sm:w-auto">
+            <label className="col-span-2 flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[11px] font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200 sm:col-span-1 sm:min-h-11 sm:w-auto sm:px-3 sm:py-2 sm:text-xs">
               <input
                 type="checkbox"
                 checked={firstCutLogged}
@@ -1488,12 +1618,13 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
                 disabled={!selectedPlanId}
                 className="rounded border-gray-300 text-primary-500 focus:ring-primary-500/40"
               />
-              First cut ready
+              <span className="sm:hidden">FC ready</span>
+              <span className="hidden sm:inline">First cut ready</span>
             </label>
             <button
               type="submit"
               disabled={submitting || !selectedPlanId}
-              className="buffer-button-primary col-span-2 inline-flex min-h-11 items-center justify-center gap-1.5 disabled:opacity-50 sm:col-span-1 sm:h-[42px] sm:min-h-0 sm:px-5"
+              className="buffer-button-primary col-span-2 inline-flex min-h-10 items-center justify-center gap-1.5 disabled:opacity-50 sm:col-span-1 sm:h-[42px] sm:min-h-0 sm:px-5"
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
               Submit
@@ -1508,20 +1639,20 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
             No open plans found. Add a plan on the Plans tab or reopen a completed one.
           </p>
         )}
-        {selectedPlan && (
-          <p className="mt-2.5 text-xs text-gray-500 dark:text-gray-400">
-            Plan progress — Long {selectedPlan.longPending}/{selectedPlan.longPlanned} pending · Short{" "}
-            {selectedPlan.shortPending}/{selectedPlan.shortPlanned} pending
+        {selectedPlan && submitLimits && (
+          <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 sm:mt-2.5 sm:text-xs">
+            L {selectedPlan.longPending}/{selectedPlan.longPlanned} pending (max {submitLimits.maxLong} this entry) · S {selectedPlan.shortPending}/{selectedPlan.shortPlanned} pending (max {submitLimits.maxShort} this entry)
           </p>
         )}
       </form>
 
-      <section className="flex flex-col overflow-visible rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40 sm:min-h-0 sm:flex-1 sm:overflow-hidden">
-        <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Recent logged work</h3>
-            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              Last {LOG_HISTORY_DAYS_PER_PAGE} days per page · newest first
+      <section className="flex flex-col overflow-visible rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40 sm:min-h-0 sm:flex-1 sm:overflow-hidden sm:rounded-2xl">
+        <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800 sm:px-4 sm:py-3">
+          <div className="min-w-0">
+            <h3 className="text-xs font-semibold text-gray-900 dark:text-white sm:text-sm">Recent logged work</h3>
+            <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400 sm:text-xs">
+              <span className="sm:hidden">{LOG_HISTORY_DAYS_PER_PAGE}d/page · newest first</span>
+              <span className="hidden sm:inline">Last {LOG_HISTORY_DAYS_PER_PAGE} days per page · newest first</span>
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1593,29 +1724,121 @@ function LogWorkPanel({ onLogged, isActive, refreshKey }) {
   );
 }
 
-function SummaryActualBadge({ value, pillClass = "" }) {
+/* ─── Report helpers ─── */
+
+function reportProgressPercent(planned, logged) {
+  const p = Number(planned) || 0;
+  const l = Number(logged) || 0;
+  if (p <= 0) return null;
+  return Math.min(100, Math.round((l / p) * 100));
+}
+
+function reportFormatIsBehind(pending, logged) {
+  return (Number(pending) || 0) > 0 && (Number(logged) || 0) < (Number(pending) || 0);
+}
+
+function reportChannelOutputStatus(row) {
+  const longBehind = reportFormatIsBehind(row.actual?.long, row.logged?.long);
+  const shortBehind = reportFormatIsBehind(row.actual?.short, row.logged?.short);
+  if (longBehind || shortBehind) return "behind";
+  return "on_track";
+}
+
+function reportChannelNeedsAttention(row) {
+  return reportChannelOutputStatus(row) === "behind";
+}
+
+function sortReportChannels(rows) {
+  return [...rows].sort((a, b) => {
+    const aBehind = reportChannelNeedsAttention(a);
+    const bBehind = reportChannelNeedsAttention(b);
+    if (aBehind !== bBehind) return aBehind ? -1 : 1;
+    return a.channelName.localeCompare(b.channelName);
+  });
+}
+
+function resolveReportRows(summary, activeChannelTab, attentionFilter) {
+  if (!summary) return { rows: [], totals: null };
+  let rows =
+    activeChannelTab === "all"
+      ? summary.channels
+      : summary.channels.filter((row) => String(row.channelId) === activeChannelTab);
+  const totals = activeChannelTab === "all" ? summary.totals : rows[0] ?? null;
+  if (attentionFilter === "attention") {
+    rows = rows.filter((row) => reportChannelNeedsAttention(row));
+  }
+  rows = sortReportChannels(rows);
+  return { rows, totals };
+}
+
+function ReportLoadingPanel({ label = "Loading summary…" }) {
   return (
-    <span
-      className={`inline-flex min-w-[1.75rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[11px] font-black tabular-nums text-gray-900 dark:text-white ${
-        pillClass || "bg-gray-100/90 dark:bg-gray-800/80"
-      }`}
-      title="Actual — open pending from plans scheduled in this period"
-    >
-      {value}
+    <div className="flex min-h-[56px] items-center justify-center gap-2 rounded-xl border border-gray-100 bg-white/40 px-3 py-2 text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
+      <Loader2 size={13} className="animate-spin text-primary-500" />
+      {label}
+    </div>
+  );
+}
+
+function ReportEmptyPanel({ message }) {
+  return (
+    <div className="flex min-h-[56px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-2 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
+      {message}
+    </div>
+  );
+}
+
+function ReportStatusBadge({ status }) {
+  if (status === "behind") {
+    return (
+      <span className="inline-flex shrink-0 items-center rounded-full border border-amber-200/70 bg-amber-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-400">
+        Behind
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-200/70 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-400">
+      On track
     </span>
   );
 }
 
-function SummaryLoggedBadge({ value, pillClass = "" }) {
+function FormatProgressBar({ label, planned, pending, logged, barClass = "bg-primary-500" }) {
+  const pct = reportProgressPercent(planned, logged);
+  const hasData = (planned ?? 0) > 0 || (pending ?? 0) > 0 || (logged ?? 0) > 0;
+  if (!hasData) {
+    return (
+      <div className="text-[10px] text-gray-400 dark:text-gray-500">—</div>
+    );
+  }
   return (
-    <span
-      className={`inline-flex min-w-[1.75rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${
-        pillClass || "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
-      }`}
-      title="Logged — latest work log per plan in this period"
-    >
-      {value}
-    </span>
+    <div className="min-w-0 space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[9px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</span>
+        {pct !== null && (
+          <span className="text-[10px] font-semibold tabular-nums text-gray-600 dark:text-gray-300">{pct}%</span>
+        )}
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+        <div
+          className={`h-full rounded-full transition-all ${barClass}`}
+          style={{ width: `${pct ?? 0}%` }}
+        />
+      </div>
+      <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-gray-500 dark:text-gray-400">
+        <span>
+          Pending <span className="font-bold tabular-nums text-gray-700 dark:text-gray-200">{pending ?? 0}</span>
+        </span>
+        <span>
+          Logged <span className="font-bold tabular-nums text-gray-700 dark:text-gray-200">{logged ?? 0}</span>
+        </span>
+        {(planned ?? 0) > 0 && (
+          <span className="tabular-nums">
+            {logged ?? 0}/{planned} logged
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1642,235 +1865,128 @@ function SummaryFirstCutCell({ pending, complete }) {
   );
 }
 
-function SummaryCompareCell({ actual, logged, pillClass = "", loggedDisabled = false }) {
-  const delta = loggedDisabled ? null : (logged ?? 0) - (actual ?? 0);
-  const compareTitle =
-    loggedDisabled
-      ? "Actual pending only"
-      : delta === 0
-        ? `Actual ${actual} — logged matches`
-        : delta > 0
-          ? `Actual ${actual}, logged ${logged} (+${delta} vs actual)`
-          : `Actual ${actual}, logged ${logged} (${delta} vs actual)`;
+function ReportOverviewSection({ totals, attentionCount, loading }) {
+  if (loading) return <ReportLoadingPanel label="Loading overview…" />;
+  if (!totals) return null;
+
+  const loggedTotal = (totals.logged?.long ?? 0) + (totals.logged?.short ?? 0);
 
   return (
-    <div
-      className="inline-flex items-center justify-center gap-1.5 tabular-nums"
-      title={compareTitle}
-    >
-      <SummaryActualBadge value={actual} pillClass={pillClass} />
-      <span className="text-[10px] font-bold text-gray-300 dark:text-gray-600" aria-hidden>
-        /
-      </span>
-      {loggedDisabled ? (
-        <span
-          className="inline-flex min-w-[1.75rem] items-center justify-center rounded-md bg-gray-50 px-1.5 py-0.5 text-[11px] font-semibold text-gray-400 dark:bg-gray-800/40 dark:text-gray-500"
-          title="Not tracked in work logs"
-        >
-          —
-        </span>
-      ) : (
-        <SummaryLoggedBadge value={logged} pillClass={pillClass} />
-      )}
-    </div>
+    <section className="buffer-card flex-shrink-0 p-1.5 sm:p-2">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+        <h3 className="shrink-0 text-[10px] font-semibold text-gray-900 dark:text-white sm:text-[11px]">Overview</h3>
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-2 gap-y-1 sm:grid-cols-5 sm:gap-x-2 sm:gap-y-0 lg:gap-x-3">
+          <StatCard compact icon={CalendarDays} label="Plans in period" shortLabel="Plans" count={totals.planCount ?? 0} color="bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400" />
+          <StatCard compact icon={Layers3} label="Long pending" shortLabel="L pend" count={totals.actual?.long ?? 0} color="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400" />
+          <StatCard compact icon={Circle} label="Short pending" shortLabel="S pend" count={totals.actual?.short ?? 0} color="bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400" />
+          <StatCard compact icon={ClipboardList} label="Logged output" shortLabel="Logged" count={loggedTotal} color="bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-400" />
+          <StatCard compact icon={Circle} label="Needs attention" shortLabel="Alert" count={attentionCount} color="bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400" />
+        </div>
+      </div>
+    </section>
   );
 }
 
-function ReportSummaryTable({ summary, activeChannelTab, loading }) {
-  if (loading) {
+function ReportOutputProgressSection({ rows, loading, attentionFilter }) {
+  if (loading) return <ReportLoadingPanel label="Loading progress…" />;
+  if (!rows.length) {
     return (
-      <div className="flex min-h-[320px] items-center justify-center gap-2 rounded-xl border border-gray-100 bg-white/40 px-3 py-4 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
-        <Loader2 size={14} className="animate-spin text-blue-500" />
-        Loading summary…
-      </div>
+      <ReportEmptyPanel
+        message={
+          attentionFilter === "attention"
+            ? "No channels need attention in this period."
+            : "No open plans or work logs in this period."
+        }
+      />
     );
   }
-
-  if (!summary) return null;
-
-  const rows =
-    activeChannelTab === "all"
-      ? summary.channels
-      : summary.channels.filter((row) => String(row.channelId) === activeChannelTab);
-
-  const totals = activeChannelTab === "all" ? summary.totals : rows[0];
-
-  if (!totals || (rows.length === 0 && activeChannelTab !== "all")) {
-    return (
-      <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-3 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
-        No summary for this channel in the selected period.
-      </div>
-    );
-  }
-
-  const hasFirstCut =
-    (totals.firstCut?.pending ?? 0) > 0 || (totals.firstCut?.complete ?? 0) > 0;
-  if (
-    rows.length === 0 &&
-    totals.planCount === 0 &&
-    totals.logged.long === 0 &&
-    totals.logged.short === 0 &&
-    !hasFirstCut
-  ) {
-    return (
-      <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-3 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
-        No open plans or work logs in this period.
-      </div>
-    );
-  }
-
-  const sortedRows = [...rows].sort((a, b) => a.channelName.localeCompare(b.channelName));
-  const displayRows =
-    activeChannelTab === "all"
-      ? [{ ...totals, channelName: "All channels", channelId: "all", isTotal: true }, ...sortedRows]
-      : sortedRows;
 
   return (
-    <section className="flex flex-col overflow-visible rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40 sm:h-full sm:min-h-[320px] sm:overflow-hidden">
-      <div className="flex flex-shrink-0 flex-wrap items-start justify-between gap-2 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
-        <div>
-          <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Channel summary</h3>
-          <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
-            Long/Short use plans scheduled in the period. First cut counts all open plans.
-          </p>
-        </div>
-        <div className="hidden flex-wrap items-center gap-2 text-[9px] font-semibold text-gray-500 xl:flex dark:text-gray-400">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200/80 bg-white/80 px-2.5 py-1 dark:border-gray-700 dark:bg-gray-800/80">
-            <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-              Act
-            </span>
-            <span className="normal-case">Open plan pending</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200/80 bg-white/80 px-2.5 py-1 dark:border-gray-700 dark:bg-gray-800/80">
-            <span className="rounded-md bg-primary-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-              Log
-            </span>
-            <span className="normal-case">Latest work log</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200/80 bg-white/80 px-2.5 py-1 dark:border-gray-700 dark:bg-gray-800/80">
-            <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-              Pend
-            </span>
-            <span className="text-gray-300 dark:text-gray-600">/</span>
-            <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-              Done
-            </span>
-            <span className="normal-case">First cut (all open)</span>
-          </span>
-        </div>
+    <section className="buffer-card flex flex-col overflow-hidden">
+      <div className="flex-shrink-0 border-b border-gray-100 px-2 py-1.5 dark:border-gray-800 sm:px-2.5 sm:py-2">
+        <h3 className="text-[11px] font-semibold text-gray-900 dark:text-white sm:text-xs">Long &amp; short progress</h3>
+        <p className="mt-0.5 hidden text-[10px] leading-snug text-gray-500 dark:text-gray-400 sm:block">
+          Progress % is logged output vs planned for the period. Pending vs logged shows the logging gap.
+        </p>
       </div>
-      <div className="space-y-2 p-3 sm:hidden">
-        {displayRows.map((row) => (
+      <div className="space-y-1.5 p-1.5 sm:hidden">
+        {rows.map((row) => (
           <div
             key={row.channelId}
-            className={`rounded-xl border p-3 ${
-              row.isTotal
-                ? "border-primary-200 bg-primary-50/60 dark:border-primary-800/60 dark:bg-primary-900/20"
+            className={`rounded-lg border p-2 ${
+              reportChannelNeedsAttention(row)
+                ? "border-amber-200/80 bg-amber-50/30 dark:border-amber-800/40 dark:bg-amber-950/10"
                 : "border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900/40"
             }`}
           >
-            <div className="flex items-center justify-between gap-2">
-              <p className="min-w-0 truncate text-sm font-semibold text-gray-900 dark:text-white" title={row.channelName}>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-xs font-semibold text-gray-900 dark:text-white" title={row.channelName}>
                 {row.channelName}
               </p>
-              <span className="flex-shrink-0 text-[11px] tabular-nums text-gray-500 dark:text-gray-400">
-                {row.planCount} plans
-              </span>
+              <ReportStatusBadge status={reportChannelOutputStatus(row)} />
             </div>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-gray-400">First cut</p>
-                <SummaryFirstCutCell
-                  pending={row.firstCut?.pending ?? 0}
-                  complete={row.firstCut?.complete ?? 0}
-                />
-              </div>
-              <div>
-                <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-gray-400">Long</p>
-                <SummaryCompareCell
-                  actual={row.actual.long}
-                  logged={row.logged.long}
-                  pillClass={FORMAT_PILL.long}
-                />
-              </div>
-              <div>
-                <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-gray-400">Short</p>
-                <SummaryCompareCell
-                  actual={row.actual.short}
-                  logged={row.logged.short}
-                  pillClass={FORMAT_PILL.short}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <FormatProgressBar
+                label="Long"
+                planned={row.planned?.long ?? 0}
+                pending={row.actual?.long ?? 0}
+                logged={row.logged?.long ?? 0}
+                barClass="bg-indigo-500"
+              />
+              <FormatProgressBar
+                label="Short"
+                planned={row.planned?.short ?? 0}
+                pending={row.actual?.short ?? 0}
+                logged={row.logged?.short ?? 0}
+                barClass="bg-orange-500"
+              />
             </div>
           </div>
         ))}
       </div>
-      <div className="hidden min-h-0 overflow-auto custom-scrollbar sm:block sm:flex-1">
+      <div className="hidden min-h-0 overflow-auto custom-scrollbar sm:block">
         <table className="w-full min-w-0 text-[10px]">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/80 text-[9px] font-black uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400">
-              <th className="px-3 py-2 text-left">Channel</th>
-              <th className="border-l border-gray-100 px-2 py-2 text-center dark:border-gray-800">
-                <span className={`inline-block rounded-md px-2 py-0.5 ${FORMAT_PILL.firstCut}`}>First cut</span>
-                <span className="mt-1 block text-[8px] font-semibold normal-case tracking-normal text-gray-400 dark:text-gray-500">
-                  Pending / Complete
-                </span>
-              </th>
-              <th className="border-l border-gray-100 px-2 py-2 text-center dark:border-gray-800">
-                <span className={`inline-block rounded-md px-2 py-0.5 ${FORMAT_PILL.long}`}>Long</span>
-                <span className="mt-1 block text-[8px] font-semibold normal-case tracking-normal text-gray-400 dark:text-gray-500">
-                  Actual / Logged
-                </span>
-              </th>
-              <th className="border-l border-gray-100 px-2 py-2 text-center dark:border-gray-800">
-                <span className={`inline-block rounded-md px-2 py-0.5 ${FORMAT_PILL.short}`}>Short</span>
-                <span className="mt-1 block text-[8px] font-semibold normal-case tracking-normal text-gray-400 dark:text-gray-500">
-                  Actual / Logged
-                </span>
-              </th>
-              <th className="hidden border-l border-gray-100 px-3 py-2 text-right sm:table-cell dark:border-gray-800">
-                Plans
-              </th>
+              <th className="px-2.5 py-1.5 text-left sm:px-3">Channel</th>
+              <th className="border-l border-gray-100 px-2.5 py-1.5 text-left dark:border-gray-800 sm:px-3">Long</th>
+              <th className="border-l border-gray-100 px-2.5 py-1.5 text-left dark:border-gray-800 sm:px-3">Short</th>
+              <th className="border-l border-gray-100 px-2.5 py-1.5 text-center dark:border-gray-800 sm:px-3">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
-            {displayRows.map((row) => (
+            {rows.map((row) => (
               <tr
                 key={row.channelId}
                 className={
-                  row.isTotal
-                    ? "bg-primary-50/50 font-semibold dark:bg-primary-900/20"
+                  reportChannelNeedsAttention(row)
+                    ? "bg-amber-50/40 dark:bg-amber-950/10"
                     : "hover:bg-gray-50/80 dark:hover:bg-gray-800/30"
                 }
               >
-                <td
-                  className="max-w-[9rem] truncate px-3 py-2.5 font-semibold text-gray-900 dark:text-white"
-                  title={row.channelName}
-                >
+                <td className="max-w-[9rem] truncate px-2.5 py-1.5 font-semibold text-gray-900 dark:text-white sm:px-3" title={row.channelName}>
                   {row.channelName}
                 </td>
-                <td className="border-l border-gray-50 px-2 py-2.5 text-center dark:border-gray-800/60">
-                  <SummaryFirstCutCell
-                    pending={row.firstCut?.pending ?? 0}
-                    complete={row.firstCut?.complete ?? 0}
+                <td className="border-l border-gray-50 px-2.5 py-1.5 dark:border-gray-800/60 sm:px-3">
+                  <FormatProgressBar
+                    label="Long"
+                    planned={row.planned?.long ?? 0}
+                    pending={row.actual?.long ?? 0}
+                    logged={row.logged?.long ?? 0}
+                    barClass="bg-indigo-500"
                   />
                 </td>
-                <td className="border-l border-gray-50 px-2 py-2.5 text-center dark:border-gray-800/60">
-                  <SummaryCompareCell
-                    actual={row.actual.long}
-                    logged={row.logged.long}
-                    pillClass={FORMAT_PILL.long}
+                <td className="border-l border-gray-50 px-2.5 py-1.5 dark:border-gray-800/60 sm:px-3">
+                  <FormatProgressBar
+                    label="Short"
+                    planned={row.planned?.short ?? 0}
+                    pending={row.actual?.short ?? 0}
+                    logged={row.logged?.short ?? 0}
+                    barClass="bg-orange-500"
                   />
                 </td>
-                <td className="border-l border-gray-50 px-2 py-2.5 text-center dark:border-gray-800/60">
-                  <SummaryCompareCell
-                    actual={row.actual.short}
-                    logged={row.logged.short}
-                    pillClass={FORMAT_PILL.short}
-                  />
-                </td>
-                <td className="hidden border-l border-gray-50 px-3 py-2.5 text-right tabular-nums text-gray-500 sm:table-cell dark:border-gray-800/60 dark:text-gray-400">
-                  {row.planCount}
+                <td className="border-l border-gray-50 px-2.5 py-1.5 text-center dark:border-gray-800/60 sm:px-3">
+                  <ReportStatusBadge status={reportChannelOutputStatus(row)} />
                 </td>
               </tr>
             ))}
@@ -1881,356 +1997,54 @@ function ReportSummaryTable({ summary, activeChannelTab, loading }) {
   );
 }
 
-function ChannelHoursChart({ channel, compact = false }) {
-  const totalHours = channel.months.reduce((sum, month) => sum + (month.hours || 0), 0);
-  const hasData = totalHours > 0;
-  const chartHeight = compact ? 200 : 220;
-  const maxHours = Math.max(...channel.months.map((month) => month.hours || 0), 0);
-  const yAxisMax = maxHours <= 0 ? 1 : Math.ceil(maxHours * 1.2 * 10) / 10;
+function ReportFirstCutSection({ rows, loading }) {
+  const visibleRows = rows.filter(
+    (row) => (row.firstCut?.pending ?? 0) > 0 || (row.firstCut?.complete ?? 0) > 0,
+  );
+  if (loading) return null;
+  if (!visibleRows.length) return null;
 
   return (
-    <section className="overflow-visible rounded-xl border border-gray-100 bg-white/40 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
-      <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
-        <div className="flex min-w-0 items-center gap-2">
-          <BarChart3 size={14} className="flex-shrink-0 text-primary-500" />
-          <h4 className="truncate text-xs font-semibold text-gray-900 dark:text-white" title={channel.channelName}>
-            {channel.channelName}
-          </h4>
-        </div>
-        <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-500 dark:text-gray-400">
-          {totalHours.toFixed(1)}h total
-        </span>
+    <section className="buffer-card flex flex-col overflow-hidden">
+      <div className="flex-shrink-0 border-b border-gray-100 px-2 py-1.5 dark:border-gray-800 sm:px-2.5 sm:py-2">
+        <h3 className="text-[11px] font-semibold text-gray-900 dark:text-white sm:text-xs">First cut readiness</h3>
+        <p className="mt-0.5 hidden text-[10px] leading-snug text-gray-500 dark:text-gray-400 sm:block">
+          Open plans — not limited to report period.
+        </p>
       </div>
-      <div className="overflow-visible px-2 py-3">
-        {hasData ? (
-          <div className="w-full min-w-0" style={{ height: chartHeight }}>
-            <ResponsiveContainer width="100%" height={chartHeight} debounce={50}>
-              <BarChart
-                data={channel.months}
-                margin={{ top: 8, right: 12, left: 4, bottom: 4 }}
-                barCategoryGap="20%"
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.12)" />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 9, fill: "currentColor" }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 9, fill: "currentColor" }}
-                  width={36}
-                  axisLine={false}
-                  tickLine={false}
-                  domain={[0, yAxisMax]}
-                  tickCount={5}
-                  allowDecimals={yAxisMax <= 2}
-                />
-                <Tooltip
-                  content={<FootageChartTooltip />}
-                  cursor={false}
-                  isAnimationActive={false}
-                  wrapperStyle={{ zIndex: 20, outline: "none", pointerEvents: "none" }}
-                />
-                <Bar
-                  dataKey="hours"
-                  name="Footage"
-                  fill={FOOTAGE_CHART_COLOR}
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={32}
-                  isAnimationActive={false}
-                  activeBar={{ fill: FOOTAGE_CHART_COLOR, opacity: 0.85 }}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div
-            className="flex flex-col items-center justify-center px-4 text-center"
-            style={{ height: chartHeight }}
-          >
-            <p className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">No planned hours</p>
-            <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
-              Add Footage Minutes when creating plans to see monthly hours here.
+      <div className="space-y-1 p-1.5 sm:hidden">
+        {visibleRows.map((row) => (
+          <div key={row.channelId} className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 p-1.5 dark:border-gray-800 dark:bg-gray-900/40">
+            <p className="min-w-0 truncate text-xs font-semibold text-gray-900 dark:text-white" title={row.channelName}>
+              {row.channelName}
             </p>
+            <SummaryFirstCutCell pending={row.firstCut?.pending ?? 0} complete={row.firstCut?.complete ?? 0} />
           </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function HoursByMonthCharts({ data, activeChannelTab, loading }) {
-  const body = (() => {
-    if (loading) {
-      return (
-        <div className="flex min-h-[280px] items-center justify-center gap-2 px-3 py-6 text-xs text-gray-500 dark:text-gray-400">
-          <Loader2 size={14} className="animate-spin text-blue-500" />
-          Loading hours chart…
-        </div>
-      );
-    }
-
-    if (!data?.channels?.length) {
-      return (
-        <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-4 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
-          No scheduled plans in this period — charts appear when plans have dates and footage minutes.
-        </div>
-      );
-    }
-
-    const channels = (
-      activeChannelTab === "all"
-        ? data.channels
-        : data.channels.filter((channel) => String(channel.channelId) === activeChannelTab)
-    ).slice().sort((a, b) => a.channelName.localeCompare(b.channelName));
-
-    if (channels.length === 0) {
-      return (
-        <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-4 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
-          No hours data for this channel in the selected period.
-        </div>
-      );
-    }
-
-    return (
-      <div className="max-h-none space-y-3 overflow-visible p-3 sm:max-h-[420px] sm:overflow-y-auto custom-scrollbar">
-        {channels.map((channel) => (
-          <ChannelHoursChart key={channel.channelId} channel={channel} compact />
         ))}
       </div>
-    );
-  })();
-
-  return (
-    <section className="flex flex-col overflow-visible rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40 sm:h-full sm:min-h-[320px] sm:overflow-hidden">
-      <div className="flex-shrink-0 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
-        <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Footage hours by month</h3>
-        <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
-          Footage minutes from all plans (open or completed), grouped by month. One chart per channel.
-        </p>
-      </div>
-      <div className="min-h-0 flex-1">{body}</div>
-    </section>
-  );
-}
-
-function buildReportInsights(summary, hoursByMonth, activeChannelTab) {
-  if (!summary) return null;
-
-  const rows =
-    activeChannelTab === "all"
-      ? summary.channels
-      : summary.channels.filter((row) => String(row.channelId) === activeChannelTab);
-  const totals =
-    activeChannelTab === "all"
-      ? summary.totals
-      : rows[0] || {
-          actual: { long: 0, short: 0 },
-          logged: { long: 0, short: 0 },
-          firstCut: { pending: 0, complete: 0 },
-          planCount: 0,
-        };
-
-  const actualTotal = (totals.actual?.long ?? 0) + (totals.actual?.short ?? 0);
-  const loggedTotal = (totals.logged?.long ?? 0) + (totals.logged?.short ?? 0);
-  const captureRate =
-    actualTotal > 0 ? Math.round((loggedTotal / actualTotal) * 100) : loggedTotal > 0 ? 100 : 0;
-
-  const fcPending = totals.firstCut?.pending ?? 0;
-  const fcComplete = totals.firstCut?.complete ?? 0;
-  const fcTotal = fcPending + fcComplete;
-  const fcRate = fcTotal > 0 ? Math.round((fcComplete / fcTotal) * 100) : 0;
-
-  const hoursChannels =
-    activeChannelTab === "all"
-      ? hoursByMonth?.channels || []
-      : (hoursByMonth?.channels || []).filter((channel) => String(channel.channelId) === activeChannelTab);
-  const footageHours = hoursChannels.reduce(
-    (sum, channel) => sum + channel.months.reduce((monthSum, month) => monthSum + (month.hours || 0), 0),
-    0,
-  );
-
-  const leaderboard = [...rows]
-    .map((row) => ({
-      channelId: row.channelId,
-      channelName: row.channelName,
-      loggedTotal: (row.logged?.long ?? 0) + (row.logged?.short ?? 0),
-      longLogged: row.logged?.long ?? 0,
-      shortLogged: row.logged?.short ?? 0,
-      planCount: row.planCount ?? 0,
-    }))
-    .filter((row) => row.loggedTotal > 0 || row.planCount > 0)
-    .sort(
-      (a, b) =>
-        b.loggedTotal - a.loggedTotal ||
-        b.planCount - a.planCount ||
-        a.channelName.localeCompare(b.channelName),
-    )
-    .slice(0, 5);
-
-  return {
-    totals,
-    actualTotal,
-    loggedTotal,
-    captureRate,
-    fcRate,
-    fcComplete,
-    fcTotal,
-    footageHours,
-    leaderboard,
-  };
-}
-
-function ReportInsightCard({ label, value, hint, tone = "default" }) {
-  const toneClass =
-    tone === "long"
-      ? "border-indigo-200/80 bg-indigo-50/60 dark:border-indigo-800/50 dark:bg-indigo-950/20"
-      : tone === "short"
-        ? "border-orange-200/80 bg-orange-50/60 dark:border-orange-800/50 dark:bg-orange-950/20"
-        : tone === "success"
-          ? "border-emerald-200/80 bg-emerald-50/60 dark:border-emerald-800/50 dark:bg-emerald-950/20"
-          : "border-gray-100 bg-white/70 dark:border-gray-700 dark:bg-gray-900/50";
-
-  return (
-    <div className={`flex h-full flex-col rounded-xl border p-3 ${toneClass}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</p>
-      <p className="mt-1 text-xl font-black tabular-nums text-gray-900 dark:text-white">{value}</p>
-      {hint ? <p className="mt-auto pt-1 text-[10px] leading-snug text-gray-500 dark:text-gray-400">{hint}</p> : null}
-    </div>
-  );
-}
-
-function ReportKpiStrip({ insights, loading }) {
-  if (loading) {
-    return (
-      <div className="flex min-h-[7.5rem] items-center justify-center gap-2 rounded-xl border border-gray-100 bg-white/40 px-3 py-4 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
-        <Loader2 size={14} className="animate-spin text-primary-500" />
-        Loading period overview…
-      </div>
-    );
-  }
-
-  if (!insights) {
-    return (
-      <div className="flex min-h-[7.5rem] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/30 px-3 py-4 text-center text-[11px] text-gray-500 dark:border-gray-700 dark:bg-gray-900/20 dark:text-gray-400">
-        Period overview appears once summary data is available.
-      </div>
-    );
-  }
-
-  const { totals, captureRate, loggedTotal, actualTotal, fcRate, fcComplete, fcTotal, footageHours } = insights;
-
-  return (
-    <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
-      <div className="border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
-        <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Period overview</h3>
-        <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
-          Open pending → logged output → capture rate → first cut → planned footage.
-        </p>
-      </div>
-      <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 xl:grid-cols-5">
-        <ReportInsightCard
-          label="Open pending"
-          value={actualTotal}
-          hint={`${totals.actual?.long ?? 0} long · ${totals.actual?.short ?? 0} short still open`}
-          tone="short"
-        />
-        <ReportInsightCard
-          label="Videos logged"
-          value={loggedTotal}
-          hint={`${totals.logged?.long ?? 0} long · ${totals.logged?.short ?? 0} short`}
-          tone="long"
-        />
-        <ReportInsightCard
-          label="Log capture"
-          value={`${captureRate}%`}
-          hint={
-            actualTotal > 0
-              ? `${loggedTotal} logged of ${actualTotal} open pending`
-              : loggedTotal > 0
-                ? "Logged with no dated open plans in range"
-                : "No logged output in this period"
-          }
-        />
-        <ReportInsightCard
-          label="First cut ready"
-          value={fcTotal > 0 ? `${fcRate}%` : "—"}
-          hint={fcTotal > 0 ? `${fcComplete} of ${fcTotal} open plans` : "No open plans tracked"}
-          tone="success"
-        />
-        <ReportInsightCard
-          label="Footage planned"
-          value={footageHours > 0 ? `${footageHours.toFixed(1)}h` : "—"}
-          hint={
-            footageHours > 0
-              ? "Total shoot hours from dated plans in period"
-              : "Add footage minutes on plans to track time"
-          }
-        />
-      </div>
-    </section>
-  );
-}
-
-function ReportLeaderboardCard({ insights, loading }) {
-  if (loading) {
-    return (
-      <div className="flex min-h-[12rem] items-center justify-center gap-2 rounded-xl border border-gray-100 bg-white/40 px-3 py-4 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
-        <Loader2 size={14} className="animate-spin text-primary-500" />
-        Loading channel ranks…
-      </div>
-    );
-  }
-
-  if (!insights) return null;
-
-  const { totals, leaderboard } = insights;
-
-  return (
-    <section className="flex h-full min-h-[12rem] flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
-      <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
-        <div>
-          <h3 className="text-xs font-semibold text-gray-900 dark:text-white">Top channels</h3>
-          <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">Ranked by logged output in this period</p>
-        </div>
-        <span className="flex-shrink-0 text-[10px] tabular-nums text-gray-500 dark:text-gray-400">
-          {totals.planCount ?? 0} plans
-        </span>
-      </div>
-      <div className="flex-1 p-3">
-        {leaderboard.length === 0 ? (
-          <p className="text-[11px] text-gray-500 dark:text-gray-400">No channel activity in this period.</p>
-        ) : (
-          <ul className="space-y-2">
-            {leaderboard.map((row, index) => (
-              <li
-                key={row.channelId}
-                className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50/80 px-2.5 py-2 dark:border-gray-700 dark:bg-gray-800/30"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-gray-900 dark:text-white" title={row.channelName}>
-                    {index + 1}. {row.channelName}
-                  </p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400">{row.planCount} plans</p>
-                </div>
-                <div className="flex flex-shrink-0 items-center gap-1">
-                  {row.longLogged > 0 && (
-                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums ${FORMAT_PILL.long}`}>
-                      {row.longLogged}L
-                    </span>
-                  )}
-                  {row.shortLogged > 0 && (
-                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums ${FORMAT_PILL.short}`}>
-                      {row.shortLogged}S
-                    </span>
-                  )}
-                </div>
-              </li>
+      <div className="hidden overflow-auto custom-scrollbar sm:block">
+        <table className="w-full min-w-0 text-[10px]">
+          <thead>
+            <tr className="border-b border-gray-100 bg-gray-50/80 text-[9px] font-black uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400">
+              <th className="px-2.5 py-1.5 text-left sm:px-3">Channel</th>
+              <th className="border-l border-gray-100 px-2.5 py-1.5 text-center dark:border-gray-800 sm:px-3">
+                <span className={`inline-block rounded-md px-2 py-0.5 ${FORMAT_PILL.firstCut}`}>Pending / Complete</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
+            {visibleRows.map((row) => (
+              <tr key={row.channelId} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/30">
+                <td className="max-w-[12rem] truncate px-2.5 py-1.5 font-semibold text-gray-900 dark:text-white sm:px-3" title={row.channelName}>
+                  {row.channelName}
+                </td>
+                <td className="border-l border-gray-50 px-2.5 py-1.5 text-center dark:border-gray-800/60 sm:px-3">
+                  <SummaryFirstCutCell pending={row.firstCut?.pending ?? 0} complete={row.firstCut?.complete ?? 0} />
+                </td>
+              </tr>
             ))}
-          </ul>
-        )}
+          </tbody>
+        </table>
       </div>
     </section>
   );
@@ -2238,9 +2052,9 @@ function ReportLeaderboardCard({ insights, loading }) {
 
 function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, isActive }) {
   const [summary, setSummary] = useState(null);
-  const [hoursByMonth, setHoursByMonth] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState("current-month");
+  const [period, setPeriod] = useState("last-3-months");
+  const [attentionFilter, setAttentionFilter] = useState("all");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
 
@@ -2262,12 +2076,8 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, 
       clearCacheByPrefix("/channel-plan-work-logs");
       clearCacheByPrefix("/channel-plans");
       const params = new URLSearchParams({ from: range.from, to: range.to });
-      const [summaryResponse, hoursResponse] = await Promise.all([
-        httpClient.get(`/channel-plan-work-logs/summary?${params.toString()}`),
-        httpClient.get(`/channel-plans/hours-by-month?${params.toString()}`),
-      ]);
+      const summaryResponse = await httpClient.get(`/channel-plan-work-logs/summary?${params.toString()}`);
       setSummary(summaryResponse.data);
-      setHoursByMonth(hoursResponse.data);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load report");
     } finally {
@@ -2299,31 +2109,40 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, 
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [summary]);
 
-  const scopedTotals = useMemo(() => {
-    if (!summary) return { long: 0, short: 0 };
-    if (activeChannelTab === "all") {
-      return {
-        long: summary.totals?.logged?.long ?? 0,
-        short: summary.totals?.logged?.short ?? 0,
-      };
-    }
-    const row = summary.channels.find((entry) => String(entry.channelId) === activeChannelTab);
-    return {
-      long: row?.logged?.long ?? 0,
-      short: row?.logged?.short ?? 0,
-    };
-  }, [summary, activeChannelTab]);
-
-  const reportInsights = useMemo(
-    () => buildReportInsights(summary, hoursByMonth, activeChannelTab),
-    [summary, hoursByMonth, activeChannelTab],
+  const { rows: reportRows, totals: scopedTotals } = useMemo(
+    () => resolveReportRows(summary, activeChannelTab, attentionFilter),
+    [summary, activeChannelTab, attentionFilter],
   );
 
+  const attentionCount = useMemo(() => {
+    if (!summary?.channels?.length) return 0;
+    const pool =
+      activeChannelTab === "all"
+        ? summary.channels
+        : summary.channels.filter((row) => String(row.channelId) === activeChannelTab);
+    return pool.filter((row) => reportChannelNeedsAttention(row)).length;
+  }, [summary, activeChannelTab]);
+
+  const firstCutRows = useMemo(() => {
+    if (!summary) return [];
+    if (activeChannelTab === "all") return sortReportChannels(summary.channels);
+    const row = summary.channels.find((entry) => String(entry.channelId) === activeChannelTab);
+    return row ? [row] : [];
+  }, [summary, activeChannelTab]);
+
+  const showReportEmpty =
+    !loading &&
+    summary &&
+    !reportRows.length &&
+    !((scopedTotals?.planCount ?? 0) > 0) &&
+    activeChannelTab !== "all" &&
+    !summary.channels.some((row) => String(row.channelId) === activeChannelTab);
+
   return (
-    <div className="flex flex-col gap-4 max-sm:flex-none sm:min-h-0 sm:flex-1 sm:overflow-y-auto sm:pr-1 custom-scrollbar">
-      <div className="flex flex-shrink-0 flex-col gap-2 px-1">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto scrollbar-hide">
+    <div className="flex flex-col gap-1.5 max-sm:flex-none sm:min-h-0 sm:flex-1 sm:gap-2 sm:overflow-y-auto sm:pr-1 custom-scrollbar">
+      <div className="flex flex-shrink-0 flex-col gap-1 px-0.5 sm:gap-1.5 sm:px-1">
+        <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scrollbar-hide sm:gap-1.5">
             <FilterLabel icon={CalendarDays} className="hidden sm:flex">Period:</FilterLabel>
             <FilterSegment
               options={REPORT_PERIODS}
@@ -2332,10 +2151,9 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, 
             />
           </div>
           <div className="flex flex-shrink-0 items-center gap-2">
-            {!loading && (scopedTotals.long > 0 || scopedTotals.short > 0) && (
-              <span className="hidden items-center gap-1.5 text-[10px] font-semibold text-gray-500 sm:flex dark:text-gray-400">
-                <span className={`rounded-full px-2 py-0.5 tabular-nums ${FORMAT_PILL.long}`}>L {scopedTotals.long}</span>
-                <span className={`rounded-full px-2 py-0.5 tabular-nums ${FORMAT_PILL.short}`}>S {scopedTotals.short}</span>
+            {!loading && attentionCount > 0 && (
+              <span className="hidden items-center gap-1 rounded-full border border-amber-200/70 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-amber-700 sm:flex dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-400">
+                {attentionCount} behind
               </span>
             )}
             <button
@@ -2350,7 +2168,7 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, 
         </div>
 
         {period === "custom" && (
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end">
+          <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-end">
             <label className="block min-w-0">
               <span className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-gray-400">From</span>
               <input
@@ -2372,42 +2190,50 @@ function WorkLogReportPanel({ activeChannelTab, onChannelTabChange, refreshKey, 
           </div>
         )}
 
-        <p className="text-[10px] text-gray-500 dark:text-gray-400">
-          {periodLabel} · {formatLogDate(range.from)} – {formatLogDate(range.to)}
+        <p className="truncate text-[10px] text-gray-500 dark:text-gray-400">
+          <span className="sm:hidden">{formatLogDate(range.from)} – {formatLogDate(range.to)}</span>
+          <span className="hidden sm:inline">{periodLabel} · {formatLogDate(range.from)} – {formatLogDate(range.to)}</span>
         </p>
       </div>
 
-      {reportChannels.length > 0 && (
-        <div className="flex max-w-full flex-shrink-0 items-center gap-2 overflow-x-auto scrollbar-hide px-1">
-          <FilterLabel icon={Filter} className="hidden sm:flex">Channel:</FilterLabel>
-          <FilterChip active={activeChannelTab === "all"} onClick={() => onChannelTabChange("all")}>
-            All
-          </FilterChip>
-          {reportChannels.map((channel) => (
-            <FilterChip
-              key={channel._id}
-              active={activeChannelTab === String(channel._id)}
-              onClick={() => onChannelTabChange(String(channel._id))}
-              count={channel.count}
-            >
-              {channel.name}
+      <div className="flex max-w-full flex-shrink-0 flex-col gap-1 px-0.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-1.5 sm:px-1">
+        <div className="flex min-w-0 items-center gap-1 overflow-x-auto scrollbar-hide sm:gap-1.5">
+          <FilterSegment
+            options={REPORT_ATTENTION_FILTERS}
+            value={attentionFilter}
+            onChange={setAttentionFilter}
+            variant="default"
+          />
+        </div>
+        {reportChannels.length > 0 && (
+          <div className="flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-hide">
+            <FilterLabel icon={Layers3} className="hidden sm:flex">Channel:</FilterLabel>
+            <FilterChip active={activeChannelTab === "all"} onClick={() => onChannelTabChange("all")}>
+              All
             </FilterChip>
-          ))}
-        </div>
-      )}
-
-      <ReportKpiStrip insights={reportInsights} loading={loading} />
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
-        <div className="min-w-0 lg:min-h-[20rem]">
-          <ReportSummaryTable summary={summary} activeChannelTab={activeChannelTab} loading={loading} />
-        </div>
-        <div className="min-w-0">
-          <ReportLeaderboardCard insights={reportInsights} loading={loading} />
-        </div>
+            {reportChannels.map((channel) => (
+              <FilterChip
+                key={channel._id}
+                active={activeChannelTab === String(channel._id)}
+                onClick={() => onChannelTabChange(String(channel._id))}
+                count={channel.count}
+              >
+                {channel.name}
+              </FilterChip>
+            ))}
+          </div>
+        )}
       </div>
 
-      <HoursByMonthCharts data={hoursByMonth} activeChannelTab={activeChannelTab} loading={loading} />
+      {showReportEmpty ? (
+        <ReportEmptyPanel message="No summary for this channel in the selected period." />
+      ) : (
+        <div className="flex flex-col gap-1.5 sm:gap-2">
+          <ReportOverviewSection totals={scopedTotals} attentionCount={attentionCount} loading={loading} />
+          <ReportOutputProgressSection rows={reportRows} loading={loading} attentionFilter={attentionFilter} />
+          <ReportFirstCutSection rows={firstCutRows} loading={loading} />
+        </div>
+      )}
     </div>
   );
 }
@@ -2596,6 +2422,13 @@ export default function ChannelPlanner() {
   };
 
   const handleToggleStatus = async (plan) => {
+    if (plan.status !== "completed") {
+      const blockers = planCompletionBlockers(plan);
+      if (blockers.length) {
+        toast.error(`Complete all planned videos first: ${blockers.join(", ")}`);
+        return;
+      }
+    }
     try {
       await api.put(`/channel-plans/${plan._id}`, {
         status: plan.status === "completed" ? "todo" : "completed",
@@ -2647,15 +2480,15 @@ export default function ChannelPlanner() {
 
   return (
     <AdminLayout title="Channel Planner" titleInfo="Plan & track channel output" icon={CalendarDays} contentFit noPadding>
-      <div className="flex h-full min-h-0 w-full flex-col gap-2 overflow-y-auto px-3 pb-6 pt-2 custom-scrollbar sm:gap-2 sm:overflow-hidden sm:px-4 sm:pb-4">
+      <div className="flex h-full min-h-0 w-full flex-col gap-1.5 overflow-y-auto px-2 pb-3 pt-1.5 custom-scrollbar sm:gap-2 sm:overflow-hidden sm:px-4 sm:pb-4 sm:pt-2">
         <PageTabBar tabs={PAGE_TABS} activeTab={pageTab} onChange={changePageTab} ariaLabel="Channel Planner views" />
 
         <ChannelPlannerTabPanel tabId="plans" activeTab={pageTab}>
           {showStatsRibbon && (
-            <div className="flex flex-shrink-0 items-center justify-between gap-3 overflow-x-auto scrollbar-hide rounded-lg border border-gray-100/50 bg-gray-50/50 px-3 py-1.5 dark:border-gray-700/50 dark:bg-gray-800/30">
-              <div className="ml-1 flex items-center gap-3 sm:gap-4 md:gap-6">
-                <StatCard icon={CalendarDays} label="In Production" count={stats.schedule} color="text-primary-500" />
-                <StatCard icon={CheckCircle2} label="Done" count={stats.completed} color="text-emerald-500" />
+            <div className="flex flex-shrink-0 items-center justify-between gap-2 overflow-x-auto scrollbar-hide rounded-lg border border-gray-100/50 bg-gray-50/50 px-2 py-1 dark:border-gray-700/50 dark:bg-gray-800/30 sm:gap-3 sm:px-3 sm:py-1.5">
+              <div className="ml-0.5 flex items-center gap-2 sm:ml-1 sm:gap-4 md:gap-6">
+                <StatCard icon={CalendarDays} label="In Production" shortLabel="Active" count={stats.schedule} color="text-primary-500" />
+                <StatCard icon={CheckCircle2} label="Done" shortLabel="Done" count={stats.completed} color="text-emerald-500" />
               </div>
               <div className="ml-auto hidden max-w-sm flex-grow items-center gap-2 sm:flex">
                 <SearchInput
@@ -2680,21 +2513,20 @@ export default function ChannelPlanner() {
             </div>
           )}
 
-          <div className="sm:hidden">
-            <SearchInput
-              value={search}
-              onChange={(value) => {
-                setSearch(value);
-                setDateGroupPage(1);
-              }}
-              placeholder="Search plans..."
-              onClear={() => setSearch("")}
-            />
-          </div>
-
-          <div className="z-30 flex-shrink-0 p-1 sm:p-1.5">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-2">
+          <div className="z-30 flex-shrink-0 px-0.5 py-0.5 sm:p-1.5">
+            <div className="flex flex-col gap-1.5 sm:gap-2">
+              <div className="sm:hidden">
+                <SearchInput
+                  value={search}
+                  onChange={(value) => {
+                    setSearch(value);
+                    setDateGroupPage(1);
+                  }}
+                  placeholder="Search plans..."
+                  onClear={() => setSearch("")}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                 <div className="flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-hide">
                   <FilterLabel icon={Filter} className="hidden sm:flex">View:</FilterLabel>
                   <FilterSegment options={bucketOptions} value={viewMode} onChange={changeView} variant="success" />
@@ -2705,10 +2537,11 @@ export default function ChannelPlanner() {
                     setEditPlan(null);
                     setModalOpen(true);
                   }}
-                  className="buffer-button-primary inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap px-3 py-2 text-[11px] font-semibold sm:gap-1.5 sm:px-4"
+                  className="buffer-button-primary inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap px-2.5 py-1.5 text-[11px] font-semibold sm:gap-1.5 sm:px-4 sm:py-2"
                 >
                   <Plus size={14} className="sm:h-4 sm:w-4" />
-                  <span>Add Plan</span>
+                  <span className="sm:hidden">Add</span>
+                  <span className="hidden sm:inline">Add Plan</span>
                 </button>
               </div>
 
@@ -2743,13 +2576,13 @@ export default function ChannelPlanner() {
 
           <div className="overflow-visible sm:min-h-0 sm:flex-1 sm:overflow-y-auto sm:pr-1 custom-scrollbar">
             {loading ? (
-              <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3">
+              <div className="flex h-full min-h-48 flex-col items-center justify-center gap-3 sm:min-h-64">
                 <div className="h-10 w-10 animate-spin rounded-full border-3 border-primary-200 border-t-primary-600 dark:border-primary-800 dark:border-t-primary-400" />
                 <span className="text-sm text-gray-500 dark:text-gray-400">Loading plans…</span>
               </div>
             ) : groups.length === 0 ? (
-              <div className="flex h-full min-h-64 flex-col items-center justify-center text-center">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-800">
+              <div className="flex h-full min-h-48 flex-col items-center justify-center text-center sm:min-h-64">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800 sm:mb-4 sm:h-16 sm:w-16 sm:rounded-2xl">
                   <Layers3 size={28} className="text-gray-400 dark:text-gray-500" />
                 </div>
                 <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">No plans found</p>
@@ -2768,7 +2601,7 @@ export default function ChannelPlanner() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-2 pb-3 sm:pb-20">
+              <div className="space-y-1.5 pb-2 sm:space-y-2 sm:pb-20">
                 {groups.map((group) => (
                   <DateGroup
                     key={group.date}
@@ -2789,7 +2622,7 @@ export default function ChannelPlanner() {
           </div>
 
           {!loading && pagination.totalGroups > 0 && (
-            <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400 sm:px-4">
+            <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-1.5 rounded-lg border border-gray-100 bg-white px-2.5 py-1.5 text-xs text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400 sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2">
               <span className="hidden tabular-nums sm:inline">
                 {pagination.totalGroups} dates · {pagination.totalPlansOnPage ?? pagination.totalPlans} plans on this page ·{" "}
                 {DATE_GROUP_PAGE_SIZE} dates per page

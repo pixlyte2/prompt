@@ -160,6 +160,26 @@ function parseBoolean(value, field) {
   throw error;
 }
 
+function validatePlanCompletion(plan) {
+  const blockers = [];
+  const longPlanned = plan.longPlanned || 0;
+  const longCompleted = plan.longCompleted || 0;
+  const shortPlanned = plan.shortPlanned || 0;
+  const shortCompleted = plan.shortCompleted || 0;
+
+  if (longPlanned > 0 && longCompleted < longPlanned) {
+    blockers.push(`${longPlanned - longCompleted} long remaining`);
+  }
+  if (shortPlanned > 0 && shortCompleted < shortPlanned) {
+    blockers.push(`${shortPlanned - shortCompleted} short remaining`);
+  }
+  if (blockers.length) {
+    const error = new Error(`Cannot complete plan: ${blockers.join(", ")}`);
+    error.status = 400;
+    throw error;
+  }
+}
+
 function parseDate(value) {
   if (value === undefined) return undefined;
   if (value === null || value === "") return null;
@@ -476,6 +496,9 @@ exports.updatePlan = async (req, res) => {
     }
     if (req.body.status !== undefined) {
       const wasCompleted = plan.status === "completed";
+      if (req.body.status === "completed" && !wasCompleted) {
+        validatePlanCompletion(plan);
+      }
       plan.status = req.body.status;
       if (plan.status === "completed" && !wasCompleted) plan.completedAt = new Date();
       if (plan.status !== "completed") plan.completedAt = null;

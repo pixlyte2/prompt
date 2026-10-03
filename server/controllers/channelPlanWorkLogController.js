@@ -97,6 +97,42 @@ function parseBooleanFlag(value) {
   return normalized === "true" || normalized === "1" || normalized === "yes";
 }
 
+async function validateLogCountsAgainstPlan(planId, longPendingLogged, shortPendingLogged, replacingLogId = null) {
+  const plan = await ChannelPlan.findById(planId).select("longPlanned shortPlanned").lean();
+  if (!plan) {
+    const error = new Error("Channel plan not found");
+    error.status = 404;
+    throw error;
+  }
+
+  const filter = { planId };
+  if (replacingLogId) {
+    filter._id = { $ne: replacingLogId };
+  }
+  const otherLogs = await ChannelPlanWorkLog.find(filter).select("longPendingLogged shortPendingLogged").lean();
+  const otherLong = otherLogs.reduce((sum, log) => sum + (log.longPendingLogged || 0), 0);
+  const otherShort = otherLogs.reduce((sum, log) => sum + (log.shortPendingLogged || 0), 0);
+  const totalLong = otherLong + longPendingLogged;
+  const totalShort = otherShort + shortPendingLogged;
+  const longPlanned = plan.longPlanned || 0;
+  const shortPlanned = plan.shortPlanned || 0;
+
+  if (totalLong > longPlanned) {
+    const error = new Error(
+      `Long logged (${totalLong}) exceeds planned (${longPlanned})`,
+    );
+    error.status = 400;
+    throw error;
+  }
+  if (totalShort > shortPlanned) {
+    const error = new Error(
+      `Short logged (${totalShort}) exceeds planned (${shortPlanned})`,
+    );
+    error.status = 400;
+    throw error;
+  }
+}
+
 async function syncPlanOutputFromLogs(planObjectId) {
   const logs = await ChannelPlanWorkLog.find({ planId: planObjectId }).lean();
   const longCompleted = logs.reduce((sum, log) => sum + (log.longPendingLogged || 0), 0);
@@ -205,6 +241,8 @@ function emptySummaryRow(channelId, channelName) {
     channelId,
     channelName,
     planCount: 0,
+    planned: { long: 0, short: 0 },
+    completed: { long: 0, short: 0 },
     actual: { long: 0, short: 0 },
     logged: { long: 0, short: 0 },
     firstCut: { pending: 0, complete: 0 },
@@ -215,6 +253,14 @@ function sumSummaryRows(rows) {
   return rows.reduce(
     (totals, row) => ({
       planCount: totals.planCount + row.planCount,
+      planned: {
+        long: totals.planned.long + row.planned.long,
+        short: totals.planned.short + row.planned.short,
+      },
+      completed: {
+        long: totals.completed.long + row.completed.long,
+        short: totals.completed.short + row.completed.short,
+      },
       actual: {
         long: totals.actual.long + row.actual.long,
         short: totals.actual.short + row.actual.short,
@@ -230,6 +276,8 @@ function sumSummaryRows(rows) {
     }),
     {
       planCount: 0,
+      planned: { long: 0, short: 0 },
+      completed: { long: 0, short: 0 },
       actual: { long: 0, short: 0 },
       logged: { long: 0, short: 0 },
       firstCut: { pending: 0, complete: 0 },
@@ -306,6 +354,10 @@ exports.getSummary = async (req, res) => {
 
     for (const plan of periodPlans) {
       const row = ensureRow(plan.channelId, nameById.get(String(plan.channelId)));
+      row.planned.long += plan.longPlanned || 0;
+      row.planned.short += plan.shortPlanned || 0;
+      row.completed.long += plan.longCompleted || 0;
+      row.completed.short += plan.shortCompleted || 0;
       row.actual.long += pendingCount(plan.longPlanned, plan.longCompleted);
       row.actual.short += pendingCount(plan.shortPlanned, plan.shortCompleted);
       row.planCount += 1;
@@ -399,6 +451,14 @@ exports.upsertToday = async (req, res) => {
     const plan = await assertPlanInCompany(planObjectId, req);
     const logDate = parseDateKey(req.body.logDate);
 
+    const existing = await ChannelPlanWorkLog.findOne({ planId: plan._id, logDate }).lean();
+    await validateLogCountsAgainstPlan(
+      plan._id,
+      longPendingLogged,
+      shortPendingLogged,
+      existing?._id ?? null,
+    );
+
     const payload = {
       planId: plan._id,
       logDate,
@@ -413,8 +473,6 @@ exports.upsertToday = async (req, res) => {
       loggedBy: req.user._id || req.user.id,
       companyId: req.user.companyId,
     };
-
-    const existing = await ChannelPlanWorkLog.findOne({ planId: plan._id, logDate }).lean();
 
     const log = await ChannelPlanWorkLog.findOneAndUpdate(
       { planId: plan._id, logDate },
@@ -458,6 +516,13 @@ exports.updateLog = async (req, res) => {
       return res.status(404).json({ message: "Work log not found" });
     }
 
+    await validateLogCountsAgainstPlan(
+      log.planId,
+      longPendingLogged,
+      shortPendingLogged,
+      log._id,
+    );
+
     log.longPendingLogged = longPendingLogged;
     log.shortPendingLogged = shortPendingLogged;
     log.firstCutLogged = firstCutLogged;
@@ -467,7 +532,7 @@ exports.updateLog = async (req, res) => {
     await syncPlanOutputFromLogs(log.planId);
 
     const updated = await ChannelPlanWorkLog.findById(log._id)
-      .populate("planId", "planId title scheduledDate")
+      .populate("planId", "planId title scheduledDate longPlanned longCompleted shortPlanned shortCompleted")
       .populate("channelId", "name")
       .populate("loggedBy", "name email")
       .lean();
