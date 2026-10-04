@@ -32,7 +32,7 @@ router.post("/cron/purge-voice-overs", ctrl.purgeExpiredVoiceOversCron);
 router.get("/:id/voice-over", protect, adminOrVoiceOver, ctrl.downloadVoiceOver);
 router.post("/:id/voice-over", protect, adminOrVoiceOver, handleVoiceOverUpload, ctrl.uploadVoiceOver);
 router.delete("/:id/voice-over", protect, adminOrVoiceOver, ctrl.deleteVoiceOver);
-router.put("/:id", protect, adminOnly, ctrl.updateTask);
+router.put("/:id", protect, adminOrVoiceOver, ctrl.updateTask);
 router.delete("/:id", protect, adminOnly, ctrl.deleteTask);
 
 module.exports = router;

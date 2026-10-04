@@ -26,12 +26,15 @@ import {
   Music,
   GraduationCap,
   CalendarDays,
+  Pencil,
+  AlertTriangle,
 } from "lucide-react";
 import AdminLayout from "../../layout/AdminLayout";
 import PageTabBar from "../../components/PageTabBar";
 import { AnalyzeButton, usePlannerCategories } from "../../components/ScheduleCategoryAnalysis";
 import api, { httpClient } from "../../services/api";
 import { getRole } from "../../utils/api";
+import { countWords } from "../../utils/aiPromptUtils";
 import { downloadVoiceOverFile, uploadVoiceOverFile, validateVoiceOverFileSize } from "../../utils/voiceOverDownload";
 import { VOICE_OVER_ACCEPT, isVoiceOverFileAllowed, voiceOverFileTypeHint } from "../../constants/voiceOverFileTypes";
 
@@ -265,6 +268,129 @@ function ScriptViewModal({ task, onClose }) {
   );
 }
 
+function ContentEditModal({ task, onClose, onSaved }) {
+  const [title, setTitle] = useState(task?.title || "");
+  const [script, setScript] = useState(task?.script ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape" && !saving) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, saving]);
+
+  if (!task) return null;
+
+  const trimmedTitle = title.trim();
+  const unchangedTitle = trimmedTitle === String(task.title ?? "").trim();
+  const unchangedScript = script === String(task.script ?? "");
+  const unchanged = unchangedTitle && unchangedScript;
+  const titleValid = trimmedTitle.length > 0 && trimmedTitle.length <= 200;
+  const canSave = titleValid && !unchanged && !saving;
+  const titleWordCount = countWords(title);
+  const scriptWordCount = countWords(script);
+
+  const handleSave = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    setError("");
+    try {
+      await api.put(`/video-tasks/${task._id}`, { title: trimmedTitle, script });
+      toast.success("Updated");
+      await onSaved?.();
+      onClose();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || "Failed to update content";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && onClose()} aria-hidden />
+      <div className="relative w-full max-w-4xl h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)] min-h-[calc(100vh-2rem)] flex flex-col rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden">
+        <div className="shrink-0 px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">Edit Content</h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{task.title}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0 disabled:opacity-50"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto px-5 py-4 space-y-4">
+          <div className="shrink-0 min-w-0">
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Title</label>
+            <textarea
+              rows={2}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter title"
+              maxLength={200}
+              className="w-full max-w-full box-border min-h-[3.375rem] px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none break-words overflow-x-hidden"
+            />
+          </div>
+          <div className="flex-1 flex flex-col min-h-0">
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Script (optional)</label>
+            <textarea
+              value={script}
+              onChange={(e) => setScript(e.target.value)}
+              placeholder="Paste or write the video script…"
+              className="flex-1 min-h-0 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none"
+            />
+          </div>
+        </div>
+        <div className="shrink-0 flex flex-col gap-3 px-5 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          {error && (
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30">
+              <AlertTriangle size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-[11px] font-medium text-red-700 dark:text-red-400 leading-tight">{error}</p>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] text-gray-500 dark:text-gray-400 tabular-nums min-w-0">
+              Title: {titleWordCount.toLocaleString()} words · Script: {scriptWordCount.toLocaleString()} words
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={saving}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={!canSave}
+                className="px-4 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+              >
+                {saving ? <Loader2 size={12} className="animate-spin" /> : <Pencil size={12} />}
+                Update Content
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DeleteVoiceOverModal({ task, onClose, onConfirm, loading }) {
   useEffect(() => {
     const onKey = (e) => {
@@ -356,7 +482,7 @@ function VoiceOverTaskRow({
   uploadProgress,
   setUploadProgress,
 }) {
-  const [scriptModalOpen, setScriptModalOpen] = useState(false);
+  const [contentModalOpen, setContentModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [scriptDownloadBusy, setScriptDownloadBusy] = useState(false);
   const taskUrl = getTaskUrl(task);
@@ -435,7 +561,7 @@ function VoiceOverTaskRow({
   const canUploadVo = scriptOk && !busyUpload && !rowBlocking;
   
   const uploadLabelTitle = !scriptOk
-    ? "Add a script to this task in Production Hub before uploading voice-over"
+    ? "Add a script using the Content button before uploading voice-over"
     : busyUpload
       ? "Uploading…"
       : rowBlocking
@@ -451,8 +577,6 @@ function VoiceOverTaskRow({
 
   const textActionBase =
     "h-8 px-2.5 sm:h-9 sm:px-3 inline-flex items-center justify-center gap-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200 border shadow-sm disabled:opacity-40 disabled:cursor-not-allowed active:scale-95";
-  const textActionView =
-    `${textActionBase} border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-200 dark:hover:border-blue-800`;
   const textActionDownload =
     `${textActionBase} border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-600`;
   const textActionAudio =
@@ -461,10 +585,22 @@ function VoiceOverTaskRow({
     `${textActionBase} border-red-200/70 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/25 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/40 hover:border-red-300 dark:hover:border-red-800 hover:text-red-700 dark:hover:text-red-300`;
   const textActionUpload =
     "h-8 px-2.5 sm:h-9 sm:px-3 inline-flex items-center justify-center gap-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200";
+  const textActionContentFilled =
+    `${textActionBase} border-violet-200/90 dark:border-violet-700/60 bg-violet-50/90 dark:bg-violet-950/30 text-violet-800 dark:text-violet-200 hover:bg-violet-100 dark:hover:bg-violet-900/40 hover:border-violet-300 dark:hover:border-violet-600 hover:text-violet-900 dark:hover:text-violet-100`;
+  const textActionContentEmpty =
+    `${textActionBase} border-dashed border-amber-300/90 dark:border-amber-800/60 bg-amber-50/80 dark:bg-amber-950/25 text-amber-700 dark:text-amber-400 hover:bg-amber-100/90 dark:hover:bg-amber-950/40 hover:border-amber-400 dark:hover:border-amber-700 hover:text-amber-800 dark:hover:text-amber-300`;
+
+  const scriptWordCount = scriptOk ? countWords(task.script) : 0;
 
   return (
     <>
-      {scriptModalOpen && <ScriptViewModal task={task} onClose={() => setScriptModalOpen(false)} />}
+      {contentModalOpen && (
+        <ContentEditModal
+          task={task}
+          onClose={() => setContentModalOpen(false)}
+          onSaved={onReload}
+        />
+      )}
       {deleteModalOpen && (
         <DeleteVoiceOverModal
           task={task}
@@ -524,16 +660,14 @@ function VoiceOverTaskRow({
                       </span>
                     );
                   })}
-                {scriptOk ? (
-                  <span className="inline-flex items-center rounded-md sm:rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-950/60 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                    Script Ready
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center rounded-md sm:rounded-lg border border-dashed border-amber-300 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-955/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                    Needs Script
+                {scriptOk && (
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold tabular-nums tracking-tight bg-violet-50/70 text-violet-700 border border-violet-200/70 dark:bg-violet-900/25 dark:text-violet-200 dark:border-violet-700/50 shadow-sm min-h-[22px] sm:min-h-[26px]"
+                    title={`${scriptWordCount.toLocaleString()} words`}
+                  >
+                    {scriptWordCount}w
                   </span>
                 )}
-                
                 {scriptOk && voOk && (
                   <span className="inline-flex items-center rounded-md sm:rounded-lg border border-indigo-200 bg-indigo-50 dark:border-indigo-950/60 dark:bg-indigo-950/40 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
                     VO Ready
@@ -565,7 +699,25 @@ function VoiceOverTaskRow({
 
           {/* Actions Container — always full width below content so labeled buttons never overlap badges */}
           <div className="flex flex-wrap items-center gap-1.5 pt-2.5 border-t border-gray-100 dark:border-gray-800/60 w-full sm:justify-end">
-            
+
+            <button
+              type="button"
+              disabled={rowBlocking}
+              onClick={() => setContentModalOpen(true)}
+              className={scriptOk ? textActionContentFilled : textActionContentEmpty}
+              title={
+                scriptOk
+                  ? scriptWordCount > 0
+                    ? `Edit title and script (${scriptWordCount.toLocaleString()} words)`
+                    : "Edit title and script"
+                  : "Edit title and add script"
+              }
+              aria-label="Edit content"
+            >
+              <FileText size={12} />
+              <span>Content</span>
+            </button>
+
             {/* Custom inline stream play trigger */}
             {voOk && (
               <button
@@ -589,34 +741,21 @@ function VoiceOverTaskRow({
               </button>
             )}
 
-            {/* Script view button */}
-            <button
-              type="button"
-              disabled={scriptActionsLocked}
-              onClick={() => setScriptModalOpen(true)}
-              className={textActionView}
-              title={!scriptOk ? "No script on this task" : "View script"}
-              aria-label="View script"
-            >
-              <Eye size={12} />
-              <span>View</span>
-            </button>
-
-            {/* Script download button */}
+            {/* Script download button — separate from Script edit/view action */}
             <button
               type="button"
               disabled={scriptActionsLocked}
               onClick={handleDownloadScriptTxt}
               className={textActionDownload}
               title="Download script as .txt"
-              aria-label="Download script"
+              aria-label="Download script as .txt"
             >
               {scriptDownloadBusy ? (
                 <Loader2 size={12} className="animate-spin" />
               ) : (
                 <Download size={12} />
               )}
-              <span>Script</span>
+              <span>.txt</span>
             </button>
 
             {/* Audio Upload element wrapper */}
@@ -706,6 +845,7 @@ function VoTrainingTaskRow({
   const busyVoDownload = voiceOverDownloadingIds?.has(taskKey) ?? false;
   const dateLabel = formatCompletedDate(task);
   const scriptOk = hasScript(task);
+  const scriptWordCount = scriptOk ? countWords(task.script) : 0;
   const scriptActionsLocked = !scriptOk || scriptDownloadBusy || busyVoDownload;
 
   const handleDownloadScript = () => {
@@ -739,9 +879,19 @@ function VoTrainingTaskRow({
             <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 leading-snug line-clamp-2">
               {task.title}
             </h3>
-            <p className="mt-1 text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">
-              Completed {dateLabel}
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+              <p className="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">
+                Completed {dateLabel}
+              </p>
+              {scriptOk && (
+                <span
+                  className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold tabular-nums tracking-tight bg-violet-50/70 text-violet-700 border border-violet-200/70 dark:bg-violet-900/25 dark:text-violet-200 dark:border-violet-700/50 shadow-sm min-h-[22px] sm:min-h-[26px]"
+                  title={`${scriptWordCount.toLocaleString()} words`}
+                >
+                  {scriptWordCount}w
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1080,7 +1230,7 @@ export default function VoiceOver() {
 
   // Computed: KPI metrics (computed based on selected date if date is selected, otherwise all tasks)
   const metrics = useMemo(() => {
-    let list = (scheduleTasks || []).filter(hasScript);
+    let list = scheduleTasks || [];
     if (filterDate) {
       list = list.filter((t) => toDateKey(t.scheduledDate) === filterDate);
     }
@@ -1092,7 +1242,7 @@ export default function VoiceOver() {
 
   // Computed: Filtered Tasks
   const filteredTasks = useMemo(() => {
-    return (scheduleTasks || []).filter(hasScript).filter((t) => {
+    return (scheduleTasks || []).filter((t) => {
       if (filterDate) {
         const taskDate = toDateKey(t.scheduledDate);
         if (taskDate !== filterDate) return false;

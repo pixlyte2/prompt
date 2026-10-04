@@ -308,6 +308,38 @@ exports.createTask = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
   try {
+    const task = await VideoTask.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    const role = req.user?.role;
+
+    if (role === "voice_over_training") {
+      return res.status(403).json({ message: "Not authorized to update tasks" });
+    }
+
+    if (role === "voice_over") {
+      if (rejectVoiceOverOutOfScope(req, res, task)) return;
+
+      const { title, script } = req.body;
+
+      if (title !== undefined) {
+        const trimmed = String(title).trim();
+        if (!trimmed) {
+          return res.status(400).json({ message: "title cannot be empty" });
+        }
+        if (trimmed.length > 200) {
+          return res.status(400).json({ message: "title must be 200 characters or fewer" });
+        }
+        task.title = trimmed;
+      }
+      if (script !== undefined) {
+        task.script = String(script);
+      }
+
+      await task.save();
+      return res.json(task);
+    }
+
     const {
       status, scheduledDate, notes, script, title, url, videoId,
       platform, contentFormat, assignedTo, channelType, channelName, channelHandle,
@@ -332,9 +364,6 @@ exports.updateTask = async (req, res) => {
         });
       }
     }
-
-    const task = await VideoTask.findById(req.params.id);
-    if (!task) return res.status(404).json({ message: "Task not found" });
 
     if (status) {
       task.status = status;

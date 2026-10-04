@@ -86,7 +86,8 @@ export default function Help() {
       color: "text-emerald-600",
       items: [
         "Two tabs: Schedule (Production Hub tasks by date) and VO Training (last 10 completed videos with script and voice-over attached).",
-        "Schedule: view script, download .txt, upload/replace/download/remove voice-over audio (stored in MongoDB GridFS).",
+        "Schedule: Content button on each row action bar—tap to edit title and script in one modal; tasks with a script also show a word-count pill (e.g. 450w) in the badge row.",
+        "Download script (.txt), upload/replace/download/remove voice-over audio (stored in MongoDB GridFS).",
         "VO Training: browse recent completed work and download script or voice-over files for reference.",
         "voice_over role sees Schedule only; voice_over_training sees VO Training only; Admin sees both tabs.",
       ],
