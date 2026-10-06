@@ -165,6 +165,79 @@ function FilterLabel({ icon: Icon, children }) {
   );
 }
 
+function ScriptEditorFilterDropdown({
+  visible,
+  options,
+  value,
+  onChange,
+  open,
+  onOpenChange,
+  dropdownRef,
+}) {
+  if (!visible || options.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-2 relative shrink-0" ref={dropdownRef}>
+      <FilterLabel icon={ScrollText}>Script editor:</FilterLabel>
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold transition-all ${
+          value
+            ? "bg-teal-50 dark:bg-teal-900/30 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 shadow-sm"
+            : "bg-white/60 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800"
+        }`}
+      >
+        <span className="truncate max-w-[100px] sm:max-w-[140px]">
+          {value || "All editors"}
+        </span>
+        <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 shrink-0 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-2 w-56 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 shadow-2xl z-[100] py-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => { onChange(null); onOpenChange(false); }}
+            className={`w-full flex items-center justify-between px-4 py-2 text-[11px] font-bold transition-colors ${
+              !value
+                ? "bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+            }`}
+          >
+            All editors
+            <span className="text-[10px] opacity-60 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full font-black uppercase">
+              {options.reduce((sum, o) => sum + o.count, 0)}
+            </span>
+          </button>
+          <div className="h-px bg-gray-100 dark:bg-gray-700 my-1.5" />
+          <div className="max-h-64 overflow-y-auto custom-scrollbar">
+            {options.map(({ name, count }) => (
+              <button
+                key={name}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { onChange(name); onOpenChange(false); }}
+                className={`w-full flex items-center justify-between px-4 py-2 text-[11px] font-bold transition-colors ${
+                  value === name
+                    ? "bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                }`}
+              >
+                <span className="truncate">{name}</span>
+                <span className="text-[10px] opacity-60 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full font-black uppercase ml-2 shrink-0">
+                  {count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatsBadge({ count, label, variant = "default" }) {
   const variants = {
     default: "bg-blue-50/80 text-blue-700 border-blue-200/60 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/40",
@@ -255,6 +328,39 @@ const taskMatchesAssigneeFilter = (task, filterKey) => {
       : [];
   if (filterKey === "Unassigned") return assignees.length === 0;
   return assignees.some((a) => String(a).toLowerCase() === filterKey.toLowerCase());
+};
+
+const getContentEditorName = (task) => {
+  const name = String(task?.contentModifiedByName ?? "").trim();
+  return name || null;
+};
+
+const taskMatchesContentEditorFilter = (task, filterName) => {
+  if (!filterName) return true;
+  return getContentEditorName(task) === filterName;
+};
+
+const collectContentEditors = (tasks) => {
+  const counts = {};
+  tasks.forEach((t) => {
+    const name = getContentEditorName(t);
+    if (name) counts[name] = (counts[name] || 0) + 1;
+  });
+  return Object.entries(counts)
+    .sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+    .map(([name, count]) => ({ name, count }));
+};
+
+const tasksForScriptEditorView = (viewMode, datedTasks, completedTasks) => {
+  if (viewMode === "schedule") {
+    return (datedTasks || []).filter(
+      (t) => t.status !== "completed" && t.scheduledDate && toDateKey(t.scheduledDate),
+    );
+  }
+  if (viewMode === "completed") {
+    return (completedTasks || []).filter((t) => t.status === "completed");
+  }
+  return [];
 };
 
 const FORMAT_PILL = {
@@ -953,6 +1059,19 @@ const TaskRow = memo(function TaskRow({
             </span>
           );
         })()}
+
+        {String(task.contentModifiedByName || "").trim() && (
+          <span
+            className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-semibold tracking-tight bg-teal-50 text-teal-800 border border-teal-200/80 dark:bg-teal-900/30 dark:text-teal-200 dark:border-teal-800/50 shadow-sm min-h-[22px] sm:min-h-[26px] truncate max-w-[7rem] sm:max-w-[9rem]"
+            title={
+              task.contentModifiedAt
+                ? `Content edited by ${task.contentModifiedByName} · ${new Date(task.contentModifiedAt).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`
+                : `Content edited by ${task.contentModifiedByName}`
+            }
+          >
+            {task.contentModifiedByName}
+          </span>
+        )}
 
         {/* Voice-over (VO) */}
         {hasTaskVoiceOver(task) && (
@@ -2247,11 +2366,14 @@ export default function ProductionHub() {
   const [selectedDateKeys, setSelectedDateKeys] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [contentEditorFilter, setContentEditorFilter] = useState(null);
+  const [showEditorDropdown, setShowEditorDropdown] = useState(false);
   const [voiceOverDownloadingIds, setVoiceOverDownloadingIds] = useState(() => new Set());
   const [voBulkDeleteModal, setVoBulkDeleteModal] = useState(null);
   const [voBulkDeleting, setVoBulkDeleting] = useState(false);
   const [deletingDateVoiceOversKey, setDeletingDateVoiceOversKey] = useState(null);
   const typeDropdownRef = useRef(null);
+  const editorDropdownRef = useRef(null);
 
   // Custom Audio Player State
   const audioRef = useRef(null);
@@ -2412,18 +2534,19 @@ export default function ProductionHub() {
   const loadInitialBoard = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, datedRes, typesRes] = await Promise.all([
+      const [statsRes, datedRes, typesRes, completedRes] = await Promise.all([
         api.get("/video-tasks/stats"),
         api.get("/video-tasks?bucket=schedule"),
         api.get("/competitor-types"),
+        api.get("/video-tasks?bucket=completed"),
       ]);
       setBoardStats(statsRes.data);
       setDatedTasks(datedRes.data);
       setTypes(typesRes.data);
+      setCompletedTasks(completedRes.data);
+      setCompletedLoaded(true);
       setBacklogLoaded(false);
-      setCompletedLoaded(false);
       setBacklogTasks([]);
-      setCompletedTasks([]);
     } catch {
       toast.error("Failed to load board");
     } finally {
@@ -2434,27 +2557,24 @@ export default function ProductionHub() {
   const refreshFullBoard = useCallback(async () => {
     setLoading(true);
     setBacklogLoaded(false);
-    setCompletedLoaded(false);
     setBacklogTasks([]);
-    setCompletedTasks([]);
     try {
-      const [statsRes, datedRes, typesRes] = await Promise.all([
+      const [statsRes, datedRes, typesRes, completedRes] = await Promise.all([
         api.get("/video-tasks/stats"),
         api.get("/video-tasks?bucket=schedule"),
         api.get("/competitor-types"),
+        api.get("/video-tasks?bucket=completed"),
       ]);
       setBoardStats(statsRes.data);
       setDatedTasks(datedRes.data);
       setTypes(typesRes.data);
+      setCompletedTasks(completedRes.data);
+      setCompletedLoaded(true);
 
       if (viewMode === "backlog") {
         const { data } = await api.get("/video-tasks?bucket=backlog");
         setBacklogTasks(data);
         setBacklogLoaded(true);
-      } else if (viewMode === "completed") {
-        const { data } = await api.get("/video-tasks?bucket=completed");
-        setCompletedTasks(data);
-        setCompletedLoaded(true);
       }
     } catch {
       toast.error("Failed to refresh board");
@@ -2485,7 +2605,7 @@ export default function ProductionHub() {
         }
         return;
       }
-      if (viewMode === "completed" && !completedLoaded) {
+      if (viewMode === "completed") {
         setTabBusy(true);
         try {
           const { data } = await api.get("/video-tasks?bucket=completed");
@@ -2504,7 +2624,7 @@ export default function ProductionHub() {
     return () => {
       cancelled = true;
     };
-  }, [viewMode, backlogLoaded, completedLoaded]);
+  }, [viewMode, backlogLoaded]);
 
   const syncBoardAfterMutation = useCallback(async () => {
     try {
@@ -2519,10 +2639,8 @@ export default function ProductionHub() {
         promises.push(api.get("/video-tasks?bucket=backlog"));
         backlogIndex = promises.length - 1;
       }
-      if (completedLoaded) {
-        promises.push(api.get("/video-tasks?bucket=completed"));
-        completedIndex = promises.length - 1;
-      }
+      promises.push(api.get("/video-tasks?bucket=completed"));
+      completedIndex = promises.length - 1;
 
       const results = await Promise.all(promises);
 
@@ -2534,11 +2652,12 @@ export default function ProductionHub() {
       }
       if (completedIndex !== -1) {
         setCompletedTasks(results[completedIndex].data);
+        setCompletedLoaded(true);
       }
     } catch {
       toast.error("Failed to refresh board");
     }
-  }, [backlogLoaded, completedLoaded]);
+  }, [backlogLoaded]);
 
   const handleMove = useCallback(async (id, newStatus) => {
     try {
@@ -2609,12 +2728,17 @@ export default function ProductionHub() {
   useEffect(() => {
     // Clear selection when changing view
     setSelectedDateKeys([]);
+    setContentEditorFilter(null);
+    setShowEditorDropdown(false);
   }, [viewMode]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (typeDropdownRef.current && !typeDropdownRef.current.contains(event.target)) {
         setShowTypeDropdown(false);
+      }
+      if (editorDropdownRef.current && !editorDropdownRef.current.contains(event.target)) {
+        setShowEditorDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -2705,7 +2829,7 @@ export default function ProductionHub() {
     }
   }, [voBulkDeleteModal, syncBoardAfterMutation]);
 
-  const filterList = useCallback((list) => {
+  const filterListBase = useCallback((list) => {
     let l = [...list];
     if (activeType !== "all") l = l.filter((t) => t.channelType === activeType);
     if (search.trim()) {
@@ -2716,15 +2840,46 @@ export default function ProductionHub() {
           t.channelName?.toLowerCase().includes(q) ||
           t.notes?.toLowerCase().includes(q) ||
           t.script?.toLowerCase().includes(q) ||
-          t.voiceOverOriginalName?.toLowerCase().includes(q),
+          t.voiceOverOriginalName?.toLowerCase().includes(q) ||
+          getContentEditorName(t)?.toLowerCase().includes(q),
       );
     }
     return l;
   }, [activeType, search]);
 
+  const filterList = useCallback((list) => {
+    let l = filterListBase(list);
+    if (contentEditorFilter) {
+      l = l.filter((t) => taskMatchesContentEditorFilter(t, contentEditorFilter));
+    }
+    return l;
+  }, [filterListBase, contentEditorFilter]);
+
   const filteredDated = useMemo(() => filterList(datedTasks), [filterList, datedTasks]);
   const filteredBacklog = useMemo(() => filterList(backlogTasks), [filterList, backlogTasks]);
   const filteredCompleted = useMemo(() => filterList(completedTasks), [filterList, completedTasks]);
+
+  const showScriptEditorFilter = viewMode === "schedule" || viewMode === "completed";
+
+  const contentEditorViewTasks = useMemo(
+    () => tasksForScriptEditorView(viewMode, datedTasks, completedTasks),
+    [viewMode, datedTasks, completedTasks],
+  );
+
+  const contentEditorOptions = useMemo(() => {
+    if (!showScriptEditorFilter) return [];
+    let pool = contentEditorViewTasks;
+    if (activeType !== "all") {
+      pool = pool.filter((t) => t.channelType === activeType);
+    }
+    return collectContentEditors(pool);
+  }, [showScriptEditorFilter, contentEditorViewTasks, activeType]);
+
+  useEffect(() => {
+    if (contentEditorFilter && !contentEditorOptions.some((o) => o.name === contentEditorFilter)) {
+      setContentEditorFilter(null);
+    }
+  }, [contentEditorFilter, contentEditorOptions]);
 
   const filtered = useMemo(() => {
     if (viewMode === "completed") return filteredCompleted;
@@ -2830,7 +2985,7 @@ export default function ProductionHub() {
         {/* Stats & Search Ribbon */}
         {showStatsRibbon && (
           <div className="flex-shrink-0 flex items-center justify-between gap-4 px-3 py-1.5 bg-gray-50/50 dark:bg-gray-800/30 rounded-lg border border-gray-100/50 dark:border-gray-700/50">
-            <div className="flex items-center gap-3 sm:gap-4 md:gap-6 ml-1">
+            <div className="flex items-center gap-3 sm:gap-4 md:gap-6 ml-1 min-w-0 shrink">
               <StatCard icon={AlertTriangle} label="Overdue" count={stats.overdue} color="text-red-500" />
               <StatCard icon={Calendar} label="Today" count={stats.today} color="text-blue-500" />
               <StatCard icon={TrendingUp} label="Week" count={stats.thisWeek} color="text-amber-500" />
@@ -2838,7 +2993,16 @@ export default function ProductionHub() {
               <StatCard icon={CheckCircle2} label="Done" count={stats.completed} color="text-emerald-500" />
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 flex-grow max-w-sm ml-auto">
+            <div className="flex items-center gap-2 flex-grow max-w-xl ml-auto shrink-0 min-w-0">
+              <ScriptEditorFilterDropdown
+                visible={showScriptEditorFilter}
+                options={contentEditorOptions}
+                value={contentEditorFilter}
+                onChange={setContentEditorFilter}
+                open={showEditorDropdown}
+                onOpenChange={setShowEditorDropdown}
+                dropdownRef={editorDropdownRef}
+              />
               <SearchInput
                 value={search}
                 onChange={setSearch}
@@ -2848,7 +3012,7 @@ export default function ProductionHub() {
               <button
                 onClick={refreshFullBoard}
                 disabled={loading}
-                className="p-1.5 rounded-lg bg-white/50 dark:bg-gray-700/50 border border-gray-200/50 dark:border-gray-600/50 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
+                className="p-1.5 rounded-lg bg-white/50 dark:bg-gray-700/50 border border-gray-200/50 dark:border-gray-600/50 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95 shrink-0"
                 title="Refresh board"
               >
                 <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
@@ -2856,16 +3020,6 @@ export default function ProductionHub() {
             </div>
           </div>
         )}
-
-        {/* Search for mobile only — visible in filter bar */}
-        <div className="sm:hidden -mb-1 px-1">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Search tasks..."
-            onClear={() => setSearch("")}
-          />
-        </div>
 
         {/* Unified Filter Section */}
         <div className="flex-shrink-0 p-1 sm:p-1.5 z-30">

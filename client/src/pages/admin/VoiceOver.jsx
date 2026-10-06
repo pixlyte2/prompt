@@ -118,6 +118,10 @@ function hasVoiceOver(task) {
 }
 
 function sortVoiceOverTasksForDisplay(a, b) {
+  const scriptEmptyA = !hasScript(a);
+  const scriptEmptyB = !hasScript(b);
+  if (scriptEmptyA !== scriptEmptyB) return scriptEmptyA ? -1 : 1;
+
   const idA = a.customVideoId != null ? Number(a.customVideoId) : Infinity;
   const idB = b.customVideoId != null ? Number(b.customVideoId) : Infinity;
   if (idA !== idB) return idA - idB;

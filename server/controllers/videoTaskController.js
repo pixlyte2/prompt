@@ -1,4 +1,5 @@
 const VideoTask = require("../models/VideoTask");
+const User = require("../models/user");
 const { voiceOverExpireAtFrom } = require("../constants/voiceOverRetention");
 const {
   contentTypeForVoiceOver,
@@ -17,6 +18,14 @@ const {
   isVoiceOverExpired,
   purgeExpiredVoiceOvers,
 } = require("../utils/voiceOverCleanup");
+
+async function stampContentModifier(task, userId) {
+  if (!userId) return;
+  task.contentModifiedBy = userId;
+  task.contentModifiedAt = new Date();
+  const user = await User.findById(userId).select("name").lean();
+  task.contentModifiedByName = user?.name || "";
+}
 
 /** Tasks shown on the Voice-over page: scheduled date set and not completed */
 function taskAllowedForVoiceOverSchedule(task) {
@@ -322,6 +331,8 @@ exports.updateTask = async (req, res) => {
 
       const { title, script } = req.body;
 
+      let contentChanged = false;
+
       if (title !== undefined) {
         const trimmed = String(title).trim();
         if (!trimmed) {
@@ -330,10 +341,17 @@ exports.updateTask = async (req, res) => {
         if (trimmed.length > 200) {
           return res.status(400).json({ message: "title must be 200 characters or fewer" });
         }
+        if (trimmed !== task.title) contentChanged = true;
         task.title = trimmed;
       }
       if (script !== undefined) {
-        task.script = String(script);
+        const nextScript = String(script);
+        if (nextScript !== task.script) contentChanged = true;
+        task.script = nextScript;
+      }
+
+      if (contentChanged) {
+        await stampContentModifier(task, req.user._id || req.user.id);
       }
 
       await task.save();
@@ -373,9 +391,16 @@ exports.updateTask = async (req, res) => {
     if (scheduledDate !== undefined) {
       task.scheduledDate = scheduledDate ? new Date(scheduledDate) : null;
     }
+    const titleChanged = title !== undefined && title !== task.title;
+    const scriptChanged = script !== undefined && script !== task.script;
+
     if (notes !== undefined) task.notes = notes;
     if (script !== undefined) task.script = script;
     if (title !== undefined) task.title = title;
+
+    if (titleChanged || scriptChanged) {
+      await stampContentModifier(task, req.user._id || req.user.id);
+    }
     if (url !== undefined) task.url = url;
     if (videoId !== undefined) task.videoId = videoId;
     if (platform !== undefined) task.platform = platform;

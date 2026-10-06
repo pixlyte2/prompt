@@ -58,6 +58,11 @@ const videoTaskSchema = new mongoose.Schema(
     },
     completedAt: Date,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    /** User who last edited title or script (voice-over content update) */
+    contentModifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    /** Denormalized display name at time of last content edit */
+    contentModifiedByName: { type: String, default: "" },
+    contentModifiedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
