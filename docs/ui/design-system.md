@@ -140,7 +140,7 @@ primary-900: #1e3a8a
 }
 
 .status-progress {
-  @apply bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300;
+  @apply bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 ;
 }
 
 .status-completed {
