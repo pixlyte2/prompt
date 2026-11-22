@@ -1,6 +1,7 @@
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  ArrowUpDown,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -31,6 +32,11 @@ import ConfirmModal from "../../components/ConfirmModal";
 
 const DATE_GROUP_PAGE_SIZE = 10;
 const LOG_HISTORY_DAYS_PER_PAGE = 10;
+
+const DATE_SORT_OPTIONS = [
+  { value: "asc", label: "Oldest first", shortLabel: "Asc" },
+  { value: "desc", label: "Newest first", shortLabel: "Desc" },
+];
 
 const REPORT_PERIODS = [
   { value: "current-week", label: "This week", shortLabel: "Week" },
@@ -2316,6 +2322,11 @@ export default function ChannelPlanner() {
   const [activeChannelTab, setActiveChannelTab] = useState("all");
   const [reportRefreshKey, setReportRefreshKey] = useState(0);
   const [viewMode, setViewMode] = useState("schedule");
+  const [dateSort, setDateSort] = useState(() => {
+    const stored = localStorage.getItem("CHANNEL_PLANNER_DATE_SORT");
+    if (stored === "asc" || stored === "desc") return stored;
+    return "asc";
+  });
   const [dateGroupPage, setDateGroupPage] = useState(1);
   const [search, setSearch] = useState("");
   const [groups, setGroups] = useState([]);
@@ -2355,6 +2366,7 @@ export default function ChannelPlanner() {
         bucket: viewMode,
         page: String(dateGroupPage),
         limit: String(DATE_GROUP_PAGE_SIZE),
+        dateSort,
         ...filterParams,
       });
       if (search.trim()) params.set("search", search.trim());
@@ -2375,7 +2387,7 @@ export default function ChannelPlanner() {
     } finally {
       setLoading(false);
     }
-  }, [pageTab, viewMode, dateGroupPage, filterParams, search]);
+  }, [pageTab, viewMode, dateSort, dateGroupPage, filterParams, search]);
 
   useEffect(() => {
     void loadReferenceData();
@@ -2402,6 +2414,12 @@ export default function ChannelPlanner() {
   const changeChannelTab = (value) => {
     setActiveChannelTab(value);
     setDateGroupPage(1);
+  };
+
+  const changeDateSort = (value) => {
+    setDateSort(value);
+    setDateGroupPage(1);
+    localStorage.setItem("CHANNEL_PLANNER_DATE_SORT", value);
   };
 
   const changePageTab = (tab) => {
@@ -2530,6 +2548,8 @@ export default function ChannelPlanner() {
                 <div className="flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-hide">
                   <FilterLabel icon={Filter} className="hidden sm:flex">View:</FilterLabel>
                   <FilterSegment options={bucketOptions} value={viewMode} onChange={changeView} variant="success" />
+                  <FilterLabel icon={ArrowUpDown} className="hidden sm:flex">Date:</FilterLabel>
+                  <FilterSegment options={DATE_SORT_OPTIONS} value={dateSort} onChange={changeDateSort} />
                 </div>
                 <button
                   type="button"

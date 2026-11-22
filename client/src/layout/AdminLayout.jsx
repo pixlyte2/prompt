@@ -37,7 +37,9 @@ export default function AdminLayout({
     return localStorage.getItem("SIDEBAR_COLLAPSED") === "true";
   });
   const [weekPanelCollapsed, setWeekPanelCollapsed] = useState(() => {
-    return localStorage.getItem("WEEK_PANEL_COLLAPSED") === "true";
+    const stored = localStorage.getItem("WEEK_PANEL_COLLAPSED");
+    if (stored === null) return true;
+    return stored === "true";
   });
 
   const handleToggleCollapse = () => {

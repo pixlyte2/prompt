@@ -4,6 +4,15 @@ const Channel = require("../models/channel");
 const User = require("../models/user");
 
 const BUCKETS = new Set(["schedule", "completed"]);
+const DATE_SORT = new Set(["asc", "desc"]);
+
+function parseDateSort(query, bucket) {
+  const raw = String(query.dateSort || "")
+    .trim()
+    .toLowerCase();
+  if (DATE_SORT.has(raw)) return raw;
+  return bucket === "completed" ? "desc" : "asc";
+}
 const COUNT_FIELDS = [
   "longPlanned",
   "longCompleted",
@@ -344,10 +353,12 @@ exports.getPlans = async (req, res) => {
       Math.max(1, Number.parseInt(req.query.limit, 10) || 10),
     );
     const filter = await scopeFilterToCompany(req, buildFilter(req, bucket));
+    const dateSort = parseDateSort(req.query, bucket);
+    const dateDir = dateSort === "desc" ? -1 : 1;
     const sort =
       bucket === "completed"
-        ? { completedAt: -1, updatedAt: -1 }
-        : { scheduledDate: 1, createdAt: 1 };
+        ? { completedAt: dateDir, updatedAt: dateDir }
+        : { scheduledDate: dateDir, createdAt: dateDir };
 
     const plans = await ChannelPlan.find(filter)
       .populate("channelId", "name")
@@ -388,8 +399,8 @@ exports.getPlans = async (req, res) => {
     }));
 
     allGroups.sort((a, b) => {
-      if (bucket === "completed") return b.date.localeCompare(a.date);
-      return a.date.localeCompare(b.date);
+      const cmp = a.date.localeCompare(b.date);
+      return dateSort === "desc" ? -cmp : cmp;
     });
 
     const totalGroups = allGroups.length;

@@ -15,6 +15,9 @@ const WORK_DAYS = 6;
 const PANEL_EXPANDED = "w-[clamp(195px,18.75vw,315px)]";
 const PANEL_COLLAPSED = "w-14";
 
+/** Survives route changes so we do not refetch /video-tasks on every admin page navigation. */
+let weekOverviewTasksCache;
+
 const ASSIGNEE_META = {
   pooja: {
     dot: "bg-pink-400",
@@ -427,8 +430,10 @@ function WeekTotalsRow({ weekTotal, assignees, weekTaskTotal }) {
 }
 
 function WeekOverviewPanel({ isCollapsed, onToggleCollapse }) {
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState(() =>
+    weekOverviewTasksCache !== undefined ? weekOverviewTasksCache : [],
+  );
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const weekDays = useMemo(() => getWeekDays(), []);
@@ -453,8 +458,11 @@ function WeekOverviewPanel({ isCollapsed, onToggleCollapse }) {
     else setRefreshing(true);
     try {
       const { data } = await api.get("/video-tasks");
-      setTasks(Array.isArray(data) ? data : []);
+      const next = Array.isArray(data) ? data : [];
+      weekOverviewTasksCache = next;
+      setTasks(next);
     } catch {
+      weekOverviewTasksCache = [];
       setTasks([]);
     } finally {
       setLoading(false);
@@ -463,8 +471,13 @@ function WeekOverviewPanel({ isCollapsed, onToggleCollapse }) {
   };
 
   useEffect(() => {
+    if (isCollapsed) return;
+    if (weekOverviewTasksCache !== undefined) {
+      setTasks(weekOverviewTasksCache);
+      return;
+    }
     fetchTasks();
-  }, []);
+  }, [isCollapsed]);
 
   return (
     <aside
@@ -529,7 +542,7 @@ function WeekOverviewPanel({ isCollapsed, onToggleCollapse }) {
       </button>
 
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-        {loading ? (
+        {loading && !isCollapsed ? (
           <div className="flex flex-col items-center justify-center flex-1 gap-2">
             <Loader2 size={20} className="animate-spin text-blue-500" />
             <p className="text-xs font-semibold text-gray-500">Loading…</p>
